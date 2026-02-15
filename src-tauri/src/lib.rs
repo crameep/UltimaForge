@@ -15,6 +15,10 @@ pub mod signature;
 pub mod state;
 pub mod updater;
 
+// Security tests module (test-only)
+#[cfg(test)]
+mod security_tests;
+
 use state::AppState;
 use tracing_subscriber;
 
