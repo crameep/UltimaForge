@@ -10,6 +10,7 @@ use crate::installer::{InstallProgress, Installer, PathValidationResult};
 use crate::state::{AppPhase, AppState, AppStatus};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use tauri::Emitter;
 use tauri::State;
 use tracing::{error, info};
 
