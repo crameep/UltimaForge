@@ -3,6 +3,14 @@ import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
 import "./Layout.css";
 
+/** Link configuration for sidebar navigation. */
+interface SidebarLink {
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  icon?: string;
+}
+
 interface LayoutProps {
   children: ReactNode;
   /** Current application phase for status bar */
@@ -11,6 +19,12 @@ interface LayoutProps {
   statusMessage?: string;
   /** Current version string */
   version?: string;
+  /** Custom sidebar navigation links */
+  sidebarLinks?: SidebarLink[];
+  /** Callback when settings is clicked */
+  onSettingsClick?: () => void;
+  /** Callback when home is clicked */
+  onHomeClick?: () => void;
 }
 
 /**
@@ -22,10 +36,22 @@ export function Layout({
   phase = "Ready",
   statusMessage,
   version,
+  sidebarLinks,
+  onSettingsClick,
+  onHomeClick,
 }: LayoutProps) {
+  // Build default links with navigation callbacks
+  const defaultLinks: SidebarLink[] = [
+    { label: "Home", icon: "\uD83C\uDFE0", onClick: onHomeClick },
+    { label: "Settings", icon: "\u2699\uFE0F", onClick: onSettingsClick },
+    { label: "Help", icon: "\u2753" },
+  ];
+
+  const links = sidebarLinks || defaultLinks;
+
   return (
     <div className="layout">
-      <Sidebar />
+      <Sidebar links={links} />
       <main className="layout-main">
         <div className="layout-content">{children}</div>
       </main>

@@ -4,6 +4,7 @@ import { InstallWizard } from "./components/InstallWizard";
 import { UpdateProgress, useUpdate } from "./components/UpdateProgress";
 import { LaunchButton } from "./components/LaunchButton";
 import { PatchNotes } from "./components/PatchNotes";
+import { Settings } from "./components/Settings";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import "./App.css";
 
@@ -18,12 +19,20 @@ type AppPhase =
   | "GameRunning"
   | "Error";
 
+/** Current view within the application. */
+type AppView = "home" | "settings";
+
 function App() {
   const [phase, setPhase] = useState<AppPhase>("Initializing");
   const [statusMessage, setStatusMessage] = useState<string>("");
+  const [currentView, setCurrentView] = useState<AppView>("home");
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
+
+  // Navigation handlers
+  const navigateToSettings = () => setCurrentView("settings");
+  const navigateToHome = () => setCurrentView("home");
 
   // Check installation status on mount
   useEffect(() => {
@@ -186,9 +195,30 @@ function App() {
     );
   }
 
+  // Show settings view
+  if (currentView === "settings") {
+    return (
+      <Layout
+        phase={phase}
+        statusMessage={statusMessage}
+        version="v0.1.0"
+        onHomeClick={navigateToHome}
+        onSettingsClick={navigateToSettings}
+      >
+        <Settings onBack={navigateToHome} />
+      </Layout>
+    );
+  }
+
   // Main application view (Ready state)
   return (
-    <Layout phase={phase} statusMessage={statusMessage} version="v0.1.0">
+    <Layout
+      phase={phase}
+      statusMessage={statusMessage}
+      version="v0.1.0"
+      onHomeClick={navigateToHome}
+      onSettingsClick={navigateToSettings}
+    >
       <div className="main-content">
         <div className="hero-section">
           <h1 className="hero-title">Welcome to UltimaForge</h1>
