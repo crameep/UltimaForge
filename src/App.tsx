@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Layout } from "./components/Layout";
 import { InstallWizard } from "./components/InstallWizard";
+import { UpdateProgress, useUpdate } from "./components/UpdateProgress";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import "./App.css";
 
@@ -19,6 +20,9 @@ function App() {
   const [phase, setPhase] = useState<AppPhase>("Initializing");
   const [statusMessage, setStatusMessage] = useState<string>("");
 
+  // Update state management
+  const [updateState, updateActions] = useUpdate();
+
   // Check installation status on mount
   useEffect(() => {
     const checkInstallation = async () => {
@@ -28,6 +32,10 @@ function App() {
           setPhase("NeedsInstall");
           setStatusMessage("Installation required");
         } else {
+          // Installation complete, check for updates
+          setPhase("CheckingUpdates");
+          setStatusMessage("Checking for updates...");
+          await updateActions.checkForUpdates();
           setPhase("Ready");
           setStatusMessage("");
         }
@@ -42,7 +50,30 @@ function App() {
     checkInstallation();
   }, []);
 
+  // Sync update state with app phase
+  useEffect(() => {
+    if (updateState.isUpdating) {
+      setPhase("Updating");
+      setStatusMessage("Updating...");
+    } else if (updateState.isComplete) {
+      setPhase("Ready");
+      setStatusMessage("Update complete!");
+    } else if (updateState.updateAvailable) {
+      setPhase("UpdateAvailable");
+      setStatusMessage("Update available");
+    } else if (updateState.isChecking) {
+      setPhase("CheckingUpdates");
+      setStatusMessage("Checking for updates...");
+    }
+  }, [updateState.isUpdating, updateState.isComplete, updateState.updateAvailable, updateState.isChecking]);
+
   const handlePlay = () => {
+    // If update is available, start the update first
+    if (updateState.updateAvailable) {
+      updateActions.startUpdate();
+      return;
+    }
+
     setPhase("GameRunning");
     setStatusMessage("Launching game...");
     // Simulate launching
@@ -52,8 +83,25 @@ function App() {
   };
 
   const handleInstallComplete = () => {
+    // After installation, check for updates
+    setPhase("CheckingUpdates");
+    setStatusMessage("Checking for updates...");
+    updateActions.checkForUpdates().then(() => {
+      if (!updateState.updateAvailable) {
+        setPhase("Ready");
+        setStatusMessage("Installation complete!");
+      }
+    });
+  };
+
+  const handleUpdateComplete = () => {
     setPhase("Ready");
-    setStatusMessage("Installation complete!");
+    setStatusMessage("Update complete!");
+  };
+
+  const handleUpdateDismiss = () => {
+    setPhase("Ready");
+    setStatusMessage("");
   };
 
   // Show install wizard when installation is needed
@@ -90,6 +138,42 @@ function App() {
     );
   }
 
+  // Show update progress when updating
+  if (phase === "Updating" || updateState.isUpdating) {
+    return (
+      <Layout
+        phase={phase}
+        statusMessage={statusMessage}
+        version="v0.1.0"
+      >
+        <div className="main-content">
+          <UpdateProgress
+            onComplete={handleUpdateComplete}
+            onDismiss={handleUpdateDismiss}
+          />
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show checking for updates state
+  if (phase === "CheckingUpdates" && updateState.isChecking) {
+    return (
+      <Layout
+        phase={phase}
+        statusMessage="Checking for updates..."
+        version="v0.1.0"
+      >
+        <div className="main-content">
+          <div className="hero-section">
+            <h1 className="hero-title">UltimaForge</h1>
+            <p className="hero-subtitle">Checking for updates...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   // Main application view (Ready state)
   return (
     <Layout phase={phase} statusMessage={statusMessage} version="v0.1.0">
@@ -99,16 +183,27 @@ function App() {
           <p className="hero-subtitle">Your adventure awaits</p>
         </div>
 
+        {/* Show update banner if update is available */}
+        {updateState.updateAvailable && updateState.checkResult && (
+          <UpdateProgress
+            showBanner={true}
+            checkResult={updateState.checkResult}
+            onComplete={handleUpdateComplete}
+            onDismiss={handleUpdateDismiss}
+          />
+        )}
+
         <div className="action-section">
           <button
             className="play-button"
             onClick={handlePlay}
-            disabled={phase === "Installing" || phase === "Updating"}
+            disabled={phase === "Installing" || phase === "Updating" || phase === "CheckingUpdates"}
           >
-            {phase === "GameRunning" ? "Playing..." : "Play"}
+            {phase === "GameRunning" ? "Playing..." :
+             updateState.updateAvailable ? "Update & Play" : "Play"}
           </button>
 
-          {phase === "UpdateAvailable" && (
+          {phase === "UpdateAvailable" && !updateState.checkResult && (
             <p className="update-notice">
               An update is available. Click Play to update and launch.
             </p>
