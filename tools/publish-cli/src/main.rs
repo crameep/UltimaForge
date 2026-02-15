@@ -8,6 +8,7 @@
 
 mod keygen;
 mod manifest;
+mod sign;
 
 use clap::{Parser, Subcommand};
 use tracing::info;
@@ -173,11 +174,21 @@ fn main() {
             output,
         } => {
             info!("Signing manifest: {} with key: {}", manifest, key);
-            // TODO: Implement signing in subtask-5-3
-            println!(
-                "Sign command placeholder - manifest: {}, key: {}, output: {}",
-                manifest, key, output
-            );
+            match sign::sign_manifest(&manifest, &key, &output) {
+                Ok(result) => {
+                    println!("✓ Signed manifest successfully!");
+                    println!();
+                    println!("Signature: {}", result.signature_path);
+                    println!("  Manifest size: {} bytes", result.manifest_size);
+                    println!();
+                    println!("Signature (hex):");
+                    println!("  {}", result.signature_hex);
+                }
+                Err(e) => {
+                    eprintln!("✗ Failed to sign manifest: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         Commands::Blob { source, output } => {
             info!("Creating blobs from: {} -> {}", source, output);
