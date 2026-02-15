@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Layout } from "./components/Layout";
 import { InstallWizard } from "./components/InstallWizard";
 import { UpdateProgress, useUpdate } from "./components/UpdateProgress";
+import { LaunchButton } from "./components/LaunchButton";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import "./App.css";
 
@@ -67,19 +68,29 @@ function App() {
     }
   }, [updateState.isUpdating, updateState.isComplete, updateState.updateAvailable, updateState.isChecking]);
 
-  const handlePlay = () => {
-    // If update is available, start the update first
-    if (updateState.updateAvailable) {
-      updateActions.startUpdate();
-      return;
-    }
+  const handleUpdateRequest = () => {
+    // Start the update process
+    updateActions.startUpdate();
+  };
 
+  const handleLaunchSuccess = (pid: number | null, shouldClose: boolean) => {
     setPhase("GameRunning");
-    setStatusMessage("Launching game...");
-    // Simulate launching
-    setTimeout(() => {
+    setStatusMessage(pid ? `Game running (PID: ${pid})` : "Game is running");
+    // Handle shouldClose if needed (e.g., close launcher window)
+  };
+
+  const handleLaunchError = (error: string) => {
+    setStatusMessage(`Launch failed: ${error}`);
+  };
+
+  const handleGameStateChange = (isRunning: boolean) => {
+    if (isRunning) {
+      setPhase("GameRunning");
       setStatusMessage("Game is running");
-    }, 1000);
+    } else {
+      setPhase("Ready");
+      setStatusMessage("");
+    }
   };
 
   const handleInstallComplete = () => {
@@ -194,14 +205,14 @@ function App() {
         )}
 
         <div className="action-section">
-          <button
-            className="play-button"
-            onClick={handlePlay}
+          <LaunchButton
             disabled={phase === "Installing" || phase === "Updating" || phase === "CheckingUpdates"}
-          >
-            {phase === "GameRunning" ? "Playing..." :
-             updateState.updateAvailable ? "Update & Play" : "Play"}
-          </button>
+            updateAvailable={updateState.updateAvailable}
+            onUpdateRequest={handleUpdateRequest}
+            onLaunchSuccess={handleLaunchSuccess}
+            onLaunchError={handleLaunchError}
+            onGameStateChange={handleGameStateChange}
+          />
 
           {phase === "UpdateAvailable" && !updateState.checkResult && (
             <p className="update-notice">
