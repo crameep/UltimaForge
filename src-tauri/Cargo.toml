@@ -42,6 +42,9 @@ tracing-subscriber.workspace = true
 # Error handling
 thiserror.workspace = true
 
+# Time and date
+chrono = { version = "0.4", features = ["serde"] }
+
 [dev-dependencies]
 rand.workspace = true
 tempfile = "3.10"

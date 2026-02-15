@@ -9,6 +9,7 @@ pub mod error;
 pub mod hash;
 pub mod manifest;
 pub mod signature;
+pub mod updater;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
