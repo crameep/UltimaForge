@@ -1,0 +1,100 @@
+# UltimaForge Docker Compose Build Configuration
+# Usage:
+#   docker compose run build         - Build the Tauri app (Linux binary)
+#   docker compose run install       - Install npm dependencies
+#   docker compose run dev           - Run development server (requires X11)
+#   docker compose run validate      - Validate build environment
+#   docker compose run shell         - Interactive shell for debugging
+#
+# NOTE: This only produces Linux binaries. For Windows/macOS, use GitHub Actions.
+
+services:
+  # Main build service - produces Linux release binary
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        RUST_VERSION: "1.77"
+        NODE_VERSION: "18"
+    image: ultimaforge-builder:latest
+    volumes:
+      # Mount project root (parent directory of docker/)
+      - ..:/app
+      # Persist Cargo cache for faster rebuilds
+      - cargo-cache:/usr/local/cargo/registry
+      - cargo-git-cache:/usr/local/cargo/git
+      # Persist npm cache
+      - npm-cache:/root/.npm
+      # Persist Rust target directory for incremental builds
+      - rust-target:/app/src-tauri/target
+    working_dir: /app
+    environment:
+      - CARGO_HOME=/usr/local/cargo
+      - CARGO_INCREMENTAL=1
+      - RUST_BACKTRACE=1
+    command: ["sh", "-c", "npm ci && npm run tauri build"]
+    tty: true
+
+  # Install dependencies only
+  install:
+    extends: build
+    command: ["npm", "ci"]
+
+  # Validate environment
+  validate:
+    extends: build
+    command: ["node", "scripts/validate-env.js"]
+
+  # Interactive shell for debugging
+  shell:
+    extends: build
+    command: ["/bin/bash"]
+    stdin_open: true
+
+  # Development server (requires X11 forwarding)
+  dev:
+    extends: build
+    ports:
+      - "1420:1420"
+    environment:
+      - CARGO_HOME=/usr/local/cargo
+      - CARGO_INCREMENTAL=1
+      - RUST_BACKTRACE=1
+      # X11 forwarding for GUI (Linux hosts only)
+      - DISPLAY=${DISPLAY:-:0}
+    volumes:
+      - ..:/app
+      - cargo-cache:/usr/local/cargo/registry
+      - cargo-git-cache:/usr/local/cargo/git
+      - npm-cache:/root/.npm
+      - rust-target:/app/src-tauri/target
+      # X11 socket for GUI (Linux hosts only)
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+    command: ["sh", "-c", "npm ci && npm run tauri dev"]
+
+  # Build with verbose output
+  build-verbose:
+    extends: build
+    environment:
+      - CARGO_HOME=/usr/local/cargo
+      - CARGO_INCREMENTAL=1
+      - RUST_BACKTRACE=full
+      - CARGO_TERM_VERBOSE=true
+    command: ["sh", "-c", "npm ci && npm run tauri build -- --verbose"]
+
+  # Build release bundle (AppImage, deb)
+  release:
+    extends: build
+    command: ["sh", "-c", "npm ci && npm run tauri build -- --bundles appimage,deb"]
+
+# Named volumes for caching
+volumes:
+  cargo-cache:
+    name: ultimaforge-cargo-cache
+  cargo-git-cache:
+    name: ultimaforge-cargo-git
+  npm-cache:
+    name: ultimaforge-npm-cache
+  rust-target:
+    name: ultimaforge-rust-target

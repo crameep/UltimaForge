@@ -42,6 +42,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // Legacy command
             greet,
+            // Crypto commands
+            commands::crypto::generate_keypair,
             // Install commands
             commands::install::check_install_status,
             commands::install::validate_install_path,
@@ -60,6 +62,7 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::settings::get_brand_config,
+            commands::settings::save_brand_config,
             commands::settings::get_theme_colors,
             commands::settings::verify_installation,
             commands::settings::clear_cache,

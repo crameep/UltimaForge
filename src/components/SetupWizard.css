@@ -1,0 +1,526 @@
+/**
+ * SetupWizard Component Styles
+ * Multi-step setup wizard for server configuration
+ */
+
+.setup-wizard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  padding: var(--spacing-xl);
+}
+
+.wizard-container {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+/* ========================================
+   STEP INDICATOR
+   ======================================== */
+
+.wizard-steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: var(--spacing-lg);
+}
+
+.wizard-steps::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background-color: var(--color-border);
+  z-index: 0;
+}
+
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.wizard-step-number {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  transition: all var(--transition-base);
+}
+
+.wizard-step.active .wizard-step-number {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+  box-shadow: var(--shadow-glow);
+}
+
+.wizard-step.completed .wizard-step-number {
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-text);
+}
+
+.wizard-step-check {
+  font-size: var(--font-size-base);
+}
+
+.wizard-step-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color var(--transition-base);
+}
+
+.wizard-step.active .wizard-step-label {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.wizard-step.completed .wizard-step-label {
+  color: var(--color-success);
+}
+
+/* ========================================
+   WIZARD CONTENT
+   ======================================== */
+
+.wizard-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  border: 1px solid var(--color-border);
+}
+
+.wizard-icon {
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.wizard-icon.success {
+  color: var(--color-success);
+}
+
+.wizard-icon.error {
+  color: var(--color-error);
+}
+
+.wizard-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.wizard-subtitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.wizard-description {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 480px;
+  line-height: var(--line-height);
+}
+
+.wizard-note {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.wizard-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: var(--spacing-xs) 0 0 0;
+}
+
+/* ========================================
+   WIZARD ACTIONS
+   ======================================== */
+
+.wizard-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-top: var(--spacing-md);
+  width: 100%;
+}
+
+.wizard-button {
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  min-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.wizard-button.primary {
+  background-color: var(--color-primary);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.wizard-button.primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.wizard-button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wizard-button.secondary {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.wizard-button.secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.wizard-button.large {
+  padding: var(--btn-padding-y-lg) var(--btn-padding-x-lg);
+  font-size: var(--font-size-lg);
+  min-width: 180px;
+}
+
+.wizard-button.small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  min-width: auto;
+}
+
+/* ========================================
+   FORM FIELDS
+   ======================================== */
+
+.wizard-field {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.wizard-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.wizard-input {
+  width: 100%;
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.wizard-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.wizard-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.wizard-input.invalid {
+  border-color: var(--color-error);
+}
+
+.wizard-input.invalid:focus {
+  box-shadow: 0 0 0 2px var(--color-error-light);
+}
+
+.wizard-validation {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+}
+
+.wizard-validation.valid {
+  color: var(--color-success);
+  background-color: var(--color-success-light);
+}
+
+.wizard-validation.invalid {
+  color: var(--color-error);
+  background-color: var(--color-error-light);
+}
+
+.wizard-validation.warning {
+  color: var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+
+.wizard-validation-icon {
+  font-weight: var(--font-weight-bold);
+}
+
+/* ========================================
+   KEYPAIR SECTION
+   ======================================== */
+
+.wizard-keypair-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: 100%;
+  align-items: center;
+}
+
+.wizard-import-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.wizard-key-display {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.wizard-key-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  background-color: var(--color-background);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.wizard-key-item.warning {
+  border: 1px solid var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+
+.wizard-key-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.wizard-key-value {
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  color: var(--color-text);
+  word-break: break-all;
+  background-color: transparent;
+  padding: 0;
+}
+
+.wizard-key-truncated {
+  font-family: var(--font-family-mono);
+}
+
+/* ========================================
+   SPINNER
+   ======================================== */
+
+.wizard-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: wizard-spin 1s linear infinite;
+}
+
+@keyframes wizard-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   SUMMARY
+   ======================================== */
+
+.wizard-summary {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  background-color: var(--color-background);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.wizard-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.wizard-summary-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.wizard-summary-value {
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+/* ========================================
+   PRIVATE KEY REMINDER
+   ======================================== */
+
+.wizard-private-key-reminder {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* ========================================
+   NEXT STEPS
+   ======================================== */
+
+.wizard-next-steps {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.wizard-steps-list {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.wizard-steps-list code {
+  font-family: var(--font-family-mono);
+  background-color: var(--color-background);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+/* ========================================
+   ERROR STATE
+   ======================================== */
+
+.wizard-error-message {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  background-color: var(--color-error-light);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  text-align: left;
+  border: 1px solid var(--color-error);
+}
+
+.wizard-error-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--font-weight-semibold);
+}
+
+.wizard-error-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+  word-break: break-all;
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 600px) {
+  .setup-wizard {
+    padding: var(--spacing-md);
+  }
+
+  .wizard-content {
+    padding: var(--spacing-lg);
+  }
+
+  .wizard-steps::before {
+    display: none;
+  }
+
+  .wizard-step-label {
+    display: none;
+  }
+
+  .wizard-actions {
+    flex-direction: column;
+  }
+
+  .wizard-button {
+    width: 100%;
+  }
+}

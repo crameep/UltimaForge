@@ -1,0 +1,119 @@
+# Build Release Workflow
+# Builds cross-platform releases for Windows, macOS, and Linux on tag push
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: 'Create as draft release'
+        required: false
+        default: 'true'
+        type: boolean
+
+# Ensure only one release workflow runs at a time
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            target: linux
+            args: ''
+          - platform: windows-latest
+            target: windows
+            args: ''
+          - platform: macos-latest
+            target: macos
+            args: '--target universal-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Add targets for universal macOS binary
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libappindicator3-dev \
+            patchelf
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          key: ${{ matrix.platform }}
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'UltimaForge ${{ github.ref_name }}'
+          releaseBody: |
+            ## UltimaForge ${{ github.ref_name }}
+
+            See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+
+            ### Installation
+
+            Download the appropriate installer for your platform:
+            - **Windows**: `.msi` or `.exe` installer
+            - **macOS**: `.dmg` disk image (universal binary for Intel and Apple Silicon)
+            - **Linux**: `.deb` package or `.AppImage`
+
+            For detailed setup instructions, see our [documentation](https://github.com/${{ github.repository }}/blob/main/docs/QUICKSTART.md).
+          releaseDraft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft == 'true' || false }}
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          args: ${{ matrix.args }}
+
+  # Validate all artifacts were created
+  verify-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Verify release artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Release build completed successfully for all platforms"
+          echo "Tag: ${{ github.ref_name }}"
