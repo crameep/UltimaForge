@@ -1,0 +1,23 @@
+{
+  "product": {
+    "displayName": "Your Server Name",
+    "serverName": "YourServer",
+    "description": "A brief description of your Ultima Online server",
+    "supportEmail": "support@yourserver.com",
+    "website": "https://yourserver.com",
+    "discord": "https://discord.gg/yourserver"
+  },
+  "updateUrl": "https://updates.yourserver.com",
+  "publicKey": "YOUR_64_CHARACTER_HEX_PUBLIC_KEY_HERE_REPLACE_ME_WITH_REAL_KEY",
+  "ui": {
+    "colors": {
+      "primary": "#1a1a2e",
+      "secondary": "#e94560",
+      "background": "#16213e",
+      "text": "#ffffff"
+    },
+    "showPatchNotes": true,
+    "windowTitle": "Your Server Launcher"
+  },
+  "brandVersion": "1.0"
+}
