@@ -1,0 +1,53 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #f0f0f0;
+}
+
+.subtitle {
+  color: #888;
+  margin-bottom: 2rem;
+}
+
+.status-section {
+  margin-bottom: 2rem;
+}
+
+.status {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.button-section {
+  margin-top: 1rem;
+}
+
+.play-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 1rem 3rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.play-button:hover {
+  background-color: #2563eb;
+}
+
+.play-button:active {
+  background-color: #1d4ed8;
+}
