@@ -253,11 +253,73 @@ fn main() {
                 "Publishing from: {} -> {} (v{})",
                 source, output, version
             );
-            // TODO: Implement full publish workflow in subtask-5-6
-            println!(
-                "Publish command placeholder - source: {}, output: {}, key: {}, version: {}, executable: {}",
-                source, output, key, version, executable
-            );
+
+            // Compute output paths
+            let manifest_path = format!("{}/manifest.json", output);
+            let signature_path = format!("{}/manifest.sig", output);
+            let blobs_path = format!("{}/files", output);
+
+            println!("Publishing v{} from: {}", version, source);
+            println!();
+
+            // Step 1: Generate manifest
+            println!("Step 1/3: Generating manifest...");
+            let manifest_result = match manifest::generate_manifest(&source, &manifest_path, &version, &executable) {
+                Ok(result) => {
+                    println!("  ✓ Generated manifest with {} files ({})",
+                        result.file_count,
+                        manifest::format_size(result.total_size)
+                    );
+                    result
+                }
+                Err(e) => {
+                    eprintln!("  ✗ Failed to generate manifest: {}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            // Step 2: Sign manifest
+            println!("Step 2/3: Signing manifest...");
+            match sign::sign_manifest(&manifest_path, &key, &signature_path) {
+                Ok(result) => {
+                    println!("  ✓ Signed manifest ({} bytes)", result.manifest_size);
+                }
+                Err(e) => {
+                    eprintln!("  ✗ Failed to sign manifest: {}", e);
+                    std::process::exit(1);
+                }
+            }
+
+            // Step 3: Create content-addressed blobs
+            println!("Step 3/3: Creating content-addressed blobs...");
+            let blob_result = match blob::create_blobs(&source, &blobs_path) {
+                Ok(result) => {
+                    println!("  ✓ Created {} unique blobs ({})",
+                        result.blob_count,
+                        blob::format_size(result.total_size)
+                    );
+                    if result.deduplicated_count > 0 {
+                        println!("    ({} files deduplicated)", result.deduplicated_count);
+                    }
+                    result
+                }
+                Err(e) => {
+                    eprintln!("  ✗ Failed to create blobs: {}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            // Summary
+            println!();
+            println!("✓ Published successfully!");
+            println!();
+            println!("Output directory: {}", output);
+            println!("  manifest.json  - {} files, {}", manifest_result.file_count, manifest::format_size(manifest_result.total_size));
+            println!("  manifest.sig   - Ed25519 signature");
+            println!("  files/         - {} content-addressed blobs", blob_result.blob_count);
+            println!();
+            println!("Version: {}", version);
+            println!("Executable: {}", executable);
         }
     }
 }
