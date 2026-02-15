@@ -1,0 +1,38 @@
+[package]
+name = "publish-cli"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "CLI tool for creating manifests, signing, and content-addressed blobs for UltimaForge"
+
+[[bin]]
+name = "publish-cli"
+path = "src/main.rs"
+
+[dependencies]
+# Cryptography
+ed25519-dalek = { workspace = true, features = ["rand_core"] }
+sha2.workspace = true
+hex.workspace = true
+rand = "0.8"
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# CLI
+clap.workspace = true
+
+# File system
+walkdir.workspace = true
+
+# Async runtime (for potential future async operations)
+tokio.workspace = true
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
