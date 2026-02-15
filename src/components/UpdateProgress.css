@@ -1,0 +1,508 @@
+/**
+ * UpdateProgress Component Styles
+ * Progress visualization for update process
+ */
+
+/* ========================================
+   UPDATE BANNER (Update Available)
+   ======================================== */
+
+.update-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  margin: var(--spacing-lg) 0;
+  box-shadow: var(--shadow-md), 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.update-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.update-banner-icon {
+  font-size: 2rem;
+  color: var(--color-primary);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.update-banner-text {
+  flex: 1;
+}
+
+.update-banner-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.update-banner-description {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.update-banner-details {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.update-banner-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+}
+
+.update-banner-button {
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  min-width: 100px;
+}
+
+.update-banner-button.primary {
+  background-color: var(--color-primary);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.update-banner-button.primary:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.update-banner-button.secondary {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.update-banner-button.secondary:hover {
+  background-color: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+/* ========================================
+   UPDATE PROGRESS CONTAINER
+   ======================================== */
+
+.update-progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-xl);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  border: 1px solid var(--color-border);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.update-progress-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.update-progress-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.update-progress-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.update-progress-description {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 480px;
+  line-height: var(--line-height);
+}
+
+/* ========================================
+   PROGRESS SECTION
+   ======================================== */
+
+.update-progress-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.update-progress {
+  width: 100%;
+}
+
+.update-progress-bar-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.update-progress-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.update-progress-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+}
+
+.update-progress-bar {
+  width: 100%;
+  height: var(--progress-height-lg);
+  background-color: var(--color-background);
+  border-radius: var(--progress-radius);
+  overflow: hidden;
+}
+
+.update-progress-bar.secondary {
+  height: var(--progress-height);
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
+  border-radius: var(--progress-radius);
+  transition: width var(--transition-base);
+}
+
+.update-progress-details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+}
+
+/* ========================================
+   CURRENT FILE
+   ======================================== */
+
+.update-current-file {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background-color: var(--color-background);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.update-current-file-label {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.update-current-file-name {
+  font-family: var(--font-family-mono);
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================
+   STATE INDICATOR
+   ======================================== */
+
+.update-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.update-state-text {
+  color: var(--color-primary);
+}
+
+.update-version {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+}
+
+/* ========================================
+   PROGRESS NOTE
+   ======================================== */
+
+.update-progress-note {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.update-progress-note p {
+  margin: 0;
+}
+
+/* ========================================
+   SPINNER
+   ======================================== */
+
+.update-spinner {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: update-spin 1s linear infinite;
+}
+
+@keyframes update-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   UPDATE COMPLETE
+   ======================================== */
+
+.update-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  border: 1px solid var(--color-border);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.update-complete-icon {
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--color-success);
+}
+
+.update-complete-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.update-complete-description {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 480px;
+  line-height: var(--line-height);
+}
+
+.update-complete-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-top: var(--spacing-md);
+}
+
+.update-complete-button {
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  min-width: 120px;
+}
+
+.update-complete-button.primary {
+  background-color: var(--color-primary);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.update-complete-button.primary:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+/* ========================================
+   UPDATE ERROR
+   ======================================== */
+
+.update-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  border: 1px solid var(--color-border);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.update-error-icon {
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--color-error);
+}
+
+.update-error-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.update-error-description {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 480px;
+  line-height: var(--line-height);
+}
+
+.update-error-message {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  background-color: var(--color-error-light);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  text-align: left;
+  border: 1px solid var(--color-error);
+}
+
+.update-error-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--font-weight-semibold);
+}
+
+.update-error-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+  word-break: break-all;
+}
+
+.update-error-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-top: var(--spacing-md);
+}
+
+.update-error-button {
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  min-width: 120px;
+}
+
+.update-error-button.primary {
+  background-color: var(--color-primary);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.update-error-button.primary:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.update-error-button.secondary {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.update-error-button.secondary:hover {
+  background-color: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 600px) {
+  .update-banner {
+    padding: var(--spacing-lg);
+  }
+
+  .update-banner-content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .update-banner-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .update-banner-button {
+    width: 100%;
+  }
+
+  .update-progress-container,
+  .update-complete,
+  .update-error {
+    padding: var(--spacing-lg);
+  }
+
+  .update-complete-actions,
+  .update-error-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .update-complete-button,
+  .update-error-button {
+    width: 100%;
+  }
+}

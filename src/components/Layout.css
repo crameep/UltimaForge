@@ -1,0 +1,46 @@
+/**
+ * Layout Component Styles
+ * Main application layout with sidebar, content area, and status bar
+ */
+
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: 1fr var(--statusbar-height);
+  grid-template-areas:
+    "sidebar main"
+    "statusbar statusbar";
+  width: 100%;
+  height: 100vh;
+  background-color: var(--color-background);
+}
+
+.layout-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--color-background);
+}
+
+.layout-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-xl);
+  overflow-y: auto;
+}
+
+/* Responsive: collapse sidebar on narrow screens */
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "main"
+      "statusbar";
+  }
+
+  .layout-content {
+    padding: var(--spacing-lg);
+  }
+}

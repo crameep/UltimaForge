@@ -1,0 +1,22 @@
+{
+  "product": {
+    "displayName": "UltimaForge Test Server",
+    "serverName": "UltimaForge",
+    "description": "Test configuration for E2E testing",
+    "supportEmail": "support@example.com",
+    "website": "https://example.com",
+    "discord": "https://discord.gg/example"
+  },
+  "updateUrl": "http://localhost:8080",
+  "publicKey": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+  "theme": {
+    "primary": "#1a1a2e",
+    "secondary": "#e94560",
+    "background": "#16213e",
+    "text": "#eaeaea"
+  },
+  "ui": {
+    "showPatchNotes": true,
+    "windowTitle": "UltimaForge Launcher (Test)"
+  }
+}

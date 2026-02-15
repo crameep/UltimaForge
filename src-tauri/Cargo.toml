@@ -1,0 +1,50 @@
+[package]
+name = "ultimaforge"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Self-Hosted UO Installer/Patcher/Launcher"
+
+[lib]
+name = "ultimaforge_lib"
+crate-type = ["staticlib", "cdylib", "lib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-process = "2"
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Cryptography
+ed25519-dalek.workspace = true
+sha2.workspace = true
+hex.workspace = true
+
+# HTTP and async
+reqwest = { version = "0.12", features = ["json", "stream"] }
+tokio.workspace = true
+futures-util = "0.3"
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+# Time and date
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+rand.workspace = true
+tempfile = "3.10"
