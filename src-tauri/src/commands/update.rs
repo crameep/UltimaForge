@@ -10,7 +10,7 @@ use crate::state::AppState;
 use crate::updater::{UpdateCheckResult, UpdateProgress, Updater};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tauri::State;
+use tauri::{Emitter, State};
 use tracing::{error, info, warn};
 
 /// Response for update check.
