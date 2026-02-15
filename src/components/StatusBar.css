@@ -1,0 +1,79 @@
+/**
+ * StatusBar Component Styles
+ * Bottom status bar with status indicator, message, and version
+ */
+
+.statusbar {
+  grid-area: statusbar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-md);
+  height: var(--statusbar-height);
+  background-color: var(--color-surface);
+  border-top: var(--border-width) solid var(--color-border);
+  font-size: var(--font-size-xs);
+}
+
+.statusbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.statusbar-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.statusbar-indicator.status-success {
+  background-color: var(--color-success);
+  box-shadow: 0 0 6px var(--color-success);
+}
+
+.statusbar-indicator.status-info {
+  background-color: var(--color-info);
+  box-shadow: 0 0 6px var(--color-info);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.statusbar-indicator.status-warning {
+  background-color: var(--color-warning);
+  box-shadow: 0 0 6px var(--color-warning);
+}
+
+.statusbar-indicator.status-error {
+  background-color: var(--color-error);
+  box-shadow: 0 0 6px var(--color-error);
+}
+
+.statusbar-indicator.status-neutral {
+  background-color: var(--color-text-muted);
+}
+
+.statusbar-message {
+  color: var(--color-text-secondary);
+}
+
+.statusbar-version {
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+}
+
+/* Pulse animation for active states */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

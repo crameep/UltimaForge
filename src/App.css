@@ -1,53 +1,92 @@
-.container {
+/**
+ * App Component Styles
+ * Main content area styling
+ */
+
+.main-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  padding: 2rem;
   text-align: center;
+  gap: var(--spacing-xl);
 }
 
-h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  color: #f0f0f0;
+/* Hero Section */
+.hero-section {
+  margin-bottom: var(--spacing-lg);
 }
 
-.subtitle {
-  color: #888;
-  margin-bottom: 2rem;
+.hero-title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-sm);
+  letter-spacing: -0.02em;
 }
 
-.status-section {
-  margin-bottom: 2rem;
+.hero-subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+  margin: 0;
 }
 
-.status {
-  color: #4ade80;
-  font-weight: 600;
-}
-
-.button-section {
-  margin-top: 1rem;
+/* Action Section */
+.action-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
 }
 
 .play-button {
-  background-color: #3b82f6;
-  color: white;
+  min-width: 200px;
+  padding: var(--btn-padding-y-lg) var(--btn-padding-x-lg);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
   border: none;
-  padding: 1rem 3rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-xl);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
 }
 
-.play-button:hover {
-  background-color: #2563eb;
+.play-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl), 0 0 30px rgba(59, 130, 246, 0.6);
 }
 
-.play-button:active {
-  background-color: #1d4ed8;
+.play-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.play-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.update-notice {
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  margin: 0;
+}
+
+/* Status Section */
+.status-section {
+  margin-top: var(--spacing-xl);
+}
+
+.status-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.status-value {
+  font-family: var(--font-family-mono);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
 }
