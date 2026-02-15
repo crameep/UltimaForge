@@ -445,6 +445,160 @@ function Restore-TestData {
     }
 }
 
+# Launch flow test
+function Test-LaunchFlow {
+    Write-Info "=== Running Launch Flow Test ==="
+
+    try {
+        # Check if installation exists
+        $clientExe = Join-Path $TestInstallDir "client.exe"
+        if (-not (Test-Path $clientExe)) {
+            Write-Warning "No existing installation found. Running first-run installation first..."
+            Test-FirstRunInstallation
+        }
+
+        # Create a test executable script
+        Write-Info "Creating test executable..."
+        New-TestExecutable
+
+        # Start host server for consistency
+        Start-HostServer
+
+        Write-Info "Test setup complete. Manual verification required."
+        Write-Host ""
+        Write-Host "============================================="
+        Write-Host "MANUAL TEST STEPS - LAUNCH FLOW:"
+        Write-Host "============================================="
+        Write-Host ""
+        Write-Host "1. Launch the Tauri app:"
+        Write-Host "   npm run tauri dev"
+        Write-Host ""
+        Write-Host "2. Verify Ready State:"
+        Write-Host "   - App shows main view (not InstallWizard)"
+        Write-Host "   - 'Play' button visible and enabled"
+        Write-Host "   - No error messages displayed"
+        Write-Host ""
+        Write-Host "3. Click 'Play' button:"
+        Write-Host "   - Button text changes to 'Launching...' with spinner"
+        Write-Host "   - Then changes to 'Playing...'"
+        Write-Host "   - 'Game Closed?' button appears"
+        Write-Host ""
+        Write-Host "4. Verify process spawned:"
+        Write-Host "   - Check console window that opens"
+        Write-Host "   - Should show: Working Directory: $TestInstallDir"
+        Write-Host ""
+        Write-Host "5. Test game exit:"
+        Write-Host "   - Press Enter in the test script console"
+        Write-Host "   - OR click 'Game Closed?' button"
+        Write-Host "   - Launcher returns to 'Play' state"
+        Write-Host ""
+        Write-Host "6. (Optional) Test validation failure:"
+        Write-Host "   - Rename client.exe temporarily"
+        Write-Host "   - Click 'Play' - should show error"
+        Write-Host "   - Restore client.exe"
+        Write-Host ""
+        Write-Host "============================================="
+        Write-Host "Test install directory: $TestInstallDir"
+        Write-Host "Test executable: $clientExe"
+        Write-Host "============================================="
+        Write-Host ""
+        Write-Host "Press Enter when test is complete, or Ctrl+C to abort..."
+        Read-Host
+
+        # Verify launch functionality
+        Write-Info "Verifying launch test results..."
+
+        $markerFile = Join-Path $TestInstallDir ".launch-test-marker"
+        if (Test-Path $markerFile) {
+            Write-Success "Test executable was launched successfully"
+
+            # Check working directory from marker
+            $launchDir = (Get-Content $markerFile | Select-Object -First 1).Trim()
+            if ($launchDir -eq $TestInstallDir) {
+                Write-Success "Working directory was set correctly: $launchDir"
+            }
+            else {
+                Write-Warning "Working directory may not be correct (got: $launchDir, expected: $TestInstallDir)"
+            }
+
+            # Clean up marker
+            Remove-Item $markerFile -Force -ErrorAction SilentlyContinue
+
+            Write-Success "Launch flow test PASSED"
+        }
+        else {
+            Write-Warning "Could not verify automatic launch (marker file not found)"
+            Write-Info "This may be expected if using manual verification"
+
+            # Ask user for result
+            Write-Host ""
+            $result = Read-Host "Did the launch flow work correctly? (y/n)"
+            if ($result -eq "y" -or $result -eq "Y") {
+                Write-Success "Launch flow test PASSED (manual verification)"
+            }
+            else {
+                Write-Error "Launch flow test FAILED (manual verification)"
+            }
+        }
+    }
+    finally {
+        Cleanup
+    }
+}
+
+# Create a test executable script
+function New-TestExecutable {
+    Write-Info "Creating test executable script..."
+
+    $testScript = @"
+@echo off
+REM UltimaForge Test Client Executable
+REM This simulates a game client for E2E testing
+
+echo =============================================
+echo UltimaForge Test Client
+echo =============================================
+echo Working Directory: %CD%
+echo Script Directory: %~dp0
+echo Arguments: %*
+echo =============================================
+echo.
+
+REM Write marker file for verification
+echo %CD%> "%~dp0.launch-test-marker"
+echo %DATE% %TIME%>> "%~dp0.launch-test-marker"
+
+echo Test client running. Press any key to exit...
+pause > nul
+
+echo Test client exiting with code 0
+exit /b 0
+"@
+
+    $clientExePath = Join-Path $TestInstallDir "client.exe"
+
+    # First, check if it's a batch file we need to create
+    # Since .exe files on Windows should be actual executables,
+    # we'll create a .bat file and rename the reference
+    $batPath = Join-Path $TestInstallDir "client.bat"
+    Set-Content -Path $batPath -Value $testScript -Encoding ASCII
+
+    # If there's already a client.exe (from installation), back it up
+    if (Test-Path $clientExePath) {
+        $backupPath = Join-Path $TestInstallDir "client.exe.orig"
+        Move-Item $clientExePath $backupPath -Force -ErrorAction SilentlyContinue
+    }
+
+    # Create a wrapper that calls the batch file
+    $wrapperScript = @"
+@echo off
+call "%~dp0client.bat" %*
+"@
+    Set-Content -Path $clientExePath -Value $wrapperScript -Encoding ASCII
+
+    Write-Success "Test executable created: $clientExePath"
+}
+
 switch ($TestType) {
     { $_ -in "first-run", "install" } {
         Test-FirstRunInstallation
@@ -453,8 +607,7 @@ switch ($TestType) {
         Test-UpdateFlow
     }
     "launch" {
-        Write-Warning "Launch flow test not yet implemented"
-        Write-Info "See: tests/e2e/launch-flow.md"
+        Test-LaunchFlow
     }
     "security" {
         Write-Warning "Security tests not yet implemented"
@@ -463,6 +616,7 @@ switch ($TestType) {
     "all" {
         Test-FirstRunInstallation
         Test-UpdateFlow
-        Write-Warning "Launch/Security tests not yet implemented"
+        Test-LaunchFlow
+        Write-Warning "Security tests not yet implemented"
     }
 }

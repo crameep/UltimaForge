@@ -15,7 +15,7 @@ E2E tests verify the complete integration of all components:
 |------|-------------|--------|
 | [First-Run Installation](./first-run-install.md) | Tests new installation flow | Ready |
 | [Update Flow](./update-flow.md) | Tests differential updates, atomic apply, rollback | Ready |
-| [Launch Flow](./launch-flow.md) | Tests game client launching | Pending |
+| [Launch Flow](./launch-flow.md) | Tests game client launching | Ready |
 | [Security](./security-tests.md) | Tests signature/hash verification | Pending |
 
 ## Prerequisites

@@ -93,20 +93,59 @@ _____________________________________________
 
 **Date Tested:** _________________
 **Tester:** _________________
+**Build Version:** _________________
 
-### Test Steps
-- [ ] Launch button visible when ready
-- [ ] Launch button click initiates launch
-- [ ] Client executable spawns
-- [ ] Working directory is correct
-- [ ] UI shows "Game Running" state
-- [ ] "Game Closed" button works
+### Setup
+- [ ] Installation complete (E2E-INSTALL-001 passed)
+- [ ] Launcher configuration exists with `install_complete: true`
+- [ ] Test executable created (via test runner or manually)
+- [ ] Host server running (optional but recommended)
+
+### Test Steps - Ready State
+- [ ] Step 1: App starts in Ready state (not InstallWizard)
+- [ ] Step 2: Launch button ("Play") visible and enabled
+- [ ] Step 3: Version number displayed correctly
+- [ ] Step 4: No error messages visible
+- [ ] Step 5: Settings button accessible
+
+### Test Steps - Launch Process
+- [ ] Step 6: Click "Play" button
+- [ ] Step 7: Button changes to "Launching..." with spinner
+- [ ] Step 8: Validation runs (may be brief)
+- [ ] Step 9: Client process spawns
+- [ ] Step 10: Button changes to "Playing..."
+- [ ] Step 11: "Game Closed?" button appears
+
+### Test Steps - Process Verification
+- [ ] Step 12: Process running (visible in task manager/ps)
+- [ ] Step 13: Working directory correct (equals install path)
+- [ ] Step 14: Arguments passed correctly (if configured)
+- [ ] Step 15: Environment variables set (if configured)
+
+### Test Steps - Game Exit
+- [ ] Step 16: Game process exits (or "Game Closed?" clicked)
+- [ ] Step 17: Button returns to "Play" state
+- [ ] Step 18: "Game Closed?" button disappears
+- [ ] Step 19: App returns to Ready phase
+
+### Edge Cases
+- [ ] Missing executable shows error
+- [ ] Non-executable file shows error (Unix)
+- [ ] Missing install directory shows error
+- [ ] Rapid launch/close works correctly
+- [ ] Path with spaces works correctly
+
+### Optional Tests
+- [ ] Close-on-launch setting works
+- [ ] Launch with custom arguments works
+- [ ] Launcher closes while game runs, game continues
 
 ### Result
 - [ ] **PASS**
 - [ ] **FAIL**
 
 **Notes:**
+_____________________________________________
 _____________________________________________
 _____________________________________________
 

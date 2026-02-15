@@ -427,8 +427,170 @@ restore_test_data() {
 # Run launch flow test
 test_launch_flow() {
     log_info "=== Running Launch Flow Test ==="
-    log_warning "Launch flow test not yet implemented"
-    log_info "See: tests/e2e/launch-flow.md"
+
+    # Check if installation exists
+    if [ ! -f "$TEST_INSTALL_DIR/client.exe" ]; then
+        log_warning "No existing installation found. Running first-run installation first..."
+        test_first_run_installation
+    fi
+
+    # Create a test executable script that we can actually run
+    log_info "Creating test executable..."
+    create_test_executable
+
+    # Start host server for consistency
+    start_host_server
+
+    log_info "Test setup complete. Manual verification required."
+    echo ""
+    echo "============================================="
+    echo "MANUAL TEST STEPS - LAUNCH FLOW:"
+    echo "============================================="
+    echo ""
+    echo "1. Launch the Tauri app:"
+    echo "   npm run tauri dev"
+    echo ""
+    echo "2. Verify Ready State:"
+    echo "   - App shows main view (not InstallWizard)"
+    echo "   - 'Play' button visible and enabled"
+    echo "   - No error messages displayed"
+    echo ""
+    echo "3. Click 'Play' button:"
+    echo "   - Button text changes to 'Launching...' with spinner"
+    echo "   - Then changes to 'Playing...'"
+    echo "   - 'Game Closed?' button appears"
+    echo ""
+    echo "4. Verify process spawned:"
+    echo "   - Check terminal for test script output"
+    echo "   - Should show: Working Directory: $TEST_INSTALL_DIR"
+    echo ""
+    echo "5. Test game exit:"
+    echo "   - Press Enter in the test script terminal"
+    echo "   - OR click 'Game Closed?' button"
+    echo "   - Launcher returns to 'Play' state"
+    echo ""
+    echo "6. (Optional) Test validation failure:"
+    echo "   - Rename client.exe temporarily"
+    echo "   - Click 'Play' - should show error"
+    echo "   - Restore client.exe"
+    echo ""
+    echo "============================================="
+    echo "Test install directory: $TEST_INSTALL_DIR"
+    echo "Test executable: $TEST_INSTALL_DIR/client.exe"
+    echo "============================================="
+    echo ""
+    echo "Press Enter when test is complete, or Ctrl+C to abort..."
+    read
+
+    # Verify launch functionality
+    log_info "Verifying launch test results..."
+
+    # Check if test executable was executed (creates marker file)
+    if [ -f "$TEST_INSTALL_DIR/.launch-test-marker" ]; then
+        log_success "Test executable was launched successfully"
+
+        # Check working directory from marker
+        LAUNCH_DIR=$(cat "$TEST_INSTALL_DIR/.launch-test-marker" 2>/dev/null | head -1)
+        if [ "$LAUNCH_DIR" = "$TEST_INSTALL_DIR" ]; then
+            log_success "Working directory was set correctly: $LAUNCH_DIR"
+        else
+            log_warning "Working directory may not be correct (got: $LAUNCH_DIR, expected: $TEST_INSTALL_DIR)"
+        fi
+
+        # Clean up marker
+        rm -f "$TEST_INSTALL_DIR/.launch-test-marker"
+
+        log_success "Launch flow test PASSED"
+        return 0
+    else
+        log_warning "Could not verify automatic launch (marker file not found)"
+        log_info "This may be expected if using manual verification"
+
+        # Ask user for result
+        echo ""
+        echo "Did the launch flow work correctly? (y/n)"
+        read -r RESULT
+        if [ "$RESULT" = "y" ] || [ "$RESULT" = "Y" ]; then
+            log_success "Launch flow test PASSED (manual verification)"
+            return 0
+        else
+            log_error "Launch flow test FAILED (manual verification)"
+            return 1
+        fi
+    fi
+}
+
+# Create a test executable script
+create_test_executable() {
+    log_info "Creating test executable script..."
+
+    # Create test script that works on Unix
+    cat > "$TEST_INSTALL_DIR/client.exe" << 'TESTSCRIPT'
+#!/bin/bash
+# UltimaForge Test Client Executable
+# This simulates a game client for E2E testing
+
+WORKING_DIR=$(pwd)
+SCRIPT_DIR=$(dirname "$0")
+
+echo "============================================="
+echo "UltimaForge Test Client"
+echo "============================================="
+echo "Working Directory: $WORKING_DIR"
+echo "Script Directory: $SCRIPT_DIR"
+echo "Arguments: $@"
+echo "============================================="
+echo ""
+
+# Write marker file for verification
+echo "$WORKING_DIR" > "$SCRIPT_DIR/.launch-test-marker"
+echo "$(date)" >> "$SCRIPT_DIR/.launch-test-marker"
+
+echo "Test client running. Press Enter to exit..."
+read
+
+echo "Test client exiting with code 0"
+exit 0
+TESTSCRIPT
+
+    # Make it executable
+    chmod +x "$TEST_INSTALL_DIR/client.exe"
+
+    log_success "Test executable created: $TEST_INSTALL_DIR/client.exe"
+}
+
+# Verify launch validation
+test_launch_validation() {
+    log_info "Testing launch validation..."
+
+    # Test 1: Missing executable
+    log_info "Test 1: Missing executable..."
+    if [ -f "$TEST_INSTALL_DIR/client.exe" ]; then
+        mv "$TEST_INSTALL_DIR/client.exe" "$TEST_INSTALL_DIR/client.exe.bak"
+    fi
+
+    echo "Launch the app and click Play. An error should appear."
+    echo "Press Enter when verified..."
+    read
+
+    # Restore executable
+    if [ -f "$TEST_INSTALL_DIR/client.exe.bak" ]; then
+        mv "$TEST_INSTALL_DIR/client.exe.bak" "$TEST_INSTALL_DIR/client.exe"
+    fi
+
+    # Test 2: Non-executable file (Unix only)
+    if [ "$(uname)" != "Windows_NT" ]; then
+        log_info "Test 2: Non-executable file..."
+        chmod -x "$TEST_INSTALL_DIR/client.exe"
+
+        echo "Launch the app and click Play. An error should appear."
+        echo "Press Enter when verified..."
+        read
+
+        chmod +x "$TEST_INSTALL_DIR/client.exe"
+    fi
+
+    log_success "Launch validation tests completed"
 }
 
 # Run security tests
