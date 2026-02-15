@@ -1,0 +1,16 @@
+MZ Dummy UltimaOnline Client Executable
+This is a test file for UltimaForge integration testing.
+Version: 7.0.100.0
+Build: 2026.02.15
+
+This file simulates a real UO client executable.
+It is used to verify the manifest generation, signing, and blob creation workflow.
+
+[Binary content would go here in a real client]
+PE Header placeholder
+Section .text
+Section .data
+Section .rsrc
+
+Entry point: 0x00401000
+Base address: 0x00400000

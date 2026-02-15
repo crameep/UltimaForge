@@ -1,0 +1,24 @@
+UOMUL v1.0 Art Data File
+This is a test art.mul file for UltimaForge integration testing.
+
+[Art Index Header]
+Total Items: 16384
+Format: Indexed Color
+Palette Size: 256
+
+[Sample Art Data]
+Item 0x0001: Terrain grass tile 44x44
+Item 0x0002: Terrain dirt tile 44x44
+Item 0x0003: Terrain sand tile 44x44
+Item 0x0004: Terrain water tile 44x44
+Item 0x0005: Terrain stone tile 44x44
+
+[Static Art Data]
+Static 0x0001: Tree model
+Static 0x0002: Rock model
+Static 0x0003: Bush model
+Static 0x0004: Flower model
+Static 0x0005: Fence model
+
+This file simulates the art.mul data file used by Ultima Online clients.
+In a real installation, this file would be several hundred megabytes.
