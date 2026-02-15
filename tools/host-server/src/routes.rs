@@ -141,53 +141,6 @@ pub async fn info_handler(State(state): State<Arc<AppState>>) -> impl IntoRespon
     Json(InfoResponse::from_state(&state))
 }
 
-/// Validate update folder structure
-///
-/// Checks that all required files exist:
-/// - manifest.json
-/// - manifest.sig
-/// - files/ directory
-pub async fn validate_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    // Check basic file existence
-    let manifest_exists = state.serve_dir.join("manifest.json").exists();
-    let signature_exists = state.serve_dir.join("manifest.sig").exists();
-    let files_dir_exists = state.serve_dir.join("files").is_dir();
-
-    #[derive(Serialize)]
-    struct ValidationResult {
-        valid: bool,
-        manifest_exists: bool,
-        signature_exists: bool,
-        files_dir_exists: bool,
-        message: String,
-    }
-
-    let valid = manifest_exists && signature_exists && files_dir_exists;
-    let message = if valid {
-        "Update folder structure is valid".to_string()
-    } else {
-        let mut missing = Vec::new();
-        if !manifest_exists {
-            missing.push("manifest.json");
-        }
-        if !signature_exists {
-            missing.push("manifest.sig");
-        }
-        if !files_dir_exists {
-            missing.push("files/");
-        }
-        format!("Missing required files: {}", missing.join(", "))
-    };
-
-    Json(ValidationResult {
-        valid,
-        manifest_exists,
-        signature_exists,
-        files_dir_exists,
-        message,
-    })
-}
-
 /// Serve manifest.json
 pub async fn manifest_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let path = state.serve_dir.join("manifest.json");

@@ -9,6 +9,7 @@
 
 mod health;
 mod routes;
+mod validation;
 
 use axum::{routing::get, Router};
 use clap::Parser;
@@ -17,7 +18,8 @@ use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing::info;
 
 use health::health_handler;
-use routes::{manifest_handler, root_handler, signature_handler, validate_handler, AppState};
+use routes::{manifest_handler, root_handler, signature_handler, AppState};
+use validation::validate_handler;
 
 /// UltimaForge Host Server - Static file server for update artifacts
 #[derive(Parser)]
