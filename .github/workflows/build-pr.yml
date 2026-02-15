@@ -1,0 +1,105 @@
+# Build PR Workflow
+# Validates pull requests with cross-platform builds for Windows, macOS, and Linux
+name: Build PR
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+
+# Cancel in-progress runs for the same PR
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            target: linux
+            args: ''
+          - platform: windows-latest
+            target: windows
+            args: ''
+          - platform: macos-latest
+            target: macos
+            args: '--target universal-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Add targets for universal macOS binary
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libappindicator3-dev \
+            patchelf
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          key: ${{ matrix.platform }}-pr
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
+
+  # Summary job to ensure all builds passed
+  build-summary:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check build status
+        run: |
+          if [ "${{ needs.build.result }}" == "success" ]; then
+            echo "✅ All platform builds passed successfully"
+            exit 0
+          else
+            echo "❌ One or more platform builds failed"
+            exit 1
+          fi
