@@ -6,6 +6,7 @@
 //! - Output content-addressed file blobs
 //! - Validate update folder structure
 
+mod blob;
 mod keygen;
 mod manifest;
 mod sign;
@@ -192,11 +193,21 @@ fn main() {
         }
         Commands::Blob { source, output } => {
             info!("Creating blobs from: {} -> {}", source, output);
-            // TODO: Implement blob creation in subtask-5-4
-            println!(
-                "Blob command placeholder - source: {}, output: {}",
-                source, output
-            );
+            match blob::create_blobs(&source, &output) {
+                Ok(result) => {
+                    println!("✓ Created content-addressed blobs successfully!");
+                    println!();
+                    println!("Output: {}", result.output_dir);
+                    println!("  Unique blobs:  {}", result.blob_count);
+                    println!("  Total files:   {}", result.blobs.len());
+                    println!("  Deduplicated:  {}", result.deduplicated_count);
+                    println!("  Total size:    {}", blob::format_size(result.total_size));
+                }
+                Err(e) => {
+                    eprintln!("✗ Failed to create blobs: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         Commands::Validate { dir, key } => {
             info!("Validating update folder: {} with key: {}", dir, key);
