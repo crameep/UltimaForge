@@ -50,8 +50,10 @@ cp -r branding-template/* branding/
 
 ```json
 {
-  "displayName": "Your Server Launcher",
-  "serverName": "YourServer",
+  "product": {
+    "displayName": "Your Server Launcher",
+    "serverName": "YourServer"
+  },
   "updateUrl": "https://updates.yourserver.com"
 }
 ```
@@ -68,6 +70,8 @@ Copy the public key (64 hex characters) to `branding/brand.json`:
 
 ```json
 {
+  "product": { ... },
+  "updateUrl": "...",
   "publicKey": "<your-64-char-public-key>"
 }
 ```
