@@ -11,6 +11,7 @@ pub mod installer;
 pub mod launcher;
 pub mod manifest;
 pub mod signature;
+pub mod state;
 pub mod updater;
 
 #[tauri::command]
