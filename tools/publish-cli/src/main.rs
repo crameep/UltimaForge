@@ -6,6 +6,8 @@
 //! - Output content-addressed file blobs
 //! - Validate update folder structure
 
+mod keygen;
+
 use clap::{Parser, Subcommand};
 use tracing::info;
 
@@ -25,6 +27,10 @@ enum Commands {
         /// Output directory for key files
         #[arg(short, long, default_value = "./keys")]
         output: String,
+
+        /// Force overwrite existing key files
+        #[arg(short, long, default_value = "false")]
+        force: bool,
     },
 
     /// Create a manifest from a source directory
@@ -114,10 +120,26 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Keygen { output } => {
+        Commands::Keygen { output, force } => {
             info!("Generating keypair to: {}", output);
-            // TODO: Implement keygen in subtask-5-1
-            println!("Keygen command placeholder - output: {}", output);
+            match keygen::generate_keypair(&output, force) {
+                Ok(result) => {
+                    println!("✓ Generated Ed25519 keypair successfully!");
+                    println!();
+                    println!("Files created:");
+                    println!("  Private key: {}", result.private_key_path);
+                    println!("  Public key:  {}", result.public_key_path);
+                    println!();
+                    println!("Public key (for embedding in launcher):");
+                    println!("  {}", result.public_key_hex);
+                    println!();
+                    println!("⚠ SECURITY: Keep private.key secure and never distribute it!");
+                }
+                Err(e) => {
+                    eprintln!("✗ Failed to generate keypair: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         Commands::Manifest {
             source,
