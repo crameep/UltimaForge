@@ -5,7 +5,7 @@
 //! - Static file serving with directory traversal protection
 //! - Health check endpoint
 //! - Validation endpoint for update folder structure
-//! - Request logging
+//! - Request logging with method, path, status, and duration
 
 mod health;
 mod routes;
@@ -13,9 +13,13 @@ mod validation;
 
 use axum::{routing::get, Router};
 use clap::Parser;
-use std::{net::SocketAddr, sync::Arc};
-use tower_http::{services::ServeDir, trace::TraceLayer};
-use tracing::info;
+use std::{net::SocketAddr, sync::Arc, time::Duration};
+use tower_http::{
+    classify::ServerErrorsFailureClass,
+    services::ServeDir,
+    trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+};
+use tracing::{info, Level, Span};
 
 use health::health_handler;
 use routes::{manifest_handler, root_handler, signature_handler, AppState};
@@ -42,7 +46,13 @@ struct Cli {
 #[tokio::main]
 async fn main() {
     // Initialize tracing for structured logging
-    tracing_subscriber::fmt::init();
+    // Default to INFO level for request logging, can be overridden with RUST_LOG env var
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info,tower_http=debug")),
+        )
+        .init();
 
     let cli = Cli::parse();
 
@@ -64,7 +74,24 @@ async fn main() {
         port: cli.port,
     });
 
-    // Build the router
+    // Build the router with request tracing
+    // Logs: method, path, status code, and duration for each request
+    let trace_layer = TraceLayer::new_for_http()
+        .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+        .on_request(DefaultOnRequest::new().level(Level::INFO))
+        .on_response(
+            DefaultOnResponse::new()
+                .level(Level::INFO)
+                .latency_unit(tower_http::LatencyUnit::Millis),
+        )
+        .on_failure(|error: ServerErrorsFailureClass, latency: Duration, _span: &Span| {
+            tracing::error!(
+                error = %error,
+                latency_ms = latency.as_millis(),
+                "request failed"
+            );
+        });
+
     let app = Router::new()
         // API endpoints
         .route("/", get(root_handler))
@@ -74,8 +101,8 @@ async fn main() {
         .nest_service("/files", ServeDir::new(serve_dir.join("files")))
         .route("/manifest.json", get(manifest_handler))
         .route("/manifest.sig", get(signature_handler))
-        // Add request tracing
-        .layer(TraceLayer::new_for_http())
+        // Add request tracing (logs method, path, status, duration)
+        .layer(trace_layer)
         .with_state(state);
 
     // Parse address and start server
@@ -83,8 +110,25 @@ async fn main() {
         .parse()
         .expect("Invalid address");
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = match tokio::net::TcpListener::bind(addr).await {
+        Ok(listener) => listener,
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                address = %addr,
+                "Failed to bind to address"
+            );
+            eprintln!("Error: Failed to bind to {}:{} - {}", cli.host, cli.port, e);
+            eprintln!("Check if another process is using this port or if you have permission to bind to this address.");
+            std::process::exit(1);
+        }
+    };
+
     info!("Server ready at http://{}", addr);
 
-    axum::serve(listener, app).await.unwrap();
+    if let Err(e) = axum::serve(listener, app).await {
+        tracing::error!(error = %e, "Server error");
+        eprintln!("Server error: {}", e);
+        std::process::exit(1);
+    }
 }
