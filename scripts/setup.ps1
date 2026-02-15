@@ -556,6 +556,13 @@ function Main {
 
     # Show summary and exit
     $exitCode = Show-Summary -Results $results
+
+    # Pause in interactive mode so users can see output before window closes
+    if (-not $SkipPrompts) {
+        Write-Host ""
+        Read-Host "Press Enter to close"
+    }
+
     exit $exitCode
 }
 
