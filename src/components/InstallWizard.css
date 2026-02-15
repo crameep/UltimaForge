@@ -1,0 +1,565 @@
+/**
+ * InstallWizard Component Styles
+ * Multi-step installation wizard for first-run experience
+ */
+
+.install-wizard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  padding: var(--spacing-xl);
+}
+
+.wizard-container {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+/* ========================================
+   STEP INDICATOR
+   ======================================== */
+
+.wizard-steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: var(--spacing-lg);
+}
+
+.wizard-steps::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background-color: var(--color-border);
+  z-index: 0;
+}
+
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.wizard-step-number {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  transition: all var(--transition-base);
+}
+
+.wizard-step.active .wizard-step-number {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+  box-shadow: var(--shadow-glow);
+}
+
+.wizard-step.completed .wizard-step-number {
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+  color: var(--color-text);
+}
+
+.wizard-step-check {
+  font-size: var(--font-size-base);
+}
+
+.wizard-step-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color var(--transition-base);
+}
+
+.wizard-step.active .wizard-step-label {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.wizard-step.completed .wizard-step-label {
+  color: var(--color-success);
+}
+
+/* ========================================
+   WIZARD CONTENT
+   ======================================== */
+
+.wizard-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-lg);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  border: 1px solid var(--color-border);
+}
+
+.wizard-icon {
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.wizard-icon.success {
+  color: var(--color-success);
+}
+
+.wizard-icon.error {
+  color: var(--color-error);
+}
+
+.wizard-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.wizard-description {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 480px;
+  line-height: var(--line-height);
+}
+
+.wizard-note {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ========================================
+   WIZARD ACTIONS
+   ======================================== */
+
+.wizard-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-top: var(--spacing-md);
+  width: 100%;
+}
+
+.wizard-button {
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  min-width: 120px;
+}
+
+.wizard-button.primary {
+  background-color: var(--color-primary);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.wizard-button.primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.wizard-button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wizard-button.secondary {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.wizard-button.secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.wizard-button.large {
+  padding: var(--btn-padding-y-lg) var(--btn-padding-x-lg);
+  font-size: var(--font-size-lg);
+  min-width: 180px;
+}
+
+/* ========================================
+   DIRECTORY SELECTION
+   ======================================== */
+
+.wizard-field {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.wizard-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.wizard-path-input {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.wizard-input {
+  flex: 1;
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-mono);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.wizard-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.wizard-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.wizard-validation {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+}
+
+.wizard-validation.validating {
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-hover);
+}
+
+.wizard-validation.valid {
+  color: var(--color-success);
+  background-color: var(--color-success-light);
+}
+
+.wizard-validation.invalid {
+  color: var(--color-error);
+  background-color: var(--color-error-light);
+}
+
+.wizard-validation.warning {
+  color: var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+
+.wizard-validation-icon {
+  font-weight: var(--font-weight-bold);
+}
+
+/* ========================================
+   EULA
+   ======================================== */
+
+.wizard-eula {
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  text-align: left;
+}
+
+.wizard-eula-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-loose);
+}
+
+.wizard-eula-text h3 {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.wizard-eula-text p {
+  margin: 0 0 var(--spacing-sm);
+}
+
+.wizard-eula-text ol {
+  margin: 0 0 var(--spacing-sm);
+  padding-left: var(--spacing-lg);
+}
+
+.wizard-eula-text li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.wizard-checkbox-group {
+  width: 100%;
+}
+
+.wizard-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.wizard-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* ========================================
+   PROGRESS SECTION
+   ======================================== */
+
+.wizard-progress-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.wizard-progress {
+  width: 100%;
+}
+
+.wizard-progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.wizard-progress-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.wizard-progress-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+}
+
+.wizard-progress-bar {
+  width: 100%;
+  height: var(--progress-height-lg);
+  background-color: var(--color-background);
+  border-radius: var(--progress-radius);
+  overflow: hidden;
+}
+
+.wizard-progress-bar.secondary {
+  height: var(--progress-height);
+}
+
+.wizard-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
+  border-radius: var(--progress-radius);
+  transition: width var(--transition-base);
+}
+
+.wizard-progress-details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+}
+
+.wizard-current-file {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background-color: var(--color-background);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.wizard-current-file-label {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.wizard-current-file-name {
+  font-family: var(--font-family-mono);
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wizard-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.wizard-state-text {
+  color: var(--color-primary);
+}
+
+/* ========================================
+   SPINNER
+   ======================================== */
+
+.wizard-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   COMPLETION SUMMARY
+   ======================================== */
+
+.wizard-summary {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  background-color: var(--color-background);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.wizard-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.wizard-summary-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.wizard-summary-value {
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+/* ========================================
+   ERROR STATE
+   ======================================== */
+
+.wizard-error-message {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  background-color: var(--color-error-light);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  text-align: left;
+  border: 1px solid var(--color-error);
+}
+
+.wizard-error-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--font-weight-semibold);
+}
+
+.wizard-error-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+  word-break: break-all;
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 600px) {
+  .install-wizard {
+    padding: var(--spacing-md);
+  }
+
+  .wizard-content {
+    padding: var(--spacing-lg);
+  }
+
+  .wizard-steps::before {
+    display: none;
+  }
+
+  .wizard-step-label {
+    display: none;
+  }
+
+  .wizard-actions {
+    flex-direction: column;
+  }
+
+  .wizard-button {
+    width: 100%;
+  }
+
+  .wizard-path-input {
+    flex-direction: column;
+  }
+}
