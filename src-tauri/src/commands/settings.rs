@@ -4,11 +4,13 @@
 //! - Getting and saving launcher settings
 //! - Getting brand configuration
 //! - Managing user preferences
+//! - Saving brand configuration for setup wizard
 
 use crate::config::{default_config_path, BrandConfig, LauncherConfig, ThemeColors, UiConfig};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::fs;
+use std::path::Path;
 use tauri::State;
 use tracing::{error, info, warn};
 
@@ -60,6 +62,84 @@ pub struct SaveResponse {
     pub success: bool,
     /// Error message if failed.
     pub error: Option<String>,
+}
+
+// ============================================================================
+// Brand Configuration Input Types (for SetupWizard)
+// ============================================================================
+
+/// Product input from frontend (camelCase).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductInput {
+    /// Display name shown in the launcher UI.
+    pub display_name: String,
+    /// Server name for branding.
+    pub server_name: String,
+    /// Optional server description.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Support email address.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub support_email: Option<String>,
+    /// Server website URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub website: Option<String>,
+    /// Discord invite link.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub discord: Option<String>,
+}
+
+/// Colors input from frontend.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ColorsInput {
+    /// Primary brand color.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primary: Option<String>,
+    /// Secondary/accent color.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secondary: Option<String>,
+    /// Background color.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
+    /// Text color.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+}
+
+/// UI configuration input from frontend (camelCase).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UiConfigInput {
+    /// Theme colors.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub colors: Option<ColorsInput>,
+    /// Whether to show patch notes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_patch_notes: Option<bool>,
+    /// Window title override.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_title: Option<String>,
+}
+
+/// Brand configuration input from frontend (camelCase).
+///
+/// This matches the TypeScript BrandConfig interface in SetupWizard.tsx.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrandConfigInput {
+    /// Product information.
+    pub product: ProductInput,
+    /// Update server URL.
+    pub update_url: String,
+    /// Public key for signature verification (hex encoded).
+    pub public_key: String,
+    /// UI configuration.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui: Option<UiConfigInput>,
+    /// Brand configuration version.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub brand_version: Option<String>,
 }
 
 /// Brand information for display.
@@ -176,6 +256,39 @@ pub async fn get_brand_config(state: State<'_, AppState>) -> Result<BrandInfo, S
         .ok_or("Brand configuration not available")?;
 
     Ok(BrandInfo::from(&brand_config))
+}
+
+/// Saves brand configuration to branding/brand.json.
+///
+/// This command is used by the SetupWizard to save server branding configuration.
+/// It writes the configuration to the `branding/brand.json` file which is read
+/// at build time to customize the launcher.
+#[tauri::command]
+pub async fn save_brand_config(config: BrandConfigInput) -> Result<SaveResponse, String> {
+    info!("Saving brand configuration for server: {}", config.product.server_name);
+
+    let brand_path = Path::new("branding/brand.json");
+
+    // Create branding directory if it doesn't exist
+    if let Some(parent) = brand_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create branding directory: {}", e))?;
+    }
+
+    // Serialize to pretty JSON
+    let json = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("Failed to serialize configuration: {}", e))?;
+
+    // Write to file
+    fs::write(brand_path, &json)
+        .map_err(|e| format!("Failed to write configuration file: {}", e))?;
+
+    info!("Brand configuration saved to {}", brand_path.display());
+
+    Ok(SaveResponse {
+        success: true,
+        error: None,
+    })
 }
 
 /// Gets the full theme colors for styling.

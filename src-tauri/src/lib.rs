@@ -62,6 +62,7 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::settings::get_brand_config,
+            commands::settings::save_brand_config,
             commands::settings::get_theme_colors,
             commands::settings::verify_installation,
             commands::settings::clear_cache,
