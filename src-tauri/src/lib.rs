@@ -42,6 +42,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // Legacy command
             greet,
+            // Crypto commands
+            commands::crypto::generate_keypair,
             // Install commands
             commands::install::check_install_status,
             commands::install::validate_install_path,
