@@ -490,10 +490,10 @@ impl Updater {
     pub async fn download_to_staging<'a, F>(
         &self,
         files: &[&'a FileEntry],
-        mut progress_callback: F,
+        progress_callback: F,
     ) -> Result<Vec<&'a FileEntry>, UpdateError>
     where
-        F: FnMut(&DownloadProgress) + Send,
+        F: Fn(&DownloadProgress) + Send + Sync,
     {
         info!("Downloading {} files to staging", files.len());
 
@@ -518,7 +518,7 @@ impl Updater {
             // Download with hash verification
             match self
                 .downloader
-                .download_file(&blob_url, &staged_path, Some(&file.sha256), &mut progress_callback)
+                .download_file(&blob_url, &staged_path, Some(&file.sha256), &progress_callback)
                 .await
             {
                 Ok(_) => {
