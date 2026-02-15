@@ -10,7 +10,7 @@
 //! - Server owners should store private keys securely and never commit them
 
 use ed25519_dalek::SigningKey;
-use rand::rngs::OsRng;
+use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
@@ -50,7 +50,10 @@ pub async fn generate_keypair() -> Result<KeypairResponse, String> {
     info!("Generating new Ed25519 keypair for manifest signing");
 
     // Generate a new signing key using OS random number generator
-    let signing_key = SigningKey::generate(&mut OsRng);
+    // Create random seed bytes and construct the signing key
+    let mut seed = [0u8; 32];
+    OsRng.fill_bytes(&mut seed);
+    let signing_key = SigningKey::from_bytes(&seed);
 
     // Get the verifying (public) key
     let verifying_key = signing_key.verifying_key();
