@@ -10,6 +10,7 @@ mod blob;
 mod keygen;
 mod manifest;
 mod sign;
+mod validate;
 
 use clap::{Parser, Subcommand};
 use tracing::info;
@@ -211,11 +212,35 @@ fn main() {
         }
         Commands::Validate { dir, key } => {
             info!("Validating update folder: {} with key: {}", dir, key);
-            // TODO: Implement validation in subtask-5-5
-            println!(
-                "Validate command placeholder - dir: {}, key: {}",
-                dir, key
-            );
+            match validate::validate_update_folder(&dir, &key) {
+                Ok(result) => {
+                    println!("✓ Validation completed successfully!");
+                    println!();
+                    println!("Update folder: {}", result.dir_path);
+                    println!("  Version:     {}", result.version);
+                    println!("  Signature:   {}", if result.signature_valid { "Valid" } else { "Invalid" });
+                    println!("  Files:       {}", result.file_count);
+                    println!("  Verified:    {}", result.files_verified);
+                    println!("  Missing:     {}", result.missing_blobs);
+                    println!("  Total size:  {}", validate::format_size(result.total_size));
+
+                    if !result.missing_blob_paths.is_empty() {
+                        println!();
+                        println!("⚠ Missing blobs:");
+                        for path in &result.missing_blob_paths {
+                            println!("  - {}", path);
+                        }
+                    }
+
+                    if result.missing_blobs > 0 {
+                        std::process::exit(1);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("✗ Validation failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         Commands::Publish {
             source,
