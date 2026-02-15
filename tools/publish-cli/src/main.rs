@@ -7,6 +7,7 @@
 //! - Validate update folder structure
 
 mod keygen;
+mod manifest;
 
 use clap::{Parser, Subcommand};
 use tracing::info;
@@ -151,11 +152,20 @@ fn main() {
                 "Creating manifest from: {} -> {}",
                 source, output
             );
-            // TODO: Implement manifest creation in subtask-5-2
-            println!(
-                "Manifest command placeholder - source: {}, output: {}, version: {}, executable: {}",
-                source, output, version, executable
-            );
+            match manifest::generate_manifest(&source, &output, &version, &executable) {
+                Ok(result) => {
+                    println!("✓ Generated manifest successfully!");
+                    println!();
+                    println!("Manifest: {}", result.manifest_path);
+                    println!("  Version: {}", result.version);
+                    println!("  Files:   {}", result.file_count);
+                    println!("  Size:    {}", manifest::format_size(result.total_size));
+                }
+                Err(e) => {
+                    eprintln!("✗ Failed to generate manifest: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
         Commands::Sign {
             manifest,
