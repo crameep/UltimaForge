@@ -4,6 +4,7 @@
 
 // Core modules
 pub mod config;
+pub mod downloader;
 pub mod error;
 pub mod hash;
 pub mod manifest;
