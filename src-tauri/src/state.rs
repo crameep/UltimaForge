@@ -874,11 +874,16 @@ mod tests {
 
         assert!(state.cached_manifest().is_none());
 
-        use crate::manifest::ManifestBuilder;
+        use crate::manifest::{FileEntry, ManifestBuilder};
         let manifest = ManifestBuilder::new()
             .version("1.0.0")
             .timestamp("2026-02-15T00:00:00Z")
             .client_executable("client.exe")
+            .add_file(FileEntry::new(
+                "client.exe",
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                1000,
+            ))
             .build()
             .unwrap();
 

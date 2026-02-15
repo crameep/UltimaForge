@@ -18,7 +18,7 @@ mod tests {
     use crate::hash::{hash_bytes, hash_file, validate_hash_format, verify_file_hash, EMPTY_HASH};
     use crate::manifest::{FileEntry, Manifest, ManifestBuilder, ManifestError};
     use crate::signature::{
-        parse_hex_public_key, parse_hex_signature, verify_manifest, verify_signature,
+        parse_hex_public_key, parse_hex_signature, verify_manifest,
         SignatureVerificationError,
     };
     use ed25519_dalek::{Signer, SigningKey, VerifyingKey};

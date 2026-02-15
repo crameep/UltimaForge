@@ -1330,7 +1330,9 @@ mod tests {
         let formatted = entry.format();
         assert!(formatted.contains("TEST_OP"));
         assert!(formatted.contains("OK"));
-        assert!(!formatted.contains("["));  // No file path
+        // When no file path, there should be only one '[' (for the timestamp)
+        // Format is: [timestamp] operation result: file_info details_info
+        assert_eq!(formatted.matches('[').count(), 1, "Should have exactly one '[' for timestamp only");
     }
 
     #[test]

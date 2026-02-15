@@ -1049,7 +1049,7 @@ mod tests {
     #[test]
     fn test_validate_color_shorthand() {
         let json = format!(
-            r#"{{
+            r##"{{
             "product": {{
                 "displayName": "Test",
                 "serverName": "Test"
@@ -1061,7 +1061,7 @@ mod tests {
                     "primary": "#abc"
                 }}
             }}
-        }}"#
+        }}"##
         );
 
         // #RGB shorthand should be valid
