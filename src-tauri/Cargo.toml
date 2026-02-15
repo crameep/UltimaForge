@@ -29,6 +29,7 @@ serde_json.workspace = true
 ed25519-dalek.workspace = true
 sha2.workspace = true
 hex.workspace = true
+rand.workspace = true
 
 # HTTP and async
 reqwest = { version = "0.12", features = ["json", "stream"] }
@@ -46,5 +47,4 @@ thiserror.workspace = true
 chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
-rand.workspace = true
 tempfile = "3.10"
