@@ -13,10 +13,10 @@ E2E tests verify the complete integration of all components:
 
 | Test | Description | Status |
 |------|-------------|--------|
-| [First-Run Installation](./first-run-install.md) | Tests new installation flow | Manual |
-| [Update Flow](./update-flow.md) | Tests differential updates | Manual |
-| [Launch Flow](./launch-flow.md) | Tests game client launching | Manual |
-| [Security](./security-tests.md) | Tests signature/hash verification | Manual |
+| [First-Run Installation](./first-run-install.md) | Tests new installation flow | Ready |
+| [Update Flow](./update-flow.md) | Tests differential updates, atomic apply, rollback | Ready |
+| [Launch Flow](./launch-flow.md) | Tests game client launching | Pending |
+| [Security](./security-tests.md) | Tests signature/hash verification | Pending |
 
 ## Prerequisites
 
@@ -46,17 +46,55 @@ Before running E2E tests:
 
 ### Option 1: Automated Script (Recommended)
 
+**Linux/macOS:**
 ```bash
 # Run all E2E tests
 ./tests/e2e/run-e2e-tests.sh
 
 # Run specific test
 ./tests/e2e/run-e2e-tests.sh first-run
+./tests/e2e/run-e2e-tests.sh update
+./tests/e2e/run-e2e-tests.sh launch
+./tests/e2e/run-e2e-tests.sh security
+```
+
+**Windows PowerShell:**
+```powershell
+# Run all E2E tests
+.\tests\e2e\run-e2e-tests.ps1
+
+# Run specific test
+.\tests\e2e\run-e2e-tests.ps1 first-run
+.\tests\e2e\run-e2e-tests.ps1 update
+.\tests\e2e\run-e2e-tests.ps1 launch
+.\tests\e2e\run-e2e-tests.ps1 security
 ```
 
 ### Option 2: Manual Testing
 
 Follow the step-by-step instructions in each test plan document.
+
+## Helper Scripts
+
+For manual update flow testing, use these helper scripts:
+
+**Setup v1.1.0 (after installing v1.0.0):**
+```bash
+# Linux/macOS
+./tests/e2e/setup-v1.1.0.sh
+
+# Windows
+.\tests\e2e\setup-v1.1.0.ps1
+```
+
+**Restore to v1.0.0:**
+```bash
+# Linux/macOS
+./tests/e2e/restore-v1.0.0.sh
+
+# Windows
+.\tests\e2e\restore-v1.0.0.ps1
+```
 
 ## Test Data
 

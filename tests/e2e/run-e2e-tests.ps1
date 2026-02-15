@@ -177,6 +177,21 @@ function Prepare-TestEnvironment {
 function Cleanup {
     Write-Info "Cleaning up..."
     Stop-HostServer
+
+    # Restore test data if backup exists
+    $sampleClientPath = Join-Path $ProjectRoot "test-data\sample-client"
+    $sampleClientBackup = Join-Path $ProjectRoot "test-data\sample-client.bak"
+    if (Test-Path $sampleClientBackup) {
+        Remove-Item -Path $sampleClientPath -Recurse -Force -ErrorAction SilentlyContinue
+        Move-Item -Path $sampleClientBackup -Destination $sampleClientPath -ErrorAction SilentlyContinue
+    }
+
+    # Remove manifest backup
+    $manifestBackup = Join-Path $ProjectRoot "test-updates\manifest-v1.0.0.json.bak"
+    if (Test-Path $manifestBackup) {
+        Remove-Item -Path $manifestBackup -Force -ErrorAction SilentlyContinue
+    }
+
     if (Test-Path $TestInstallDir) {
         Remove-Item -Path $TestInstallDir -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -265,13 +280,177 @@ Write-Host ""
 Check-Prerequisites
 Build-Tools
 
+# Update flow test
+function Test-UpdateFlow {
+    Write-Info "=== Running Update Flow Test ==="
+
+    try {
+        # Check if first-run installation was completed
+        $clientExe = Join-Path $TestInstallDir "client.exe"
+        if (-not (Test-Path $clientExe)) {
+            Write-Warning "No existing installation found. Running first-run installation first..."
+            Test-FirstRunInstallation
+        }
+
+        # Backup original test files
+        Write-Info "Backing up original test data..."
+        $sampleClientPath = Join-Path $ProjectRoot "test-data\sample-client"
+        $sampleClientBackup = Join-Path $ProjectRoot "test-data\sample-client.bak"
+        if (Test-Path $sampleClientBackup) {
+            Remove-Item -Path $sampleClientBackup -Recurse -Force
+        }
+        Copy-Item -Path $sampleClientPath -Destination $sampleClientBackup -Recurse
+
+        # Modify test files for v1.1.0
+        Write-Info "Creating v1.1.0 test files..."
+        $artMulPath = Join-Path $sampleClientPath "art.mul"
+        Add-Content -Path $artMulPath -Value "`n[v1.1.0] Updated content for testing - $(Get-Date)"
+
+        # Backup v1.0.0 manifest
+        $manifestPath = Join-Path $ProjectRoot "test-updates\manifest.json"
+        $manifestBackup = Join-Path $ProjectRoot "test-updates\manifest-v1.0.0.json.bak"
+        if (Test-Path $manifestPath) {
+            Copy-Item -Path $manifestPath -Destination $manifestBackup
+        }
+
+        # Publish v1.1.0
+        Write-Info "Publishing version 1.1.0..."
+        Push-Location $ProjectRoot
+        try {
+            cargo run --release -p publish-cli -- publish `
+                --source ./test-data/sample-client `
+                --output ./test-updates `
+                --key ./test-keys/private.key `
+                --version 1.1.0
+
+            # Validate the new release
+            Write-Info "Validating v1.1.0 release..."
+            cargo run --release -p publish-cli -- validate `
+                --dir ./test-updates `
+                --key ./test-keys/public.key
+        }
+        finally {
+            Pop-Location
+        }
+
+        # Restart host server with updated files
+        Stop-HostServer
+        Start-Sleep -Seconds 1
+        Start-HostServer
+
+        # Verify manifest version
+        Write-Info "Verifying server is serving v1.1.0..."
+        try {
+            $manifest = Invoke-RestMethod -Uri "http://localhost:$HostPort/manifest.json" -Method Get
+            if ($manifest.version -ne "1.1.0") {
+                Write-Error "Server not serving v1.1.0 (got: $($manifest.version))"
+                Restore-TestData
+                return
+            }
+            Write-Success "Server confirmed serving v1.1.0"
+        }
+        catch {
+            Write-Error "Failed to verify server: $_"
+            Restore-TestData
+            return
+        }
+
+        Write-Info "Test setup complete. Manual verification required."
+        Write-Host ""
+        Write-Host "============================================="
+        Write-Host "MANUAL TEST STEPS - UPDATE FLOW:"
+        Write-Host "============================================="
+        Write-Host ""
+        Write-Host "1. Launch the Tauri app:"
+        Write-Host "   npm run tauri dev"
+        Write-Host ""
+        Write-Host "2. Verify update detection:"
+        Write-Host "   - App should show 'Update Available' banner"
+        Write-Host "   - Current version: 1.0.0"
+        Write-Host "   - Available version: 1.1.0"
+        Write-Host "   - Files to update: 1 (only art.mul changed)"
+        Write-Host ""
+        Write-Host "3. Click 'Update Now' and observe:"
+        Write-Host "   - Download progress bar"
+        Write-Host "   - File count (1/1)"
+        Write-Host "   - Only art.mul should be downloaded (differential)"
+        Write-Host "   - Verification step"
+        Write-Host "   - Apply step"
+        Write-Host ""
+        Write-Host "4. After update completes:"
+        Write-Host "   - Version should show 1.1.0"
+        Write-Host "   - Launch button should be enabled"
+        Write-Host ""
+        Write-Host "5. Verify files on disk:"
+        Write-Host "   Get-Content '$TestInstallDir\art.mul' | Select-Object -Last 1"
+        Write-Host "   # Should show: [v1.1.0] Updated content for testing"
+        Write-Host ""
+        Write-Host "============================================="
+        Write-Host "Host server running at: http://localhost:$HostPort"
+        Write-Host "Test install directory: $TestInstallDir"
+        Write-Host "============================================="
+        Write-Host ""
+        Write-Host "Press Enter when test is complete, or Ctrl+C to abort..."
+        Read-Host
+
+        # Verify update applied
+        Write-Info "Verifying update was applied..."
+
+        $installedArtMul = Join-Path $TestInstallDir "art.mul"
+        if (Test-Path $installedArtMul) {
+            $content = Get-Content -Path $installedArtMul -Raw
+            if ($content -match "v1\.1\.0") {
+                Write-Success "art.mul contains v1.1.0 content"
+            }
+            else {
+                Write-Error "art.mul does not contain v1.1.0 content"
+                Restore-TestData
+                return
+            }
+        }
+        else {
+            Write-Error "art.mul not found in installation directory"
+            Restore-TestData
+            return
+        }
+
+        # Cleanup test data
+        Restore-TestData
+
+        Write-Success "Update flow test PASSED"
+    }
+    finally {
+        Cleanup
+    }
+}
+
+# Restore original test data
+function Restore-TestData {
+    Write-Info "Restoring original test data..."
+    $sampleClientPath = Join-Path $ProjectRoot "test-data\sample-client"
+    $sampleClientBackup = Join-Path $ProjectRoot "test-data\sample-client.bak"
+
+    if (Test-Path $sampleClientBackup) {
+        Remove-Item -Path $sampleClientPath -Recurse -Force -ErrorAction SilentlyContinue
+        Move-Item -Path $sampleClientBackup -Destination $sampleClientPath
+        Write-Success "Test data restored"
+    }
+
+    # Restore v1.0.0 manifest
+    $manifestBackup = Join-Path $ProjectRoot "test-updates\manifest-v1.0.0.json.bak"
+    $manifestPath = Join-Path $ProjectRoot "test-updates\manifest.json"
+    if (Test-Path $manifestBackup) {
+        Move-Item -Path $manifestBackup -Destination $manifestPath -Force
+        Write-Success "Manifest restored to v1.0.0"
+    }
+}
+
 switch ($TestType) {
     { $_ -in "first-run", "install" } {
         Test-FirstRunInstallation
     }
     "update" {
-        Write-Warning "Update flow test not yet implemented"
-        Write-Info "See: tests/e2e/update-flow.md"
+        Test-UpdateFlow
     }
     "launch" {
         Write-Warning "Launch flow test not yet implemented"
@@ -283,6 +462,7 @@ switch ($TestType) {
     }
     "all" {
         Test-FirstRunInstallation
-        Write-Warning "Update/Launch/Security tests not yet implemented"
+        Test-UpdateFlow
+        Write-Warning "Launch/Security tests not yet implemented"
     }
 }

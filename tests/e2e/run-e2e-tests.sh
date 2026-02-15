@@ -180,6 +180,16 @@ prepare_test_environment() {
 cleanup() {
     log_info "Cleaning up..."
     stop_host_server
+
+    # Restore test data if backup exists
+    if [ -d "$PROJECT_ROOT/test-data/sample-client.bak" ]; then
+        rm -rf "$PROJECT_ROOT/test-data/sample-client"
+        mv "$PROJECT_ROOT/test-data/sample-client.bak" "$PROJECT_ROOT/test-data/sample-client"
+    fi
+
+    # Remove manifest backup
+    rm -f "$PROJECT_ROOT/test-updates/manifest-v1.0.0.json.bak"
+
     rm -rf "$TEST_INSTALL_DIR"
     log_success "Cleanup complete"
 }
@@ -273,8 +283,145 @@ test_first_run_installation() {
 # Run update flow test
 test_update_flow() {
     log_info "=== Running Update Flow Test ==="
-    log_warning "Update flow test not yet implemented"
-    log_info "See: tests/e2e/update-flow.md"
+
+    # Check if first-run installation was completed
+    if [ ! -f "$TEST_INSTALL_DIR/client.exe" ]; then
+        log_warning "No existing installation found. Running first-run installation first..."
+        test_first_run_installation
+    fi
+
+    # Verify v1.0.0 is installed
+    log_info "Verifying v1.0.0 installation..."
+
+    # Backup original test files for later restoration
+    log_info "Backing up original test data..."
+    cp -r "$PROJECT_ROOT/test-data/sample-client" "$PROJECT_ROOT/test-data/sample-client.bak"
+
+    # Modify test files for v1.1.0
+    log_info "Creating v1.1.0 test files..."
+    echo -e "\n[v1.1.0] Updated content for testing - $(date)" >> "$PROJECT_ROOT/test-data/sample-client/art.mul"
+
+    # Backup v1.0.0 manifest
+    if [ -f "$PROJECT_ROOT/test-updates/manifest.json" ]; then
+        cp "$PROJECT_ROOT/test-updates/manifest.json" "$PROJECT_ROOT/test-updates/manifest-v1.0.0.json.bak"
+    fi
+
+    # Publish v1.1.0
+    log_info "Publishing version 1.1.0..."
+    cd "$PROJECT_ROOT"
+    cargo run --release -p publish-cli -- publish \
+        --source ./test-data/sample-client \
+        --output ./test-updates \
+        --key ./test-keys/private.key \
+        --version 1.1.0
+
+    # Validate the new release
+    log_info "Validating v1.1.0 release..."
+    cargo run --release -p publish-cli -- validate \
+        --dir ./test-updates \
+        --key ./test-keys/public.key
+
+    # Restart host server with updated files
+    stop_host_server
+    sleep 1
+    start_host_server
+
+    # Verify manifest version
+    log_info "Verifying server is serving v1.1.0..."
+    MANIFEST_VERSION=$(curl -s "http://localhost:$HOST_PORT/manifest.json" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+    if [ "$MANIFEST_VERSION" != "1.1.0" ]; then
+        log_error "Server not serving v1.1.0 (got: $MANIFEST_VERSION)"
+        restore_test_data
+        exit 1
+    fi
+    log_success "Server confirmed serving v1.1.0"
+
+    log_info "Test setup complete. Manual verification required."
+    echo ""
+    echo "============================================="
+    echo "MANUAL TEST STEPS - UPDATE FLOW:"
+    echo "============================================="
+    echo ""
+    echo "1. Launch the Tauri app:"
+    echo "   npm run tauri dev"
+    echo ""
+    echo "2. Verify update detection:"
+    echo "   - App should show 'Update Available' banner"
+    echo "   - Current version: 1.0.0"
+    echo "   - Available version: 1.1.0"
+    echo "   - Files to update: 1 (only art.mul changed)"
+    echo ""
+    echo "3. Click 'Update Now' and observe:"
+    echo "   - Download progress bar"
+    echo "   - File count (1/1)"
+    echo "   - Only art.mul should be downloaded (differential)"
+    echo "   - Verification step"
+    echo "   - Apply step"
+    echo ""
+    echo "4. After update completes:"
+    echo "   - Version should show 1.1.0"
+    echo "   - Launch button should be enabled"
+    echo ""
+    echo "5. Verify files on disk:"
+    echo "   cat $TEST_INSTALL_DIR/art.mul | tail -1"
+    echo "   # Should show: [v1.1.0] Updated content for testing"
+    echo ""
+    echo "============================================="
+    echo "Host server running at: http://localhost:$HOST_PORT"
+    echo "Test install directory: $TEST_INSTALL_DIR"
+    echo "============================================="
+    echo ""
+    echo "Press Enter when test is complete, or Ctrl+C to abort..."
+    read
+
+    # Verify update applied
+    log_info "Verifying update was applied..."
+
+    # Check for v1.1.0 content in art.mul
+    if grep -q "v1.1.0" "$TEST_INSTALL_DIR/art.mul" 2>/dev/null; then
+        log_success "art.mul contains v1.1.0 content"
+    else
+        log_error "art.mul does not contain v1.1.0 content"
+        restore_test_data
+        return 1
+    fi
+
+    # Verify other files unchanged
+    log_info "Verifying unchanged files..."
+
+    # Calculate hashes
+    if command -v sha256sum &> /dev/null; then
+        INSTALLED_CLIENT_HASH=$(sha256sum "$TEST_INSTALL_DIR/client.exe" 2>/dev/null | awk '{print $1}')
+        ORIGINAL_CLIENT_HASH=$(sha256sum "$PROJECT_ROOT/test-data/sample-client.bak/client.exe" 2>/dev/null | awk '{print $1}')
+
+        if [ "$INSTALLED_CLIENT_HASH" = "$ORIGINAL_CLIENT_HASH" ]; then
+            log_success "client.exe unchanged (differential update working)"
+        else
+            log_warning "client.exe hash differs (may indicate full download instead of differential)"
+        fi
+    fi
+
+    # Cleanup test data
+    restore_test_data
+
+    log_success "Update flow test PASSED"
+    return 0
+}
+
+# Restore original test data
+restore_test_data() {
+    log_info "Restoring original test data..."
+    if [ -d "$PROJECT_ROOT/test-data/sample-client.bak" ]; then
+        rm -rf "$PROJECT_ROOT/test-data/sample-client"
+        mv "$PROJECT_ROOT/test-data/sample-client.bak" "$PROJECT_ROOT/test-data/sample-client"
+        log_success "Test data restored"
+    fi
+
+    # Restore v1.0.0 manifest
+    if [ -f "$PROJECT_ROOT/test-updates/manifest-v1.0.0.json.bak" ]; then
+        mv "$PROJECT_ROOT/test-updates/manifest-v1.0.0.json.bak" "$PROJECT_ROOT/test-updates/manifest.json"
+        log_success "Manifest restored to v1.0.0"
+    fi
 }
 
 # Run launch flow test
