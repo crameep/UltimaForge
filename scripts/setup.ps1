@@ -65,11 +65,11 @@ function Write-Status {
     )
 
     switch ($Type) {
-        "Success" { Write-Host "✓ $Message" -ForegroundColor $Colors.Green }
-        "Warning" { Write-Host "⚠ $Message" -ForegroundColor $Colors.Yellow }
-        "Error"   { Write-Host "✗ $Message" -ForegroundColor $Colors.Red }
-        "Info"    { Write-Host "→ $Message" -ForegroundColor $Colors.Cyan }
-        "Step"    { Write-Host "`n▶ $Message" -ForegroundColor $Colors.White }
+        "Success" { Write-Host "[OK] $Message" -ForegroundColor $Colors.Green }
+        "Warning" { Write-Host "[WARN] $Message" -ForegroundColor $Colors.Yellow }
+        "Error"   { Write-Host "[ERROR] $Message" -ForegroundColor $Colors.Red }
+        "Info"    { Write-Host "[INFO] $Message" -ForegroundColor $Colors.Cyan }
+        "Step"    { Write-Host "`n>>> $Message" -ForegroundColor $Colors.White }
     }
 }
 
@@ -473,9 +473,9 @@ function Show-Summary {
     )
 
     Write-Host "`n" -NoNewline
-    Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor $Colors.Cyan
+    Write-Host "==========================================================" -ForegroundColor $Colors.Cyan
     Write-Host "                  Installation Summary                   " -ForegroundColor $Colors.Cyan
-    Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor $Colors.Cyan
+    Write-Host "==========================================================" -ForegroundColor $Colors.Cyan
     Write-Host ""
 
     $allSuccess = $true
@@ -483,16 +483,16 @@ function Show-Summary {
     foreach ($component in @("Rust", "Node.js", "VS Build Tools", "Tauri CLI")) {
         $status = $Results[$component]
         if ($status) {
-            Write-Host "  ✓ $component" -ForegroundColor $Colors.Green
+            Write-Host "  [+] $component" -ForegroundColor $Colors.Green
         }
         else {
-            Write-Host "  ✗ $component" -ForegroundColor $Colors.Red
+            Write-Host "  [x] $component" -ForegroundColor $Colors.Red
             $allSuccess = $false
         }
     }
 
     Write-Host ""
-    Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor $Colors.Cyan
+    Write-Host "==========================================================" -ForegroundColor $Colors.Cyan
 
     if ($allSuccess) {
         Write-Host "`nAll dependencies installed successfully!" -ForegroundColor $Colors.Green
@@ -519,9 +519,9 @@ function Main {
     }
 
     Write-Host ""
-    Write-Host "╔═══════════════════════════════════════════════════════╗" -ForegroundColor $Colors.Cyan
-    Write-Host "║           UltimaForge Setup Script (Windows)          ║" -ForegroundColor $Colors.Cyan
-    Write-Host "╚═══════════════════════════════════════════════════════╝" -ForegroundColor $Colors.Cyan
+    Write-Host "============================================================" -ForegroundColor $Colors.Cyan
+    Write-Host "|           UltimaForge Setup Script (Windows)             |" -ForegroundColor $Colors.Cyan
+    Write-Host "============================================================" -ForegroundColor $Colors.Cyan
     Write-Host ""
 
     # Detect CI environment
