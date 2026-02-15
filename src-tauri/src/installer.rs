@@ -40,6 +40,7 @@ use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use tauri::Emitter;
 use tracing::{debug, error, info, warn};
 
 /// Minimum disk space required beyond the total file size (in bytes).
@@ -48,6 +49,9 @@ const MIN_FREE_SPACE_BUFFER: u64 = 100 * 1024 * 1024; // 100 MB
 
 /// Name of the installation log file.
 const INSTALL_LOG_FILE: &str = "install.log";
+
+/// Event name for install progress events emitted to the frontend.
+pub const INSTALL_PROGRESS_EVENT: &str = "install-progress";
 
 /// Current state of an installation operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -156,6 +160,32 @@ impl InstallProgress {
     pub fn set_failed(&mut self, message: impl Into<String>) {
         self.state = InstallState::Failed;
         self.error_message = Some(message.into());
+    }
+
+    /// Emits this progress as a Tauri event to the frontend.
+    ///
+    /// # Arguments
+    ///
+    /// * `app_handle` - The Tauri app handle to emit the event through
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the event was emitted successfully, or an error otherwise.
+    pub fn emit(&self, app_handle: &tauri::AppHandle) -> Result<(), tauri::Error> {
+        app_handle.emit(INSTALL_PROGRESS_EVENT, self)
+    }
+
+    /// Emits this progress as a Tauri event to a specific window.
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The Tauri window to emit the event to
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the event was emitted successfully, or an error otherwise.
+    pub fn emit_to_window(&self, window: &tauri::Window) -> Result<(), tauri::Error> {
+        window.emit(INSTALL_PROGRESS_EVENT, self)
     }
 }
 

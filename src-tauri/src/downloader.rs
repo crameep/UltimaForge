@@ -34,8 +34,10 @@ use crate::error::DownloadError;
 use crate::hash::{hash_file, validate_hash_format};
 use futures_util::StreamExt;
 use reqwest::{header, Client, Response, StatusCode};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::Duration;
+use tauri::Emitter;
 use tokio::fs::{self, File, OpenOptions};
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info, warn};
@@ -52,8 +54,11 @@ const DEFAULT_MAX_RETRIES: u32 = 3;
 /// Delay between retry attempts in milliseconds.
 const RETRY_DELAY_MS: u64 = 1000;
 
+/// Event name for download progress events emitted to the frontend.
+pub const DOWNLOAD_PROGRESS_EVENT: &str = "download-progress";
+
 /// Progress information for an ongoing download.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DownloadProgress {
     /// Bytes downloaded so far.
     pub downloaded: u64,
@@ -105,6 +110,32 @@ impl DownloadProgress {
             self.eta_secs = 0;
         }
         self
+    }
+
+    /// Emits this progress as a Tauri event to the frontend.
+    ///
+    /// # Arguments
+    ///
+    /// * `app_handle` - The Tauri app handle to emit the event through
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the event was emitted successfully, or an error otherwise.
+    pub fn emit(&self, app_handle: &tauri::AppHandle) -> Result<(), tauri::Error> {
+        app_handle.emit(DOWNLOAD_PROGRESS_EVENT, self)
+    }
+
+    /// Emits this progress as a Tauri event to a specific window.
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The Tauri window to emit the event to
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the event was emitted successfully, or an error otherwise.
+    pub fn emit_to_window(&self, window: &tauri::Window) -> Result<(), tauri::Error> {
+        window.emit(DOWNLOAD_PROGRESS_EVENT, self)
     }
 }
 

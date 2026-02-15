@@ -33,6 +33,7 @@ use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use tauri::Emitter;
 use tracing::{debug, error, info, warn};
 
 /// Name of the staging directory relative to install path.
@@ -43,6 +44,9 @@ const BACKUP_DIR: &str = ".update-backup";
 
 /// Name of the update transaction log file.
 const UPDATE_LOG_FILE: &str = "update.log";
+
+/// Event name for update progress events emitted to the frontend.
+pub const UPDATE_PROGRESS_EVENT: &str = "update-progress";
 
 /// Current state of an update operation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,6 +156,32 @@ impl UpdateProgress {
     pub fn set_failed(&mut self, message: impl Into<String>) {
         self.state = UpdateState::Failed;
         self.error_message = Some(message.into());
+    }
+
+    /// Emits this progress as a Tauri event to the frontend.
+    ///
+    /// # Arguments
+    ///
+    /// * `app_handle` - The Tauri app handle to emit the event through
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the event was emitted successfully, or an error otherwise.
+    pub fn emit(&self, app_handle: &tauri::AppHandle) -> Result<(), tauri::Error> {
+        app_handle.emit(UPDATE_PROGRESS_EVENT, self)
+    }
+
+    /// Emits this progress as a Tauri event to a specific window.
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - The Tauri window to emit the event to
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the event was emitted successfully, or an error otherwise.
+    pub fn emit_to_window(&self, window: &tauri::Window) -> Result<(), tauri::Error> {
+        window.emit(UPDATE_PROGRESS_EVENT, self)
     }
 }
 
