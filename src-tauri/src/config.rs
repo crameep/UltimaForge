@@ -656,7 +656,7 @@ mod tests {
     /// Creates a valid brand config JSON string.
     fn valid_brand_json() -> String {
         format!(
-            r#"{{
+            r##"{{
             "product": {{
                 "displayName": "Test Server",
                 "serverName": "TestServer",
@@ -678,21 +678,21 @@ mod tests {
                 "windowTitle": "Test UO Launcher"
             }},
             "brandVersion": "1.0"
-        }}"#
+        }}"##
         )
     }
 
     /// Creates a minimal brand config JSON string.
     fn minimal_brand_json() -> String {
         format!(
-            r#"{{
+            r##"{{
             "product": {{
                 "displayName": "Minimal Server",
                 "serverName": "MinServer"
             }},
             "updateUrl": "https://updates.min.com",
             "publicKey": "{TEST_PUBLIC_KEY}"
-        }}"#
+        }}"##
         )
     }
 
@@ -1049,7 +1049,7 @@ mod tests {
     #[test]
     fn test_validate_color_shorthand() {
         let json = format!(
-            r#"{{
+            r##"{{
             "product": {{
                 "displayName": "Test",
                 "serverName": "Test"
@@ -1061,7 +1061,7 @@ mod tests {
                     "primary": "#abc"
                 }}
             }}
-        }}"#
+        }}"##
         );
 
         // #RGB shorthand should be valid

@@ -40,6 +40,7 @@ use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use tauri::Emitter;
 use tracing::{debug, error, info, warn};
 
@@ -601,20 +602,31 @@ impl Installer {
     pub async fn full_install<F>(
         &mut self,
         install_path: &Path,
-        mut progress_callback: F,
+        progress_callback: F,
     ) -> Result<String, InstallError>
     where
         F: FnMut(&InstallProgress) + Send,
     {
+        // Wrap callback in Arc<Mutex> to allow sharing with inner closures
+        // while maintaining Send + Sync requirements for download_file
+        let progress_callback = Arc::new(Mutex::new(progress_callback));
+
+        // Helper closure to invoke the callback
+        let invoke_callback = |cb: &Arc<Mutex<F>>, progress: &InstallProgress| {
+            if let Ok(mut callback) = cb.lock() {
+                callback(progress);
+            }
+        };
+
         let mut progress = InstallProgress::new();
 
         // Step 1: Validate path
         progress.state = InstallState::ValidatingPath;
-        progress_callback(&progress);
+        invoke_callback(&progress_callback, &progress);
 
         // Fetch manifest first to know required size
         progress.state = InstallState::FetchingManifest;
-        progress_callback(&progress);
+        invoke_callback(&progress_callback, &progress);
 
         let manifest = self.fetch_manifest().await.map_err(|e| {
             InstallError::ConfigSaveFailed(format!("Failed to fetch manifest: {}", e))
@@ -649,7 +661,7 @@ impl Installer {
 
         // Step 2: Download all files
         progress.state = InstallState::Downloading;
-        progress_callback(&progress);
+        invoke_callback(&progress_callback, &progress);
         log.log(InstallLogEntry::new("DOWNLOAD_START", None, "STARTED"));
 
         let files: Vec<&FileEntry> = manifest.iter_files().collect();
@@ -659,7 +671,7 @@ impl Installer {
             let blob_url = file.blob_url(&self.brand_config.update_url);
 
             progress.current_file = Some(file.path.clone());
-            progress_callback(&progress);
+            invoke_callback(&progress_callback, &progress);
 
             debug!("Downloading {} to {}", file.path, dest_path.display());
 
@@ -672,27 +684,37 @@ impl Installer {
             }
 
             // Download with hash verification
+            // Extract values for closure capture (must be Send + Sync compatible)
             let file_start_bytes = progress.downloaded_bytes;
+            let total_files = progress.total_files;
+            let processed_files = progress.processed_files;
+            let total_bytes = progress.total_bytes;
+            let target_version = progress.target_version.clone();
+            let current_file = file.path.clone();
+            let cb = progress_callback.clone();
+
             match self
                 .downloader
                 .download_file(
                     &blob_url,
                     &dest_path,
                     Some(&file.sha256),
-                    |dl_progress| {
-                        let mut up = InstallProgress {
+                    move |dl_progress| {
+                        let up = InstallProgress {
                             state: InstallState::Downloading,
-                            total_files: progress.total_files,
-                            processed_files: progress.processed_files,
-                            total_bytes: progress.total_bytes,
+                            total_files,
+                            processed_files,
+                            total_bytes,
                             downloaded_bytes: file_start_bytes + dl_progress.downloaded,
-                            current_file: Some(file.path.clone()),
+                            current_file: Some(current_file.clone()),
                             speed_bps: dl_progress.speed_bps,
                             eta_secs: dl_progress.eta_secs,
-                            target_version: progress.target_version.clone(),
+                            target_version: target_version.clone(),
                             error_message: None,
                         };
-                        progress_callback(&up);
+                        if let Ok(mut callback) = cb.lock() {
+                            callback(&up);
+                        }
                     },
                 )
                 .await
@@ -714,7 +736,7 @@ impl Installer {
                     if file.required {
                         log.log_session_end(false);
                         progress.set_failed(format!("Failed to download {}: {}", file.path, e));
-                        progress_callback(&progress);
+                        invoke_callback(&progress_callback, &progress);
                         return Err(InstallError::ConfigSaveFailed(format!(
                             "Download failed for {}: {}",
                             file.path, e
@@ -731,14 +753,14 @@ impl Installer {
         // Step 3: Verify all files
         progress.state = InstallState::Verifying;
         progress.processed_files = 0;
-        progress_callback(&progress);
+        invoke_callback(&progress_callback, &progress);
         log.log(InstallLogEntry::new("VERIFY_START", None, "STARTED"));
 
         for file in &files {
             let dest_path = install_path.join(&file.path);
 
             progress.current_file = Some(file.path.clone());
-            progress_callback(&progress);
+            invoke_callback(&progress_callback, &progress);
 
             // Skip missing optional files
             if !dest_path.exists() {
@@ -795,7 +817,7 @@ impl Installer {
         // Installation complete!
         progress.state = InstallState::Completed;
         progress.current_file = None;
-        progress_callback(&progress);
+        invoke_callback(&progress_callback, &progress);
 
         log.log_session_end(true);
         info!(

@@ -490,10 +490,10 @@ impl Updater {
     pub async fn download_to_staging<'a, F>(
         &self,
         files: &[&'a FileEntry],
-        mut progress_callback: F,
+        progress_callback: F,
     ) -> Result<Vec<&'a FileEntry>, UpdateError>
     where
-        F: FnMut(&DownloadProgress) + Send,
+        F: Fn(&DownloadProgress) + Send + Sync,
     {
         info!("Downloading {} files to staging", files.len());
 
@@ -518,7 +518,7 @@ impl Updater {
             // Download with hash verification
             match self
                 .downloader
-                .download_file(&blob_url, &staged_path, Some(&file.sha256), &mut progress_callback)
+                .download_file(&blob_url, &staged_path, Some(&file.sha256), &progress_callback)
                 .await
             {
                 Ok(_) => {
@@ -1330,7 +1330,9 @@ mod tests {
         let formatted = entry.format();
         assert!(formatted.contains("TEST_OP"));
         assert!(formatted.contains("OK"));
-        assert!(!formatted.contains("["));  // No file path
+        // When no file path, there should be only one '[' (for the timestamp)
+        // Format is: [timestamp] operation result: file_info details_info
+        assert_eq!(formatted.matches('[').count(), 1, "Should have exactly one '[' for timestamp only");
     }
 
     #[test]

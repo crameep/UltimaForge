@@ -184,13 +184,13 @@ pub enum DownloadError {
 impl DownloadError {
     /// Returns true if this error is recoverable and the download can be retried.
     pub fn is_recoverable(&self) -> bool {
-        matches!(
-            self,
+        match self {
             Self::NetworkError { .. }
                 | Self::Timeout { .. }
-                | Self::Interrupted { .. }
-                | Self::HttpError { status, .. } if *status >= 500
-        )
+                | Self::Interrupted { .. } => true,
+            Self::HttpError { status, .. } => *status >= 500,
+            _ => false,
+        }
     }
 
     /// Returns a user-friendly message suitable for display in the UI.
