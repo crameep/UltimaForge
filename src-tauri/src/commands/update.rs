@@ -89,10 +89,14 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
                 result.files_to_update, result.download_size
             );
 
+            // Clone values before any partial moves
+            let server_version = result.server_version.clone();
+            let download_size_formatted = result.download_size_formatted();
+
             // Update state with result
             state.set_update_available(
                 result.update_available,
-                Some(result.server_version.clone()),
+                Some(server_version.clone()),
                 result.files_to_update,
                 result.download_size,
             );
@@ -100,10 +104,10 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
             Ok(UpdateCheckResponse {
                 update_available: result.update_available,
                 current_version: result.current_version,
-                server_version: Some(result.server_version),
+                server_version: Some(server_version),
                 files_to_update: result.files_to_update,
                 download_size: result.download_size,
-                download_size_formatted: result.download_size_formatted(),
+                download_size_formatted,
                 patch_notes_url: result.patch_notes_url,
                 error: None,
             })
