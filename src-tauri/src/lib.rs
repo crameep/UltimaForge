@@ -7,6 +7,7 @@ pub mod config;
 pub mod downloader;
 pub mod error;
 pub mod hash;
+pub mod installer;
 pub mod manifest;
 pub mod signature;
 pub mod updater;
