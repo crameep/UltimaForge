@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout";
 import { InstallWizard } from "./components/InstallWizard";
 import { UpdateProgress, useUpdate } from "./components/UpdateProgress";
 import { LaunchButton } from "./components/LaunchButton";
+import { PatchNotes } from "./components/PatchNotes";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import "./App.css";
 
@@ -201,6 +202,15 @@ function App() {
             checkResult={updateState.checkResult}
             onComplete={handleUpdateComplete}
             onDismiss={handleUpdateDismiss}
+          />
+        )}
+
+        {/* Show patch notes when available */}
+        {updateState.checkResult?.patch_notes_url && (
+          <PatchNotes
+            patchNotesUrl={updateState.checkResult.patch_notes_url}
+            version={updateState.checkResult.server_version}
+            defaultCollapsed={!updateState.updateAvailable}
           />
         )}
 

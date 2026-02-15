@@ -1,0 +1,361 @@
+/**
+ * PatchNotes Component Styles
+ * Display styling for patch notes/changelog content
+ */
+
+/* ========================================
+   PATCH NOTES CONTAINER
+   ======================================== */
+
+.patch-notes-container {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin: var(--spacing-lg) 0;
+}
+
+/* ========================================
+   HEADER (Collapsible Toggle)
+   ======================================== */
+
+.patch-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--color-surface);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.patch-notes-header:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.patch-notes-header:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.patch-notes-header-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.patch-notes-icon {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.patch-notes-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.patch-notes-version {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-mono);
+}
+
+.patch-notes-toggle {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.patch-notes-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* ========================================
+   BODY (Content Area)
+   ======================================== */
+
+.patch-notes-body {
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* ========================================
+   CONTENT (Markdown Display)
+   ======================================== */
+
+.patch-notes-content {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
+.patch-notes-content h2 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-md);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.patch-notes-content h3 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: var(--spacing-md) 0 var(--spacing-sm);
+}
+
+.patch-notes-content h4 {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: var(--spacing-sm) 0 var(--spacing-xs);
+}
+
+.patch-notes-content p {
+  margin: 0 0 var(--spacing-md);
+}
+
+.patch-notes-content p:last-child {
+  margin-bottom: 0;
+}
+
+.patch-notes-content ul {
+  margin: 0 0 var(--spacing-md);
+  padding-left: var(--spacing-lg);
+  list-style-type: disc;
+}
+
+.patch-notes-content ul ul {
+  margin-top: var(--spacing-xs);
+  margin-bottom: 0;
+}
+
+.patch-notes-content li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.patch-notes-content li:last-child {
+  margin-bottom: 0;
+}
+
+.patch-notes-content strong {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.patch-notes-content em {
+  font-style: italic;
+}
+
+.patch-notes-content code {
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+  background-color: var(--color-surface);
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+}
+
+.patch-notes-content a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.patch-notes-content a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+/* ========================================
+   LOADING STATE
+   ======================================== */
+
+.patch-notes-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.patch-notes-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: patch-notes-spin 1s linear infinite;
+}
+
+@keyframes patch-notes-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   ERROR STATE
+   ======================================== */
+
+.patch-notes-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--color-error-light);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.patch-notes-error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background-color: var(--color-error);
+  color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+  border-radius: 50%;
+  font-size: var(--font-size-xs);
+}
+
+.patch-notes-error-text {
+  color: var(--color-text);
+  flex: 1;
+}
+
+.patch-notes-retry-button {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.patch-notes-retry-button:hover {
+  background-color: var(--color-surface-hover);
+}
+
+/* ========================================
+   EMPTY STATE
+   ======================================== */
+
+.patch-notes-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.patch-notes-empty-icon {
+  font-size: 2rem;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.patch-notes-empty-text {
+  font-size: var(--font-size-sm);
+}
+
+/* ========================================
+   BADGE (Compact Display)
+   ======================================== */
+
+.patch-notes-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.patch-notes-badge:hover {
+  color: var(--color-text);
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-primary);
+}
+
+.patch-notes-badge-icon {
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
+.patch-notes-badge-text {
+  white-space: nowrap;
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+.patch-notes-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.patch-notes-body::-webkit-scrollbar-track {
+  background-color: var(--color-background);
+  border-radius: var(--radius-sm);
+}
+
+.patch-notes-body::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.patch-notes-body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-muted);
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 600px) {
+  .patch-notes-header {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .patch-notes-body {
+    padding: var(--spacing-md);
+    max-height: 300px;
+  }
+
+  .patch-notes-content {
+    font-size: var(--font-size-sm);
+  }
+}
