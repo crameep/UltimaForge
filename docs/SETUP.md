@@ -2,6 +2,8 @@
 
 This guide walks you through setting up UltimaForge for your Ultima Online server.
 
+> **Quick Start:** Want to get up and running fast? See the [Quick Start Guide](QUICKSTART.md) for automated setup in 5 steps.
+
 ## Overview
 
 UltimaForge is a self-hosted installer, patcher, and launcher for Ultima Online private servers. Server owners build a branded launcher executable that players download as a single file. The launcher handles:
@@ -11,6 +13,31 @@ UltimaForge is a self-hosted installer, patcher, and launcher for Ultima Online 
 - Game launching
 
 ## Prerequisites
+
+### Automated Setup (Recommended)
+
+The easiest way to install all dependencies is using our automated setup scripts:
+
+**Windows (PowerShell as Administrator):**
+```powershell
+.\scripts\setup.ps1
+```
+
+**Linux/macOS:**
+```bash
+./scripts/setup.sh
+```
+
+The setup scripts will install Rust, Node.js, build tools, and the Tauri CLI automatically. After running the script, skip to [Project Setup](#project-setup).
+
+**Script options:**
+- `setup.ps1 -SkipPrompts` - Non-interactive mode for CI/automation
+- `setup.ps1 -UseScoop` - Use Scoop instead of winget (no admin required)
+- `setup.ps1 -Help` - Show all available options
+
+### Manual Installation
+
+If you prefer manual installation, install the following:
 
 ### Development Tools
 
@@ -216,6 +243,16 @@ Every file download is verified against its SHA-256 hash from the manifest. Corr
 
 ## Troubleshooting
 
+### Validate Your Environment
+
+Run the validation script to check all dependencies:
+
+```bash
+npm run validate-env
+```
+
+This will identify missing or outdated dependencies and provide fix instructions.
+
 ### Build Fails with "branding/brand.json not found"
 
 Ensure you have created the branding configuration:
@@ -260,9 +297,10 @@ taskkill /PID <pid> /F
 
 ## Next Steps
 
-1. **Set up update server**: See [PUBLISHING.md](PUBLISHING.md)
-2. **Publish your first update**: Use the publish-cli
-3. **Distribute your launcher**: Share the built executable with players
+1. **Quick reference**: See [Quick Start Guide](QUICKSTART.md) for a condensed workflow
+2. **Set up update server**: See [PUBLISHING.md](PUBLISHING.md)
+3. **Publish your first update**: Use the publish-cli
+4. **Distribute your launcher**: Share the built executable with players
 
 ## Support
 
