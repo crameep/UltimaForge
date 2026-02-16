@@ -296,15 +296,36 @@ impl Downloader {
     {
         debug!("Starting download: {} -> {}", url, dest.display());
 
-        // Check for existing partial download
-        let existing_size = if dest.exists() {
-            fs::metadata(dest)
-                .await
-                .map(|m| m.len())
-                .unwrap_or(0)
-        } else {
-            0
-        };
+        // Check for existing file and validate its hash if we have an expected hash
+        let mut existing_size = 0u64;
+        if dest.exists() {
+            if let Some(expected) = expected_hash {
+                // If we have an expected hash, check if the existing file is already correct
+                if let Ok(existing_hash) = hash_file(dest) {
+                    if existing_hash.to_lowercase() == expected.to_lowercase() {
+                        info!("File already exists with correct hash, skipping download: {}", dest.display());
+                        return Ok(existing_hash);
+                    } else {
+                        // Existing file has wrong hash - delete it and download fresh
+                        warn!(
+                            "Existing file has wrong hash (expected {}, got {}), deleting: {}",
+                            expected, existing_hash, dest.display()
+                        );
+                        let _ = fs::remove_file(dest).await;
+                    }
+                } else {
+                    // Can't hash existing file - delete it to be safe
+                    warn!("Cannot hash existing file, deleting: {}", dest.display());
+                    let _ = fs::remove_file(dest).await;
+                }
+            } else {
+                // No expected hash, allow resume
+                existing_size = fs::metadata(dest)
+                    .await
+                    .map(|m| m.len())
+                    .unwrap_or(0);
+            }
+        }
 
         // Build request with optional Range header for resume
         let request = self.client.get(url);
