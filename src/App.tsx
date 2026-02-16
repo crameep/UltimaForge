@@ -6,6 +6,7 @@ import { LaunchButton } from "./components/LaunchButton";
 import { PatchNotes } from "./components/PatchNotes";
 import { Settings } from "./components/Settings";
 import { checkNeedsInstall } from "./hooks/useInstall";
+import { useBrand } from "./hooks/useBrand";
 import "./App.css";
 
 type AppPhase =
@@ -29,6 +30,9 @@ function App() {
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
+
+  // Brand configuration
+  const { brandInfo } = useBrand();
 
   // Navigation handlers
   const navigateToSettings = () => setCurrentView("settings");
@@ -151,7 +155,7 @@ function App() {
       >
         <div className="main-content">
           <div className="hero-section">
-            <h1 className="hero-title">UltimaForge</h1>
+            <h1 className="hero-title">{brandInfo?.display_name || "UltimaForge"}</h1>
             <p className="hero-subtitle">Loading...</p>
           </div>
         </div>
@@ -187,7 +191,7 @@ function App() {
       >
         <div className="main-content">
           <div className="hero-section">
-            <h1 className="hero-title">UltimaForge</h1>
+            <h1 className="hero-title">{brandInfo?.display_name || "UltimaForge"}</h1>
             <p className="hero-subtitle">Checking for updates...</p>
           </div>
         </div>
@@ -221,8 +225,12 @@ function App() {
     >
       <div className="main-content">
         <div className="hero-section">
-          <h1 className="hero-title">Welcome to UltimaForge</h1>
-          <p className="hero-subtitle">Your adventure awaits</p>
+          <h1 className="hero-title">
+            {brandInfo?.hero_title || `Welcome to ${brandInfo?.display_name || "UltimaForge"}`}
+          </h1>
+          <p className="hero-subtitle">
+            {brandInfo?.hero_subtitle || "Your adventure awaits"}
+          </p>
         </div>
 
         {/* Show update banner if update is available */}

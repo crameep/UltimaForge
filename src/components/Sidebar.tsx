@@ -12,6 +12,8 @@ interface SidebarProps {
   serverName?: string;
   /** Logo URL (optional) */
   logoUrl?: string;
+  /** Sidebar subtitle text */
+  subtitle?: string;
   /** Navigation links */
   links?: SidebarLink[];
 }
@@ -23,6 +25,7 @@ interface SidebarProps {
 export function Sidebar({
   serverName = "UltimaForge",
   logoUrl,
+  subtitle = "Self-Hosted UO Launcher",
   links = [],
 }: SidebarProps) {
   // Default links if none provided
@@ -47,15 +50,17 @@ export function Sidebar({
           )}
         </div>
         <h1 className="sidebar-title">{serverName}</h1>
-        <p className="sidebar-subtitle">Self-Hosted UO Launcher</p>
+        <p className="sidebar-subtitle">{subtitle}</p>
       </div>
 
       <nav className="sidebar-nav">
         {navLinks.map((link, index) => (
           <a
             key={index}
-            href={link.href || "#"}
+            href={link.href || link.url || "#"}
             className="sidebar-link"
+            target={link.url ? "_blank" : undefined}
+            rel={link.url ? "noopener noreferrer" : undefined}
             onClick={(e) => {
               if (link.onClick) {
                 e.preventDefault();

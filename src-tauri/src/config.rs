@@ -132,6 +132,21 @@ impl Default for ThemeColors {
     }
 }
 
+/// Sidebar navigation link configuration.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SidebarLink {
+    /// Link label text.
+    pub label: String,
+
+    /// Icon emoji or character (optional).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+
+    /// External URL to open (optional).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
 /// UI configuration from the brand configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UiConfig {
@@ -154,6 +169,22 @@ pub struct UiConfig {
     /// Window title override (defaults to display_name).
     #[serde(rename = "windowTitle")]
     pub window_title: Option<String>,
+
+    /// Main hero title text.
+    #[serde(rename = "heroTitle")]
+    pub hero_title: Option<String>,
+
+    /// Hero subtitle text.
+    #[serde(rename = "heroSubtitle")]
+    pub hero_subtitle: Option<String>,
+
+    /// Sidebar subtitle text.
+    #[serde(rename = "sidebarSubtitle")]
+    pub sidebar_subtitle: Option<String>,
+
+    /// Custom sidebar navigation links.
+    #[serde(rename = "sidebarLinks")]
+    pub sidebar_links: Option<Vec<SidebarLink>>,
 }
 
 fn default_show_patch_notes() -> bool {
@@ -168,6 +199,10 @@ impl Default for UiConfig {
             logo_url: None,
             show_patch_notes: true,
             window_title: None,
+            hero_title: None,
+            hero_subtitle: None,
+            sidebar_subtitle: None,
+            sidebar_links: None,
         }
     }
 }
@@ -648,6 +683,10 @@ impl BrandConfigBuilder {
                 logo_url: None,
                 show_patch_notes: self.show_patch_notes.unwrap_or(true),
                 window_title: self.window_title,
+                hero_title: None,
+                hero_subtitle: None,
+                sidebar_subtitle: None,
+                sidebar_links: None,
             },
             brand_version: "1.0".to_string(),
         };

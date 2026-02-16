@@ -337,6 +337,16 @@ export interface ThemeColors {
 /**
  * Brand information for display.
  */
+/** Sidebar navigation link */
+export interface SidebarLink {
+  /** Link label text */
+  label: string;
+  /** Icon emoji or character */
+  icon?: string;
+  /** External URL to open */
+  url?: string;
+}
+
 export interface BrandInfo {
   /** Display name of the server */
   display_name: string;
@@ -360,6 +370,14 @@ export interface BrandInfo {
   show_patch_notes: boolean;
   /** Window title */
   window_title: string;
+  /** Main hero title text */
+  hero_title: string | null;
+  /** Hero subtitle text */
+  hero_subtitle: string | null;
+  /** Sidebar subtitle text */
+  sidebar_subtitle: string | null;
+  /** Custom sidebar navigation links */
+  sidebar_links: SidebarLink[] | null;
 }
 
 /**

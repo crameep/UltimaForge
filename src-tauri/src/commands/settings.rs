@@ -168,6 +168,14 @@ pub struct BrandInfo {
     pub show_patch_notes: bool,
     /// Window title.
     pub window_title: String,
+    /// Main hero title text.
+    pub hero_title: Option<String>,
+    /// Hero subtitle text.
+    pub hero_subtitle: Option<String>,
+    /// Sidebar subtitle text.
+    pub sidebar_subtitle: Option<String>,
+    /// Custom sidebar navigation links.
+    pub sidebar_links: Option<Vec<crate::config::SidebarLink>>,
 }
 
 impl From<&BrandConfig> for BrandInfo {
@@ -184,6 +192,10 @@ impl From<&BrandConfig> for BrandInfo {
             logo_url: config.ui.logo_url.clone(),
             show_patch_notes: config.ui.show_patch_notes,
             window_title: config.window_title().to_string(),
+            hero_title: config.ui.hero_title.clone(),
+            hero_subtitle: config.ui.hero_subtitle.clone(),
+            sidebar_subtitle: config.ui.sidebar_subtitle.clone(),
+            sidebar_links: config.ui.sidebar_links.clone(),
         }
     }
 }
@@ -551,8 +563,14 @@ mod tests {
             website: Some("https://test.com".to_string()),
             discord: Some("https://discord.gg/test".to_string()),
             colors: ThemeColors::default(),
+            background_image: None,
+            logo_url: None,
             show_patch_notes: true,
             window_title: "Test Launcher".to_string(),
+            hero_title: None,
+            hero_subtitle: None,
+            sidebar_subtitle: None,
+            sidebar_links: None,
         };
 
         let json = serde_json::to_string(&info).expect("Should serialize");

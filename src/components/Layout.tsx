@@ -67,7 +67,13 @@ export function Layout({
       <Sidebar
         serverName={brandInfo?.display_name}
         logoUrl={brandInfo?.logo_url || undefined}
-        links={links}
+        subtitle={brandInfo?.sidebar_subtitle || undefined}
+        links={brandInfo?.sidebar_links?.length ? brandInfo.sidebar_links.map(link => ({
+          label: link.label,
+          icon: link.icon,
+          href: link.url,
+          url: link.url,
+        })) : links}
       />
       <main className="layout-main" style={mainStyle}>
         <div className="layout-content">{children}</div>

@@ -19,7 +19,15 @@
     "backgroundImage": "/branding/unchainedbg.png",
     "logoUrl": "/branding/sidebar-logo.png",
     "showPatchNotes": true,
-    "windowTitle": "Unchained Patcher"
+    "windowTitle": "Unchained Patcher",
+    "heroTitle": "Welcome to Unchained",
+    "heroSubtitle": "Your adventure begins here",
+    "sidebarSubtitle": "Free Shard Launcher",
+    "sidebarLinks": [
+      { "label": "Home", "icon": "🏠" },
+      { "label": "Settings", "icon": "⚙️" },
+      { "label": "Discord", "icon": "💬", "url": "https://discord.gg/example" }
+    ]
   },
   "brandVersion": "1.0"
 }
