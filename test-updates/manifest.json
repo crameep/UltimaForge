@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-02-16T16:24:05Z",
+  "client_executable": "client.exe",
+  "client_args": [],
+  "files": [
+    {
+      "path": "art.mul",
+      "sha256": "91790cf5cc7cb525e818bcd97318092d9ac109b77328480a3494f0cd479d6cfc",
+      "size": 696,
+      "required": true
+    },
+    {
+      "path": "client.exe",
+      "sha256": "072beb72a4071328e968be4a88ae628693d34a74b4a36cb552e6a24f65c91234",
+      "size": 446,
+      "required": true
+    },
+    {
+      "path": "map0.mul",
+      "sha256": "d1a114ddcef035cb3e76038ad91bef393c9d048fbe6c8f6e4005aa569ffe6822",
+      "size": 858,
+      "required": true
+    }
+  ],
+  "total_size": 2000
+}

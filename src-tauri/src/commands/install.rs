@@ -85,16 +85,26 @@ pub async fn validate_install_path(
 ) -> Result<PathValidationResult, String> {
     info!("Validating install path: {}", path);
 
-    let brand_config = state.brand_config().ok_or("Brand configuration not available")?;
+    // Get brand_config or use a default if not available
+    let brand_config = state.brand_config().ok_or_else(|| {
+        error!("Brand configuration not available - this shouldn't happen");
+        "Brand configuration not loaded. Please restart the application.".to_string()
+    })?;
 
     let installer = Installer::new(brand_config)
-        .map_err(|e| format!("Failed to create installer: {}", e))?;
+        .map_err(|e| {
+            error!("Failed to create installer: {}", e);
+            format!("Failed to initialize installer: {}", e)
+        })?;
 
     let path_buf = PathBuf::from(&path);
 
     // We don't know the required size yet, so validate with 0
     // The actual size check happens during installation
     let result = installer.validate_install_path(&path_buf, 0);
+
+    info!("Path validation result for '{}': valid={}, reason={:?}",
+          path, result.is_valid, result.reason);
 
     Ok(result)
 }

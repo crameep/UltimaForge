@@ -1,7 +1,7 @@
 {
   "product": {
-    "displayName": "UltimaForge Test Server",
-    "serverName": "UltimaForge",
+    "displayName": "Unchained File Server",
+    "serverName": "Unchained",
     "description": "Test configuration for E2E testing",
     "supportEmail": "support@example.com",
     "website": "https://example.com",
@@ -16,10 +16,10 @@
       "background": "#16213e",
       "text": "#eaeaea"
     },
-    "backgroundImage": "/branding/hero-bg.png",
+    "backgroundImage": "/branding/unchainedbg.png",
     "logoUrl": "/branding/sidebar-logo.png",
     "showPatchNotes": true,
-    "windowTitle": "UltimaForge Launcher (Test)"
+    "windowTitle": "Unchained Patcher"
   },
   "brandVersion": "1.0"
 }

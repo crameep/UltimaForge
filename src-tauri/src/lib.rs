@@ -30,38 +30,47 @@ use tracing_subscriber;
 /// Searches in the following order:
 /// 1. Relative to the executable (production)
 /// 2. Relative to the current working directory (development)
+/// 3. One level up from CWD (src-tauri dev mode)
+/// 4. Two levels up from executable (Tauri dev bundle structure)
 fn load_brand_config() -> Option<BrandConfig> {
     let brand_file = "branding/brand.json";
 
-    // Try relative to the executable first (production)
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            let brand_path = exe_dir.join(brand_file);
-            if brand_path.exists() {
-                info!("Loading brand config from: {}", brand_path.display());
-                match BrandConfig::load(&brand_path) {
-                    Ok(config) => return Some(config),
+    let search_paths = vec![
+        // Try relative to the executable first (production)
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.join(brand_file))),
+        // Relative to CWD (development)
+        Some(PathBuf::from(brand_file)),
+        // One level up from CWD (src-tauri dev mode)
+        Some(PathBuf::from("../branding/brand.json")),
+        // Two levels up from executable (Tauri dev bundle)
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().and_then(|p| p.parent().map(|p| p.join(brand_file)))),
+    ];
+
+    for path_opt in search_paths {
+        if let Some(path) = path_opt {
+            if path.exists() {
+                info!("Found brand config at: {}", path.display());
+                match BrandConfig::load(&path) {
+                    Ok(config) => {
+                        info!("Successfully loaded brand: {}", config.product.display_name);
+                        return Some(config);
+                    }
                     Err(e) => {
-                        error!("Failed to load brand config from {}: {}", brand_path.display(), e);
+                        error!("Failed to load brand config from {}: {}", path.display(), e);
                     }
                 }
+            } else {
+                info!("Brand config not found at: {}", path.display());
             }
         }
     }
 
-    // Fall back to relative to CWD (development)
-    let cwd_path = PathBuf::from(brand_file);
-    if cwd_path.exists() {
-        info!("Loading brand config from CWD: {}", cwd_path.display());
-        match BrandConfig::load(&cwd_path) {
-            Ok(config) => return Some(config),
-            Err(e) => {
-                error!("Failed to load brand config from CWD: {}", e);
-            }
-        }
-    }
-
-    warn!("Brand configuration not found at branding/brand.json");
+    warn!("Brand configuration not found in any search location");
+    warn!("CWD: {:?}", std::env::current_dir());
     None
 }
 
