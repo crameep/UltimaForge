@@ -7,6 +7,7 @@
 //! - Validation endpoint for update folder structure
 //! - Request logging with method, path, status, and duration
 
+mod brand;
 mod health;
 mod routes;
 mod validation;
@@ -65,7 +66,19 @@ async fn main() {
 
     let serve_dir = cli.dir.canonicalize().unwrap_or_else(|_| cli.dir.clone());
 
-    info!("Starting UltimaForge Host Server");
+    // Load brand configuration for custom server name
+    let brand = brand::BrandConfig::load();
+    let server_name = brand
+        .as_ref()
+        .map(|b| b.product.display_name.as_str())
+        .unwrap_or("UltimaForge Host Server");
+
+    info!("Starting {}", server_name);
+    if let Some(ref brand) = brand {
+        if let Some(ref description) = brand.product.description {
+            info!("{}", description);
+        }
+    }
     info!("Serving files from: {:?}", serve_dir);
     info!("Listening on: {}:{}", cli.host, cli.port);
 
