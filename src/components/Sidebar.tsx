@@ -14,6 +14,8 @@ interface SidebarProps {
   logoUrl?: string;
   /** Sidebar subtitle text */
   subtitle?: string;
+  /** Sidebar background texture URL */
+  backgroundUrl?: string;
   /** Navigation links */
   links?: SidebarLink[];
 }
@@ -26,6 +28,7 @@ export function Sidebar({
   serverName = "UltimaForge",
   logoUrl,
   subtitle = "Self-Hosted UO Launcher",
+  backgroundUrl,
   links = [],
 }: SidebarProps) {
   // Default links if none provided
@@ -37,8 +40,18 @@ export function Sidebar({
 
   const navLinks = links.length > 0 ? links : defaultLinks;
 
+  // Apply background texture if provided
+  const sidebarStyle: React.CSSProperties = backgroundUrl
+    ? {
+        backgroundImage: `url(${backgroundUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }
+    : {};
+
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" style={sidebarStyle}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
           {logoUrl ? (

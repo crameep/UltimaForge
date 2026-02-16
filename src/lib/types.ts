@@ -366,6 +366,8 @@ export interface BrandInfo {
   background_image: string | null;
   /** Logo image URL/path */
   logo_url: string | null;
+  /** Sidebar background texture URL/path */
+  sidebar_background: string | null;
   /** Whether to show patch notes */
   show_patch_notes: boolean;
   /** Window title */

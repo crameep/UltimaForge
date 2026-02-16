@@ -18,6 +18,7 @@
     },
     "backgroundImage": "/branding/unchainedbg.png",
     "logoUrl": "/branding/sidebar-logo.png",
+    "sidebarBackground": "/branding/sidebar-texture.png",
     "showPatchNotes": true,
     "windowTitle": "Unchained Patcher",
     "heroTitle": "Welcome to Unchained",

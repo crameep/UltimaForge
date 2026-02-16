@@ -162,6 +162,10 @@ pub struct UiConfig {
     #[serde(rename = "logoUrl")]
     pub logo_url: Option<String>,
 
+    /// Sidebar background texture (relative to branding folder).
+    #[serde(rename = "sidebarBackground")]
+    pub sidebar_background: Option<String>,
+
     /// Whether to show patch notes in the launcher.
     #[serde(rename = "showPatchNotes", default = "default_show_patch_notes")]
     pub show_patch_notes: bool,
@@ -197,6 +201,7 @@ impl Default for UiConfig {
             colors: ThemeColors::default(),
             background_image: None,
             logo_url: None,
+            sidebar_background: None,
             show_patch_notes: true,
             window_title: None,
             hero_title: None,
@@ -681,6 +686,7 @@ impl BrandConfigBuilder {
                 colors: self.colors.unwrap_or_default(),
                 background_image: None,
                 logo_url: None,
+                sidebar_background: None,
                 show_patch_notes: self.show_patch_notes.unwrap_or(true),
                 window_title: self.window_title,
                 hero_title: None,

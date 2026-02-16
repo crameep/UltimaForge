@@ -164,6 +164,8 @@ pub struct BrandInfo {
     pub background_image: Option<String>,
     /// Logo image URL/path.
     pub logo_url: Option<String>,
+    /// Sidebar background texture URL/path.
+    pub sidebar_background: Option<String>,
     /// Whether to show patch notes.
     pub show_patch_notes: bool,
     /// Window title.
@@ -190,6 +192,7 @@ impl From<&BrandConfig> for BrandInfo {
             colors: config.ui.colors.clone(),
             background_image: config.ui.background_image.clone(),
             logo_url: config.ui.logo_url.clone(),
+            sidebar_background: config.ui.sidebar_background.clone(),
             show_patch_notes: config.ui.show_patch_notes,
             window_title: config.window_title().to_string(),
             hero_title: config.ui.hero_title.clone(),
@@ -565,6 +568,7 @@ mod tests {
             colors: ThemeColors::default(),
             background_image: None,
             logo_url: None,
+            sidebar_background: None,
             show_patch_notes: true,
             window_title: "Test Launcher".to_string(),
             hero_title: None,

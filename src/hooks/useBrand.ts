@@ -49,6 +49,7 @@ export function useBrand() {
           },
           background_image: null,
           logo_url: null,
+          sidebar_background: null,
           show_patch_notes: true,
           window_title: "UltimaForge Launcher",
           hero_title: null,

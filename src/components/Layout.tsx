@@ -68,6 +68,7 @@ export function Layout({
         serverName={brandInfo?.display_name}
         logoUrl={brandInfo?.logo_url || undefined}
         subtitle={brandInfo?.sidebar_subtitle || undefined}
+        backgroundUrl={brandInfo?.sidebar_background || undefined}
         links={brandInfo?.sidebar_links?.length ? brandInfo.sidebar_links.map(link => ({
           label: link.label,
           icon: link.icon,
