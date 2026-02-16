@@ -644,6 +644,8 @@ impl BrandConfigBuilder {
             public_key,
             ui: UiConfig {
                 colors: self.colors.unwrap_or_default(),
+                background_image: None,
+                logo_url: None,
                 show_patch_notes: self.show_patch_notes.unwrap_or(true),
                 window_title: self.window_title,
             },
