@@ -406,11 +406,18 @@ impl Updater {
 
         // Download signature
         let signature_url = format!("{}/manifest.sig", self.brand_config.update_url);
-        let signature_bytes = self
+        let signature_hex = self
             .downloader
             .download_bytes(&signature_url)
             .await
             .map_err(|_| UpdateError::MissingSignature)?;
+
+        // Decode hex signature to raw bytes
+        let signature_str = std::str::from_utf8(&signature_hex)
+            .map_err(|_| UpdateError::StagingError("Invalid signature encoding".to_string()))?
+            .trim();
+        let signature_bytes = signature::parse_hex_signature(signature_str)
+            .map_err(|e| UpdateError::StagingError(format!("Invalid signature format: {}", e)))?;
 
         // Verify signature BEFORE parsing
         let public_key_bytes: [u8; 32] = self
