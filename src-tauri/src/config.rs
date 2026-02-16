@@ -139,6 +139,14 @@ pub struct UiConfig {
     #[serde(default)]
     pub colors: ThemeColors,
 
+    /// Background image filename (relative to branding folder).
+    #[serde(rename = "backgroundImage")]
+    pub background_image: Option<String>,
+
+    /// Logo image filename (relative to branding folder).
+    #[serde(rename = "logoUrl")]
+    pub logo_url: Option<String>,
+
     /// Whether to show patch notes in the launcher.
     #[serde(rename = "showPatchNotes", default = "default_show_patch_notes")]
     pub show_patch_notes: bool,
@@ -156,6 +164,8 @@ impl Default for UiConfig {
     fn default() -> Self {
         Self {
             colors: ThemeColors::default(),
+            background_image: None,
+            logo_url: None,
             show_patch_notes: true,
             window_title: None,
         }

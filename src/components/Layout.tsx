@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
+import { useBrand } from "../hooks/useBrand";
 import "./Layout.css";
 
 /** Link configuration for sidebar navigation. */
@@ -40,18 +41,24 @@ export function Layout({
   onSettingsClick,
   onHomeClick,
 }: LayoutProps) {
+  const { brandInfo } = useBrand();
+
   // Build default links with navigation callbacks
   const defaultLinks: SidebarLink[] = [
-    { label: "Home", icon: "\uD83C\uDFE0", onClick: onHomeClick },
-    { label: "Settings", icon: "\u2699\uFE0F", onClick: onSettingsClick },
-    { label: "Help", icon: "\u2753" },
+    { label: "Home", icon: "🏠", onClick: onHomeClick },
+    { label: "Settings", icon: "⚙️", onClick: onSettingsClick },
+    { label: "Help", icon: "❓" },
   ];
 
   const links = sidebarLinks || defaultLinks;
 
   return (
     <div className="layout">
-      <Sidebar links={links} />
+      <Sidebar
+        serverName={brandInfo?.display_name}
+        logoUrl={brandInfo?.logo_url || undefined}
+        links={links}
+      />
       <main className="layout-main">
         <div className="layout-content">{children}</div>
       </main>

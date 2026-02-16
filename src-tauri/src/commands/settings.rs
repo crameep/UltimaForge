@@ -160,6 +160,10 @@ pub struct BrandInfo {
     pub discord: Option<String>,
     /// Theme colors.
     pub colors: ThemeColors,
+    /// Background image URL/path.
+    pub background_image: Option<String>,
+    /// Logo image URL/path.
+    pub logo_url: Option<String>,
     /// Whether to show patch notes.
     pub show_patch_notes: bool,
     /// Window title.
@@ -176,6 +180,8 @@ impl From<&BrandConfig> for BrandInfo {
             website: config.product.website.clone(),
             discord: config.product.discord.clone(),
             colors: config.ui.colors.clone(),
+            background_image: config.ui.background_image.clone(),
+            logo_url: config.ui.logo_url.clone(),
             show_patch_notes: config.ui.show_patch_notes,
             window_title: config.window_title().to_string(),
         }

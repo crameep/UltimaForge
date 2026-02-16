@@ -352,6 +352,10 @@ export interface BrandInfo {
   discord: string | null;
   /** Theme colors */
   colors: ThemeColors;
+  /** Background image URL/path */
+  background_image: string | null;
+  /** Logo image URL/path */
+  logo_url: string | null;
   /** Whether to show patch notes */
   show_patch_notes: boolean;
   /** Window title */
