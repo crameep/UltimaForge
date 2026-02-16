@@ -23,6 +23,7 @@ echo  [7] Build Production
 echo  [8] Clean Everything
 echo  [9] Run All Tests
 echo  [A] Publish New Test Version (for update testing)
+echo  [B] Generate App Icons from Branding
 echo  [0] Exit
 echo.
 echo ========================================
@@ -39,6 +40,7 @@ if /i "%choice%"=="7" goto BUILD
 if /i "%choice%"=="8" goto CLEAN
 if /i "%choice%"=="9" goto TEST
 if /i "%choice%"=="A" goto PUBLISH_UPDATE
+if /i "%choice%"=="B" goto GENERATE_ICONS
 if /i "%choice%"=="0" goto END
 
 echo Invalid choice. Please try again.
@@ -453,6 +455,71 @@ echo Next steps:
 echo   1. Make sure the test server is running (option 5)
 echo   2. Start the launcher (option 6)
 echo   3. The launcher should detect the update
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM GENERATE APP ICONS FROM BRANDING
+REM ============================================================================
+:GENERATE_ICONS
+cls
+echo.
+echo ========================================
+echo    Generate App Icons from Branding
+echo ========================================
+echo.
+
+if not exist "branding\sidebar-logo.png" (
+    echo ERROR: branding\sidebar-logo.png not found!
+    echo.
+    echo Please ensure your logo exists at:
+    echo   branding\sidebar-logo.png
+    echo.
+    echo Requirements:
+    echo   - Square PNG (1024x1024 recommended)
+    echo   - Transparent background (RGBA)
+    echo   - Clear at small sizes
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+
+echo Generating app icons from branding\sidebar-logo.png...
+echo.
+
+powershell -Command "Add-Type -AssemblyName System.Drawing; $source = 'branding/sidebar-logo.png'; $outputDir = 'src-tauri/icons'; $img = [System.Drawing.Image]::FromFile((Resolve-Path $source)); function Resize-Image($size, $filename) { $newImg = New-Object System.Drawing.Bitmap($size, $size); $graphics = [System.Drawing.Graphics]::FromImage($newImg); $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $graphics.DrawImage($img, 0, 0, $size, $size); $newImg.Save(\"$outputDir/$filename\", [System.Drawing.Imaging.ImageFormat]::Png); $graphics.Dispose(); $newImg.Dispose(); Write-Host \"Created $filename (${size}x${size})\" }; if (!(Test-Path $outputDir)) { New-Item -ItemType Directory -Path $outputDir | Out-Null }; Resize-Image 32 '32x32.png'; Resize-Image 128 '128x128.png'; Resize-Image 256 '128x128@2x.png'; Resize-Image 256 'icon.png'; $icon = [System.Drawing.Icon]::FromHandle(([System.Drawing.Bitmap]$img).GetHicon()); $stream = [System.IO.File]::Create(\"$outputDir/icon.ico\"); $icon.Save($stream); $stream.Close(); $icon.Dispose(); Write-Host 'Created icon.ico (multi-resolution)'; $img.Dispose(); Write-Host ''; Write-Host 'All icons generated successfully!' -ForegroundColor Green"
+
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to generate icons
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+
+echo.
+echo ========================================
+echo  Icons Generated Successfully!
+echo ========================================
+echo.
+echo Generated icons in src-tauri\icons\:
+echo   - 32x32.png (taskbar, small icons)
+echo   - 128x128.png (standard size)
+echo   - 128x128@2x.png (retina displays)
+echo   - icon.png (256x256 main icon)
+echo   - icon.ico (Windows multi-resolution)
+echo.
+echo Your branded icon will appear in:
+echo   - Application window
+echo   - Taskbar
+echo   - Desktop shortcut
+echo   - Add/Remove Programs
+echo.
+echo Next: Build production (option 7) to create installer
 echo.
 echo Press any key to return to menu...
 pause >nul
