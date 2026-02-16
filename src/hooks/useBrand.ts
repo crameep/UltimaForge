@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { getBrandConfig, type BrandInfo } from "../lib/api";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 /**
  * Hook to load and access brand configuration.
@@ -21,6 +22,14 @@ export function useBrand() {
         const brand = await getBrandConfig();
         setBrandInfo(brand);
         setError(null);
+
+        // Set window title from brand config
+        try {
+          const appWindow = getCurrentWindow();
+          await appWindow.setTitle(brand.window_title);
+        } catch (err) {
+          console.warn("Failed to set window title:", err);
+        }
       } catch (err) {
         console.warn("Failed to load brand configuration:", err);
         setError(err instanceof Error ? err.message : String(err));
@@ -42,6 +51,10 @@ export function useBrand() {
           logo_url: null,
           show_patch_notes: true,
           window_title: "UltimaForge Launcher",
+          hero_title: null,
+          hero_subtitle: null,
+          sidebar_subtitle: null,
+          sidebar_links: null,
         });
       } finally {
         setLoading(false);

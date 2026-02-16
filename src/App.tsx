@@ -138,7 +138,7 @@ function App() {
         version="v0.1.0"
       >
         <InstallWizard
-          serverName="UltimaForge"
+          serverName={brandInfo?.display_name || "UltimaForge"}
           onComplete={handleInstallComplete}
         />
       </Layout>
