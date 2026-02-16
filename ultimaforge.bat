@@ -16,28 +16,30 @@ echo.
 echo  [1] Quick Start (Sync + Server + Launcher)
 echo  [2] Sync Branding Only
 echo  [3] Install Dependencies (npm install)
-echo  [4] Generate Test Manifest
+echo  [4] Generate Test Manifest (v1.0.0)
 echo  [5] Start Test Server Only
 echo  [6] Start Launcher Only
 echo  [7] Build Production
 echo  [8] Clean Everything
 echo  [9] Run All Tests
+echo  [A] Publish New Test Version (for update testing)
 echo  [0] Exit
 echo.
 echo ========================================
 echo.
-set /p choice="Enter your choice (0-9): "
+set /p choice="Enter your choice (0-9, A): "
 
-if "%choice%"=="1" goto QUICK_START
-if "%choice%"=="2" goto SYNC_BRANDING
-if "%choice%"=="3" goto NPM_INSTALL
-if "%choice%"=="4" goto GEN_MANIFEST
-if "%choice%"=="5" goto START_SERVER
-if "%choice%"=="6" goto START_LAUNCHER
-if "%choice%"=="7" goto BUILD
-if "%choice%"=="8" goto CLEAN
-if "%choice%"=="9" goto TEST
-if "%choice%"=="0" goto END
+if /i "%choice%"=="1" goto QUICK_START
+if /i "%choice%"=="2" goto SYNC_BRANDING
+if /i "%choice%"=="3" goto NPM_INSTALL
+if /i "%choice%"=="4" goto GEN_MANIFEST
+if /i "%choice%"=="5" goto START_SERVER
+if /i "%choice%"=="6" goto START_LAUNCHER
+if /i "%choice%"=="7" goto BUILD
+if /i "%choice%"=="8" goto CLEAN
+if /i "%choice%"=="9" goto TEST
+if /i "%choice%"=="A" goto PUBLISH_UPDATE
+if /i "%choice%"=="0" goto END
 
 echo Invalid choice. Please try again.
 timeout /t 2 >nul
@@ -391,6 +393,66 @@ if exist "package-lock.json" del /Q "package-lock.json" 2>nul
 
 echo.
 echo Clean complete!
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM PUBLISH NEW TEST VERSION
+REM ============================================================================
+:PUBLISH_UPDATE
+cls
+echo.
+echo ========================================
+echo    Publish New Test Version
+echo ========================================
+echo.
+echo This will create a new version for testing updates.
+echo.
+set /p new_version="Enter new version (e.g., 1.0.1): "
+
+if "%new_version%"=="" (
+    echo Error: Version cannot be empty
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+
+echo.
+echo Creating test file changes...
+
+REM Create a timestamp file to simulate a change
+echo Build Date: %DATE% %TIME% > test-data\sample-client\build-info.txt
+echo Version: %new_version% >> test-data\sample-client\build-info.txt
+
+echo.
+echo Publishing version %new_version%...
+echo.
+
+cargo run -p publish-cli -- publish --source ./test-data/sample-client --output ./test-updates --key ./test-keys/private.key --version %new_version%
+
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to publish new version
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+
+echo.
+echo ========================================
+echo  New Version Published!
+echo ========================================
+echo.
+echo Version %new_version% is now available on the test server.
+echo.
+echo Next steps:
+echo   1. Make sure the test server is running (option 5)
+echo   2. Start the launcher (option 6)
+echo   3. The launcher should detect the update
 echo.
 echo Press any key to return to menu...
 pause >nul
