@@ -504,7 +504,7 @@ function ReviewStep({
  * Complete step - shows success message after configuration is saved.
  */
 function CompleteStep({
-  config,
+  config: _config,
   privateKey,
   onComplete,
 }: {

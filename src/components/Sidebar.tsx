@@ -5,6 +5,7 @@ interface SidebarLink {
   href?: string;
   onClick?: () => void;
   icon?: string;
+  url?: string;
 }
 
 interface SidebarProps {

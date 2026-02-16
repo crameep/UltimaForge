@@ -17,8 +17,6 @@ import {
 
 import type {
   UserSettings,
-  GetSettingsResponse,
-  SaveResponse,
   VerifyResponse,
   InstallProgress,
 } from "../lib/types";

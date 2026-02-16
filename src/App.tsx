@@ -87,10 +87,9 @@ function App() {
     updateActions.startUpdate();
   };
 
-  const handleLaunchSuccess = (pid: number | null, shouldClose: boolean) => {
+  const handleLaunchSuccess = (pid: number | null, _shouldClose: boolean) => {
     setPhase("GameRunning");
     setStatusMessage(pid ? `Game running (PID: ${pid})` : "Game is running");
-    // Handle shouldClose if needed (e.g., close launcher window)
   };
 
   const handleLaunchError = (error: string) => {
@@ -254,7 +253,7 @@ function App() {
 
         <div className="action-section">
           <LaunchButton
-            disabled={phase === "Installing" || phase === "Updating" || phase === "CheckingUpdates"}
+            disabled={phase === "CheckingUpdates"}
             updateAvailable={updateState.updateAvailable}
             onUpdateRequest={handleUpdateRequest}
             onLaunchSuccess={handleLaunchSuccess}
