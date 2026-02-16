@@ -52,6 +52,16 @@ export function Layout({
 
   const links = sidebarLinks || defaultLinks;
 
+  // Apply background image from brand config
+  const mainStyle: React.CSSProperties = brandInfo?.background_image
+    ? {
+        backgroundImage: `url(${brandInfo.background_image})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }
+    : {};
+
   return (
     <div className="layout">
       <Sidebar
@@ -59,7 +69,7 @@ export function Layout({
         logoUrl={brandInfo?.logo_url || undefined}
         links={links}
       />
-      <main className="layout-main">
+      <main className="layout-main" style={mainStyle}>
         <div className="layout-content">{children}</div>
       </main>
       <StatusBar phase={phase} message={statusMessage} version={version} />
