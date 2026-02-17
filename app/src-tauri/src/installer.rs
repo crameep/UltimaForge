@@ -1114,11 +1114,13 @@ mod tests {
 
     #[test]
     fn test_path_validation_result_valid() {
-        let result = PathValidationResult::valid(1024 * 1024 * 1024, true, true);
+        let result = PathValidationResult::valid(1024 * 1024 * 1024, true, true, true, false);
         assert!(result.is_valid);
         assert!(result.reason.is_none());
         assert!(result.exists);
         assert!(result.is_empty);
+        assert!(result.is_writable);
+        assert!(!result.requires_elevation);
     }
 
     #[test]
