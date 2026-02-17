@@ -186,6 +186,10 @@ export function Settings({ onBack }: SettingsProps) {
       )
     : 0;
 
+  // Track if any maintenance operation is running (for mutual exclusion)
+  const isAnyOperationRunning =
+    state.isVerifying || state.isClearing || state.isRepairing;
+
   return (
     <div className="settings">
       <div className="settings-container">
@@ -310,7 +314,7 @@ export function Settings({ onBack }: SettingsProps) {
               icon={state.isVerifying ? "\u21BB" : "\u2713"}
               loading={state.isVerifying}
               disabled={
-                state.isVerifying ||
+                isAnyOperationRunning ||
                 !state.installComplete ||
                 !state.installPath
               }
@@ -322,7 +326,7 @@ export function Settings({ onBack }: SettingsProps) {
               description="Remove cached manifests and temporary files"
               icon={state.isClearing ? "\u21BB" : "\u2672"}
               loading={state.isClearing}
-              disabled={state.isClearing}
+              disabled={isAnyOperationRunning}
               onClick={actions.clearCache}
             />
 
@@ -333,8 +337,7 @@ export function Settings({ onBack }: SettingsProps) {
               loading={state.isRepairing}
               variant={state.isRepairing ? "repairing" : "default"}
               disabled={
-                state.isRepairing ||
-                state.isVerifying ||
+                isAnyOperationRunning ||
                 !state.installComplete ||
                 !state.installPath
               }
@@ -394,7 +397,7 @@ export function Settings({ onBack }: SettingsProps) {
                   </div>
                   <button
                     className="settings-repair-now-button"
-                    disabled={state.isRepairing || !state.installPath}
+                    disabled={isAnyOperationRunning || !state.installPath}
                     onClick={actions.repairInstallation}
                   >
                     {state.isRepairing ? "Repairing..." : "Repair Now"}
