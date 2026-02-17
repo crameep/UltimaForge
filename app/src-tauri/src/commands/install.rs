@@ -25,6 +25,8 @@ pub struct InstallStatusResponse {
     pub current_version: Option<String>,
     /// Whether installation is complete.
     pub install_complete: bool,
+    /// Whether the installation was auto-detected (vs explicitly installed).
+    pub was_detected: bool,
 }
 
 /// Request for starting installation.
@@ -68,6 +70,7 @@ pub async fn check_install_status(
     };
 
     let mut needs_install = install_path.is_none() || !install_complete;
+    let mut was_detected = false;
 
     // If installation would be needed but we have a configured path,
     // try to detect an existing installation at that location
@@ -86,6 +89,7 @@ pub async fn check_install_status(
                 // Auto-configure: mark as complete since we detected valid files
                 install_complete = true;
                 needs_install = false;
+                was_detected = true;
 
                 // Use detected version if available, otherwise keep existing
                 if let Some(detected_ver) = detection_result.detected_version {
@@ -106,6 +110,7 @@ pub async fn check_install_status(
         install_path,
         current_version,
         install_complete,
+        was_detected,
     })
 }
 
@@ -240,11 +245,13 @@ mod tests {
             install_path: Some(PathBuf::from("/game")),
             current_version: Some("1.0.0".to_string()),
             install_complete: false,
+            was_detected: false,
         };
 
         let json = serde_json::to_string(&response).expect("Should serialize");
         assert!(json.contains("needs_install"));
         assert!(json.contains("install_path"));
+        assert!(json.contains("was_detected"));
     }
 
     #[test]
