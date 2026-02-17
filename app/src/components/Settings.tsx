@@ -312,6 +312,19 @@ export function Settings({ onBack }: SettingsProps) {
               disabled={state.isClearing}
               onClick={actions.clearCache}
             />
+
+            <ActionButton
+              label="Repair Installation"
+              description="Re-download and fix corrupted or damaged game files"
+              icon={state.isRepairing ? "\u21BB" : "\u2699"}
+              disabled={
+                state.isRepairing ||
+                state.isVerifying ||
+                !state.installComplete ||
+                !state.installPath
+              }
+              onClick={actions.repairInstallation}
+            />
           </div>
 
           {/* Verify Progress */}
