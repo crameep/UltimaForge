@@ -316,6 +316,73 @@
 }
 
 /* ========================================
+   ADMIN BANNER
+   ======================================== */
+
+.settings-admin-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-warning-light, rgba(245, 158, 11, 0.1));
+  border: 1px solid var(--color-warning, #f59e0b);
+  border-radius: var(--radius-md);
+}
+
+.settings-admin-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.settings-admin-banner-icon {
+  font-size: var(--font-size-lg);
+  color: var(--color-warning, #f59e0b);
+  line-height: 1;
+}
+
+.settings-admin-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.settings-admin-banner-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.settings-admin-banner-description {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.settings-admin-banner-button {
+  flex-shrink: 0;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-warning, #f59e0b);
+  color: var(--color-background, #000);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.settings-admin-banner-button:hover {
+  background-color: var(--color-warning-hover, #d97706);
+}
+
+.settings-admin-banner-button:focus {
+  outline: 2px solid var(--color-warning, #f59e0b);
+  outline-offset: 2px;
+}
+
+/* ========================================
    VERIFY RESULTS
    ======================================== */
 
@@ -594,5 +661,14 @@
   .settings-about-links {
     flex-direction: column;
     gap: var(--spacing-sm);
+  }
+
+  .settings-admin-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-admin-banner-button {
+    align-self: flex-start;
   }
 }

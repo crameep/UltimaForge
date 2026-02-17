@@ -116,6 +116,38 @@ function Message({
 }
 
 /**
+ * Admin privilege banner component.
+ * Displays when the application is running without administrator privileges.
+ */
+function AdminBanner({
+  onRelaunchAsAdmin,
+}: {
+  onRelaunchAsAdmin: () => void;
+}) {
+  return (
+    <div className="settings-admin-banner">
+      <div className="settings-admin-banner-content">
+        <span className="settings-admin-banner-icon">{"\u26A0"}</span>
+        <div className="settings-admin-banner-text">
+          <span className="settings-admin-banner-title">
+            Running without administrator privileges
+          </span>
+          <span className="settings-admin-banner-description">
+            Some operations may require elevation to complete successfully.
+          </span>
+        </div>
+      </div>
+      <button
+        className="settings-admin-banner-button"
+        onClick={onRelaunchAsAdmin}
+      >
+        Run as Admin
+      </button>
+    </div>
+  );
+}
+
+/**
  * Main Settings component.
  */
 export function Settings({ onBack }: SettingsProps) {
@@ -174,6 +206,11 @@ export function Settings({ onBack }: SettingsProps) {
             message={state.successMessage}
             onDismiss={actions.clearSuccess}
           />
+        )}
+
+        {/* Admin Privilege Banner */}
+        {!state.isAdmin && (
+          <AdminBanner onRelaunchAsAdmin={actions.relaunchAsAdmin} />
         )}
 
         {/* Installation Info */}
