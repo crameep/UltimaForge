@@ -6,7 +6,7 @@
 //! - Performing full installation
 
 use crate::config::LauncherConfig;
-use crate::installer::{Installer, PathValidationResult};
+use crate::installer::{detect_existing_installation, Installer, PathValidationResult};
 use crate::state::{AppState, AppStatus};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -48,6 +48,8 @@ pub struct InstallResponse {
 /// Checks the current installation status.
 ///
 /// Returns information about whether installation is needed and the current state.
+/// If installation would be needed, attempts to detect an existing installation
+/// at the configured path and auto-configures if found.
 #[tauri::command]
 pub async fn check_install_status(
     state: State<'_, AppState>,
@@ -56,7 +58,7 @@ pub async fn check_install_status(
 
     let launcher_config = state.launcher_config();
 
-    let (install_path, current_version, install_complete) = match launcher_config {
+    let (install_path, mut current_version, mut install_complete) = match launcher_config {
         Some(config) => (
             config.install_path,
             config.current_version,
@@ -65,7 +67,39 @@ pub async fn check_install_status(
         None => (None, None, false),
     };
 
-    let needs_install = install_path.is_none() || !install_complete;
+    let mut needs_install = install_path.is_none() || !install_complete;
+
+    // If installation would be needed but we have a configured path,
+    // try to detect an existing installation at that location
+    if needs_install {
+        if let Some(ref path) = install_path {
+            info!("Attempting to detect existing installation at: {}", path.display());
+            let detection_result = detect_existing_installation(path);
+
+            if detection_result.is_valid_installation() {
+                info!(
+                    "Detected valid installation at {} with {} confidence",
+                    path.display(),
+                    detection_result.confidence
+                );
+
+                // Auto-configure: mark as complete since we detected valid files
+                install_complete = true;
+                needs_install = false;
+
+                // Use detected version if available, otherwise keep existing
+                if let Some(detected_ver) = detection_result.detected_version {
+                    current_version = Some(detected_ver);
+                }
+            } else {
+                info!(
+                    "No valid installation detected at {} (confidence: {})",
+                    path.display(),
+                    detection_result.confidence
+                );
+            }
+        }
+    }
 
     Ok(InstallStatusResponse {
         needs_install,
