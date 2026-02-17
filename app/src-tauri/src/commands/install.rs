@@ -5,14 +5,14 @@
 //! - Validating installation paths
 //! - Performing full installation
 
-use crate::config::LauncherConfig;
+use crate::config::{default_config_path, LauncherConfig};
 use crate::installer::{detect_existing_installation, Installer, PathValidationResult};
 use crate::state::{AppState, AppStatus};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::Emitter;
 use tauri::State;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Response for install status check.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,9 +102,23 @@ pub async fn check_install_status(
                 if let Some(ref ver) = current_version {
                     launcher_config.set_version(ver);
                 }
-                state.set_launcher_config(launcher_config);
+                state.set_launcher_config(launcher_config.clone());
 
-                info!("Saved detected installation configuration");
+                // Save config to disk (Bug fix: was only in-memory before)
+                let brand_config = state.brand_config();
+                let config_path = brand_config
+                    .as_ref()
+                    .map(|b| default_config_path(&b.product.server_name))
+                    .unwrap_or_else(|| default_config_path("UltimaForge"));
+
+                match launcher_config.save(&config_path) {
+                    Ok(()) => {
+                        info!("Saved detected installation configuration to {}", config_path.display());
+                    }
+                    Err(e) => {
+                        warn!("Failed to save detected installation configuration: {}", e);
+                    }
+                }
             } else {
                 info!(
                     "No valid installation detected at {} (confidence: {})",

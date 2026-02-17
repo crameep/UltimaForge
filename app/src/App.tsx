@@ -63,7 +63,8 @@ function App() {
     };
 
     checkInstallation();
-  }, [updateActions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Bug fix: Removed updateActions from deps - should only run once on mount
 
   // Sync update state with app phase
   useEffect(() => {

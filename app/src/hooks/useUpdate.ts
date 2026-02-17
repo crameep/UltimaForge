@@ -5,7 +5,7 @@
  * including update checking, progress tracking, and error handling.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 
 import {
   checkForUpdates,
@@ -234,14 +234,17 @@ export function useUpdate(): [UseUpdateState, UseUpdateActions] {
     wasRolledBack,
   };
 
-  // Assemble actions object
-  const actions: UseUpdateActions = {
-    checkForUpdates: handleCheckForUpdates,
-    startUpdate: handleStartUpdate,
-    dismissUpdate: handleDismissUpdate,
-    retryUpdate: handleRetryUpdate,
-    reset,
-  };
+  // Memoize actions object to prevent unnecessary re-renders (Bug fix)
+  const actions: UseUpdateActions = useMemo(
+    () => ({
+      checkForUpdates: handleCheckForUpdates,
+      startUpdate: handleStartUpdate,
+      dismissUpdate: handleDismissUpdate,
+      retryUpdate: handleRetryUpdate,
+      reset,
+    }),
+    [handleCheckForUpdates, handleStartUpdate, handleDismissUpdate, handleRetryUpdate, reset]
+  );
 
   return [state, actions];
 }
