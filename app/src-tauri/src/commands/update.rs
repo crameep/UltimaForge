@@ -5,12 +5,12 @@
 //! - Starting update process
 //! - Getting update progress
 
-use crate::config::LauncherConfig;
+use crate::config::{default_config_path, LauncherConfig};
 use crate::state::AppState;
 use crate::updater::{UpdateCheckResult, UpdateProgress, Updater};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 use tracing::{error, info, warn};
 
 /// Response for update check.
@@ -101,6 +101,9 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
                 result.download_size,
             );
 
+            // Reset phase appropriately (Ready if no update, UpdateAvailable if update found)
+            state.end_update_check();
+
             Ok(UpdateCheckResponse {
                 update_available: result.update_available,
                 current_version: result.current_version,
@@ -114,7 +117,9 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
         }
         Err(e) => {
             warn!("Update check failed: {}", e);
-            state.clear_current_operation();
+
+            // Reset phase appropriately (clears current operation and sets phase to Ready)
+            state.end_update_check();
 
             // Check if this is an "already up to date" situation
             if e.to_string().contains("already up to date") {
@@ -193,6 +198,10 @@ pub async fn start_update(
     // Perform update
     let result = updater
         .perform_update(move |progress| {
+            // Update state for polling
+            let state = app_handle_clone.state::<AppState>();
+            state.set_update_progress(progress.clone());
+
             // Emit progress events to frontend
             let _ = app_handle_clone.emit("update-progress", progress);
         })
@@ -208,7 +217,23 @@ pub async fn start_update(
             // Update launcher config
             if let Some(mut config) = state.launcher_config() {
                 config.set_version(&new_version);
-                state.set_launcher_config(config);
+                state.set_launcher_config(config.clone());
+
+                // Save config to disk
+                let brand_config = state.brand_config();
+                let config_path = brand_config
+                    .as_ref()
+                    .map(|b| default_config_path(&b.product.server_name))
+                    .unwrap_or_else(|| default_config_path("UltimaForge"));
+
+                match config.save(&config_path) {
+                    Ok(()) => {
+                        info!("Saved updated version to config: {}", config_path.display());
+                    }
+                    Err(e) => {
+                        warn!("Failed to save updated version to config: {}", e);
+                    }
+                }
             }
 
             Ok(UpdateResponse {

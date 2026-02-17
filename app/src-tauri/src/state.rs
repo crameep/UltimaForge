@@ -488,6 +488,22 @@ impl AppState {
         inner.phase = AppPhase::CheckingUpdates;
         inner.current_operation = Some("Checking for updates...".to_string());
     }
+
+    /// Completes an update check and resets phase appropriately.
+    ///
+    /// This should be called after an update check finishes (whether an update
+    /// was found or not). It resets the phase from `CheckingUpdates` to either
+    /// `UpdateAvailable` (if an update is available) or `Ready` (if up to date).
+    pub fn end_update_check(&self) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.current_operation = None;
+        // Transition to appropriate phase based on update availability
+        if inner.update_available {
+            inner.phase = AppPhase::UpdateAvailable;
+        } else {
+            inner.phase = AppPhase::Ready;
+        }
+    }
 }
 
 impl Default for AppState {
@@ -952,6 +968,30 @@ mod tests {
 
         assert_eq!(state.phase(), AppPhase::CheckingUpdates);
         assert_eq!(state.current_operation(), Some("Checking for updates...".to_string()));
+    }
+
+    #[test]
+    fn test_app_state_end_update_check_no_update() {
+        let state = AppState::new();
+        state.begin_update_check();
+
+        state.end_update_check();
+
+        assert_eq!(state.phase(), AppPhase::Ready);
+        assert!(state.current_operation().is_none());
+    }
+
+    #[test]
+    fn test_app_state_end_update_check_with_update() {
+        let state = AppState::new();
+        state.begin_update_check();
+        state.set_update_available(true, Some("2.0.0".to_string()), 5, 1024 * 1024);
+
+        state.end_update_check();
+
+        assert_eq!(state.phase(), AppPhase::UpdateAvailable);
+        assert!(state.current_operation().is_none());
+        assert!(state.update_available());
     }
 
     #[test]

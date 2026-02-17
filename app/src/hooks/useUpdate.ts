@@ -3,9 +3,11 @@
  *
  * Provides state and actions for the UpdateProgress component,
  * including update checking, progress tracking, and error handling.
+ *
+ * Uses React Context to share a single state instance across all consumers.
  */
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, createContext, useContext } from "react";
 
 import {
   checkForUpdates,
@@ -48,7 +50,7 @@ export interface UseUpdateState {
  */
 export interface UseUpdateActions {
   /** Check for available updates */
-  checkForUpdates: () => Promise<UpdateCheckResponse | null>;
+  checkForUpdates: () => Promise<void>;
   /** Start the update process */
   startUpdate: () => Promise<void>;
   /** Dismiss the update notification */
@@ -76,11 +78,17 @@ const initialProgress: UpdateProgress = {
 };
 
 /**
- * Custom hook for managing updates.
+ * Context for sharing update state across components.
+ */
+const UpdateContext = createContext<[UseUpdateState, UseUpdateActions] | null>(null);
+
+/**
+ * Internal hook that manages update state.
+ * This is the implementation that holds the actual state.
  *
  * @returns Tuple of [state, actions] for managing updates.
  */
-export function useUpdate(): [UseUpdateState, UseUpdateActions] {
+function useUpdateInternal(): [UseUpdateState, UseUpdateActions] {
   // Update state
   const [isChecking, setIsChecking] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -126,9 +134,8 @@ export function useUpdate(): [UseUpdateState, UseUpdateActions] {
 
   /**
    * Check for available updates.
-   * @returns The update check response, or null if an error occurred.
    */
-  const handleCheckForUpdates = useCallback(async (): Promise<UpdateCheckResponse | null> => {
+  const handleCheckForUpdates = useCallback(async () => {
     setIsChecking(true);
     setErrorMessage(null);
 
@@ -140,13 +147,10 @@ export function useUpdate(): [UseUpdateState, UseUpdateActions] {
       if (result.error) {
         setErrorMessage(result.error);
       }
-
-      return result;
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to check for updates"
       );
-      return null;
     } finally {
       setIsChecking(false);
     }
@@ -251,6 +255,40 @@ export function useUpdate(): [UseUpdateState, UseUpdateActions] {
   );
 
   return [state, actions];
+}
+
+/**
+ * Props for the UpdateProvider component.
+ */
+interface UpdateProviderProps {
+  children: React.ReactNode;
+}
+
+/**
+ * Provider component that shares update state across all consumers.
+ * Wrap your app with this provider to enable shared update state.
+ *
+ * @param props - Provider props containing children.
+ * @returns Provider component.
+ */
+export function UpdateProvider({ children }: UpdateProviderProps): React.ReactElement {
+  const value = useUpdateInternal();
+  return React.createElement(UpdateContext.Provider, { value }, children);
+}
+
+/**
+ * Consumer hook for accessing shared update state.
+ * Must be used within an UpdateProvider.
+ *
+ * @returns Tuple of [state, actions] for managing updates.
+ * @throws Error if used outside of UpdateProvider.
+ */
+export function useUpdate(): [UseUpdateState, UseUpdateActions] {
+  const context = useContext(UpdateContext);
+  if (!context) {
+    throw new Error("useUpdate must be used within UpdateProvider");
+  }
+  return context;
 }
 
 /**
