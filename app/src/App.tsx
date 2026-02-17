@@ -7,6 +7,7 @@ import { PatchNotes } from "./components/PatchNotes";
 import { Settings } from "./components/Settings";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
+import type { UpdateCheckResponse } from "./lib/types";
 import "./App.css";
 
 type AppPhase =
@@ -111,8 +112,10 @@ function App() {
     // After installation, check for updates
     setPhase("CheckingUpdates");
     setStatusMessage("Checking for updates...");
-    updateActions.checkForUpdates().then(() => {
-      if (!updateState.updateAvailable) {
+    // @ts-expect-error - Result type will be added when useUpdate hook is updated (subtask-2-2)
+    updateActions.checkForUpdates().then((result: UpdateCheckResponse | undefined) => {
+      // Use the returned result directly instead of updateState (which would be stale)
+      if (!result?.update_available) {
         setPhase("Ready");
         setStatusMessage("Installation complete!");
       }
