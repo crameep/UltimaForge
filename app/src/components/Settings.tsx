@@ -63,25 +63,36 @@ function ActionButton({
   description,
   icon,
   disabled,
+  loading,
+  variant,
   onClick,
 }: {
   label: string;
   description: string;
   icon: string;
   disabled?: boolean;
+  loading?: boolean;
+  variant?: "default" | "repairing";
   onClick: () => void;
 }) {
+  const buttonClass = [
+    "settings-action-button",
+    variant === "repairing" ? "repairing" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const iconClass = ["settings-action-icon", loading ? "spinning" : ""]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <button
-      className="settings-action-button"
-      disabled={disabled}
-      onClick={onClick}
-    >
+    <button className={buttonClass} disabled={disabled} onClick={onClick}>
       <div className="settings-action-content">
         <span className="settings-action-label">{label}</span>
         <span className="settings-action-description">{description}</span>
       </div>
-      <span className="settings-action-icon">{icon}</span>
+      <span className={iconClass}>{icon}</span>
     </button>
   );
 }
@@ -116,6 +127,42 @@ function Message({
 }
 
 /**
+ * Admin privilege banner component.
+ * Displays when the application is running without administrator privileges.
+ */
+function AdminBanner({
+  onRelaunchAsAdmin,
+  isElevating,
+}: {
+  onRelaunchAsAdmin: () => void;
+  isElevating?: boolean;
+}) {
+  return (
+    <div className="settings-admin-banner">
+      <div className="settings-admin-banner-content">
+        <span className="settings-admin-banner-icon">{"\u26A0"}</span>
+        <div className="settings-admin-banner-text">
+          <span className="settings-admin-banner-title">
+            Running without administrator privileges
+          </span>
+          <span className="settings-admin-banner-description">
+            File repairs and some maintenance operations may require elevation.
+            Click &quot;Run as Admin&quot; to restart with full permissions.
+          </span>
+        </div>
+      </div>
+      <button
+        className="settings-admin-banner-button"
+        onClick={onRelaunchAsAdmin}
+        disabled={isElevating}
+      >
+        {isElevating ? "Requesting..." : "Run as Admin"}
+      </button>
+    </div>
+  );
+}
+
+/**
  * Main Settings component.
  */
 export function Settings({ onBack }: SettingsProps) {
@@ -142,6 +189,10 @@ export function Settings({ onBack }: SettingsProps) {
         state.verifyProgress.total_files
       )
     : 0;
+
+  // Track if any maintenance operation is running (for mutual exclusion)
+  const isAnyOperationRunning =
+    state.isVerifying || state.isClearing || state.isRepairing;
 
   return (
     <div className="settings">
@@ -173,6 +224,13 @@ export function Settings({ onBack }: SettingsProps) {
             type="success"
             message={state.successMessage}
             onDismiss={actions.clearSuccess}
+          />
+        )}
+
+        {/* Admin Privilege Banner */}
+        {!state.isAdmin && (
+          <AdminBanner
+            onRelaunchAsAdmin={actions.relaunchAsAdmin}
           />
         )}
 
@@ -260,8 +318,9 @@ export function Settings({ onBack }: SettingsProps) {
               label="Verify Installation"
               description="Check all game files for corruption or missing files"
               icon={state.isVerifying ? "\u21BB" : "\u2713"}
+              loading={state.isVerifying}
               disabled={
-                state.isVerifying ||
+                isAnyOperationRunning ||
                 !state.installComplete ||
                 !state.installPath
               }
@@ -272,8 +331,23 @@ export function Settings({ onBack }: SettingsProps) {
               label="Clear Cache"
               description="Remove cached manifests and temporary files"
               icon={state.isClearing ? "\u21BB" : "\u2672"}
-              disabled={state.isClearing}
+              loading={state.isClearing}
+              disabled={isAnyOperationRunning}
               onClick={actions.clearCache}
+            />
+
+            <ActionButton
+              label="Repair Installation"
+              description="Re-download and fix corrupted or damaged game files"
+              icon={state.isRepairing ? "\u21BB" : "\u2699"}
+              loading={state.isRepairing}
+              variant={state.isRepairing ? "repairing" : "default"}
+              disabled={
+                isAnyOperationRunning ||
+                !state.installComplete ||
+                !state.installPath
+              }
+              onClick={actions.repairInstallation}
             />
           </div>
 
@@ -299,7 +373,7 @@ export function Settings({ onBack }: SettingsProps) {
           )}
 
           {/* Verify Result */}
-          {state.verifyResult && !state.isVerifying && (
+          {state.verifyResult && !state.isVerifying && !state.isRepairing && (
             <div className="settings-verify-result">
               <div
                 className={`settings-verify-summary ${
@@ -315,10 +389,22 @@ export function Settings({ onBack }: SettingsProps) {
                 </span>
               </div>
 
+              {/* Success state: All files valid, no repair needed */}
+              {state.verifyResult.success && state.verifyResult.invalid_files.length === 0 && (
+                <div className="settings-verify-success">
+                  <span className="settings-verify-success-text">
+                    Your installation is healthy. No files need repair.
+                  </span>
+                </div>
+              )}
+
+              {/* Failure state: Show files needing repair */}
               {state.verifyResult.invalid_files.length > 0 && (
                 <div className="settings-verify-invalid">
                   <span className="settings-verify-invalid-label">
-                    Files needing repair:
+                    {state.verifyResult.invalid_files.length === 1
+                      ? "1 file needs repair:"
+                      : `${state.verifyResult.invalid_files.length} files need repair:`}
                   </span>
                   <div className="settings-verify-invalid-list">
                     {state.verifyResult.invalid_files.map((file) => (
@@ -327,10 +413,89 @@ export function Settings({ onBack }: SettingsProps) {
                       </span>
                     ))}
                   </div>
+                  <button
+                    className="settings-repair-now-button"
+                    disabled={isAnyOperationRunning || !state.installPath}
+                    onClick={actions.repairInstallation}
+                  >
+                    {state.isRepairing ? "Repairing..." : "Repair Now"}
+                  </button>
+                  {!state.isAdmin && (
+                    <span className="settings-verify-admin-hint">
+                      Note: Repair may require administrator privileges
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Error state: Verification itself failed */}
+              {state.verifyResult.error && (
+                <div className="settings-verify-error">
+                  <span className="settings-verify-error-text">
+                    Verification failed: {state.verifyResult.error}
+                  </span>
                 </div>
               )}
             </div>
           )}
+
+          {/* Repair Progress */}
+          {state.isRepairing && state.verifyProgress && (
+            <div className="settings-progress repair">
+              <div className="settings-progress-header">
+                <span className="settings-progress-label">
+                  Repairing files...
+                </span>
+                <span className="settings-progress-value">
+                  {state.verifyProgress.processed_files} /{" "}
+                  {state.verifyProgress.total_files}
+                </span>
+              </div>
+              <div className="settings-progress-bar">
+                <div
+                  className="settings-progress-fill"
+                  style={{ width: `${verifyPercentage}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* About */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">About</h2>
+
+          <div className="settings-about">
+            <div className="settings-about-header">
+              <span className="settings-about-name">UltimaForge Launcher</span>
+              <span className="settings-about-version">v0.1.0</span>
+            </div>
+            <p className="settings-about-description">
+              A modern game launcher for managing your UltimaForge installation.
+            </p>
+            <div className="settings-about-credits">
+              <span className="settings-about-credits-label">Built by</span>
+              <span className="settings-about-credits-value">UltimaForge Team</span>
+            </div>
+            <div className="settings-about-links">
+              <a
+                href="https://ultimaforge.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="settings-about-link"
+              >
+                Website
+              </a>
+              <a
+                href="https://discord.gg/ultimaforge"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="settings-about-link"
+              >
+                Discord
+              </a>
+            </div>
+          </div>
         </section>
       </div>
     </div>

@@ -316,6 +316,78 @@
 }
 
 /* ========================================
+   ADMIN BANNER
+   ======================================== */
+
+.settings-admin-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-info-light);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-md);
+}
+
+.settings-admin-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.settings-admin-banner-icon {
+  font-size: var(--font-size-lg);
+  color: var(--color-info);
+  line-height: 1;
+}
+
+.settings-admin-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.settings-admin-banner-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.settings-admin-banner-description {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.settings-admin-banner-button {
+  flex-shrink: 0;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-info);
+  color: var(--color-background);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.settings-admin-banner-button:hover {
+  filter: brightness(1.1);
+}
+
+.settings-admin-banner-button:focus {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
+.settings-admin-banner-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
    VERIFY RESULTS
    ======================================== */
 
@@ -377,6 +449,83 @@
   color: var(--color-error);
 }
 
+.settings-repair-now-button {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-error);
+  color: var(--color-background);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  align-self: flex-start;
+}
+
+.settings-repair-now-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.settings-repair-now-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-repair-now-button:focus {
+  outline: 2px solid var(--color-error);
+  outline-offset: 2px;
+}
+
+/* Verify success state (no repair needed) */
+.settings-verify-success {
+  padding: var(--spacing-sm);
+  background-color: var(--color-success-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-success);
+}
+
+.settings-verify-success-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-success);
+}
+
+/* Verify error state (verification itself failed) */
+.settings-verify-error {
+  padding: var(--spacing-sm);
+  background-color: var(--color-error-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-error);
+}
+
+.settings-verify-error-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+}
+
+/* Admin hint for repair section */
+.settings-verify-admin-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: var(--spacing-xs);
+}
+
+/* Spinning icon animation for action buttons */
+.settings-action-icon.spinning {
+  animation: settings-spin 1s linear infinite;
+}
+
+/* Repair-specific action button styling */
+.settings-action-button.repairing {
+  border-color: var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+
+.settings-action-button.repairing .settings-action-icon {
+  color: var(--color-warning);
+}
+
 /* ========================================
    PROGRESS
    ======================================== */
@@ -415,6 +564,15 @@
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
   border-radius: var(--progress-radius);
   transition: width var(--transition-base);
+}
+
+/* Repair progress variant */
+.settings-progress.repair .settings-progress-fill {
+  background: linear-gradient(90deg, var(--color-warning), var(--color-warning-hover, var(--color-warning)));
+}
+
+.settings-progress.repair .settings-progress-label {
+  color: var(--color-warning);
 }
 
 /* ========================================
@@ -484,6 +642,79 @@
 }
 
 /* ========================================
+   ABOUT SECTION
+   ======================================== */
+
+.settings-about {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.settings-about-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.settings-about-name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.settings-about-version {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-hover);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.settings-about-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+}
+
+.settings-about-credits {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.settings-about-credits-label {
+  color: var(--color-text-muted);
+}
+
+.settings-about-credits-value {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.settings-about-links {
+  display: flex;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-about-link {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.settings-about-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+/* ========================================
    RESPONSIVE ADJUSTMENTS
    ======================================== */
 
@@ -510,5 +741,25 @@
 
   .settings-action-icon {
     align-self: flex-end;
+  }
+
+  .settings-about-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+
+  .settings-about-links {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .settings-admin-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-admin-banner-button {
+    align-self: flex-start;
   }
 }
