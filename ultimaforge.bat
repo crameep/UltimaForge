@@ -13,6 +13,7 @@ echo ========================================
 echo.
 echo What would you like to do?
 echo.
+echo  [0] Install Prerequisites (first-time setup)
 echo  [1] Quick Start (Sync + Server + Launcher)
 echo  [2] Sync Branding Only
 echo  [3] Install Dependencies (npm install)
@@ -24,12 +25,13 @@ echo  [8] Clean Everything
 echo  [9] Run All Tests
 echo  [A] Publish New Test Version (for update testing)
 echo  [B] Generate App Icons from Branding
-echo  [0] Exit
+echo  [X] Exit
 echo.
 echo ========================================
 echo.
-set /p choice="Enter your choice (0-9, A): "
+set /p choice="Enter your choice (0-9, A, B, X): "
 
+if /i "%choice%"=="0" goto INSTALL_PREREQS
 if /i "%choice%"=="1" goto QUICK_START
 if /i "%choice%"=="2" goto SYNC_BRANDING
 if /i "%choice%"=="3" goto NPM_INSTALL
@@ -41,10 +43,38 @@ if /i "%choice%"=="8" goto CLEAN
 if /i "%choice%"=="9" goto TEST
 if /i "%choice%"=="A" goto PUBLISH_UPDATE
 if /i "%choice%"=="B" goto GENERATE_ICONS
-if /i "%choice%"=="0" goto END
+if /i "%choice%"=="X" goto END
 
 echo Invalid choice. Please try again.
 timeout /t 2 >nul
+goto MENU
+
+REM ============================================================================
+REM INSTALL PREREQUISITES
+REM ============================================================================
+:INSTALL_PREREQS
+cls
+echo.
+echo ========================================
+echo    Install Prerequisites
+echo ========================================
+echo.
+echo This will install:
+echo   - Rust (via rustup)
+echo   - Node.js LTS
+echo   - Visual Studio Build Tools
+echo   - Tauri CLI
+echo.
+echo Press any key to start installation...
+pause >nul
+
+cd app
+call scripts\setup.bat
+cd ..
+
+echo.
+echo Press any key to return to menu...
+pause >nul
 goto MENU
 
 REM ============================================================================
@@ -64,7 +94,7 @@ if errorlevel 1 goto ERROR_EXIT
 
 echo.
 echo [Step 2/5] Checking npm dependencies...
-if not exist "node_modules" (
+if not exist "app\node_modules" (
     echo npm dependencies not found. Installing...
     call :NPM_INSTALL_FUNCTION
     if errorlevel 1 goto ERROR_EXIT
@@ -74,7 +104,7 @@ if not exist "node_modules" (
 
 echo.
 echo [Step 3/5] Checking test manifest...
-if not exist "test-updates\manifest.json" (
+if not exist "app\test-updates\manifest.json" (
     echo Test manifest not found. Generating...
     call :GEN_MANIFEST_FUNCTION
     if errorlevel 1 goto ERROR_EXIT
@@ -84,14 +114,14 @@ if not exist "test-updates\manifest.json" (
 
 echo.
 echo [Step 4/5] Starting test server in new window...
-start "UltimaForge Server" cmd /k "echo Starting server... && cargo run -p host-server -- --dir ./test-updates --port 8080"
+start "UltimaForge Server" cmd /k "cd app && echo Starting server... && cargo run -p host-server -- --dir ./test-updates --port 8080"
 
 echo Waiting for server to start...
 timeout /t 3 >nul
 
 echo.
 echo [Step 5/5] Starting launcher in new window...
-start "UltimaForge Launcher" cmd /k "echo Starting launcher... && npm run tauri dev"
+start "UltimaForge Launcher" cmd /k "cd app && echo Starting launcher... && npm run tauri dev"
 
 echo.
 echo ========================================
@@ -123,13 +153,13 @@ echo    Syncing Branding Assets
 echo ========================================
 echo.
 
-if not exist "public" mkdir "public"
-if not exist "public\branding" mkdir "public\branding"
+if not exist "app\public" mkdir "app\public"
+if not exist "app\public\branding" mkdir "app\public\branding"
 
 set COPIED=0
 
 if exist "branding\hero-bg.png" (
-    copy /Y "branding\hero-bg.png" "public\branding\hero-bg.png" >nul 2>&1
+    copy /Y "branding\hero-bg.png" "app\public\branding\hero-bg.png" >nul 2>&1
     if !errorlevel! equ 0 (
         echo [OK] hero-bg.png
         set /a COPIED+=1
@@ -137,15 +167,23 @@ if exist "branding\hero-bg.png" (
 )
 
 if exist "branding\sidebar-logo.png" (
-    copy /Y "branding\sidebar-logo.png" "public\branding\sidebar-logo.png" >nul 2>&1
+    copy /Y "branding\sidebar-logo.png" "app\public\branding\sidebar-logo.png" >nul 2>&1
     if !errorlevel! equ 0 (
         echo [OK] sidebar-logo.png
         set /a COPIED+=1
     )
 )
 
+if exist "branding\sidebar-texture.png" (
+    copy /Y "branding\sidebar-texture.png" "app\public\branding\sidebar-texture.png" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo [OK] sidebar-texture.png
+        set /a COPIED+=1
+    )
+)
+
 if exist "branding\brand.json" (
-    copy /Y "branding\brand.json" "public\branding\brand.json" >nul 2>&1
+    copy /Y "branding\brand.json" "app\public\branding\brand.json" >nul 2>&1
     if !errorlevel! equ 0 (
         echo [OK] brand.json
         set /a COPIED+=1
@@ -153,8 +191,8 @@ if exist "branding\brand.json" (
 )
 
 for %%f in (branding\*.png branding\*.jpg) do (
-    if not "%%~nxf"=="hero-bg.png" if not "%%~nxf"=="sidebar-logo.png" (
-        copy /Y "%%f" "public\branding\%%~nxf" >nul 2>&1
+    if not "%%~nxf"=="hero-bg.png" if not "%%~nxf"=="sidebar-logo.png" if not "%%~nxf"=="sidebar-texture.png" (
+        copy /Y "%%f" "app\public\branding\%%~nxf" >nul 2>&1
         if !errorlevel! equ 0 (
             echo [OK] %%~nxf
             set /a COPIED+=1
@@ -163,7 +201,7 @@ for %%f in (branding\*.png branding\*.jpg) do (
 )
 
 echo.
-echo Synced !COPIED! file(s) to public\branding\
+echo Synced !COPIED! file(s) to app\public\branding\
 exit /b 0
 
 REM ============================================================================
@@ -184,8 +222,12 @@ echo    Installing npm Dependencies
 echo ========================================
 echo.
 
+cd app
 call npm install
-if errorlevel 1 (
+set RESULT=%errorlevel%
+cd ..
+
+if %RESULT% neq 0 (
     echo.
     echo ERROR: npm install failed
     exit /b 1
@@ -213,10 +255,14 @@ echo    Generating Test Manifest
 echo ========================================
 echo.
 
-if not exist "test-updates" mkdir "test-updates"
+if not exist "app\test-updates" mkdir "app\test-updates"
 
+cd app
 cargo run -p publish-cli -- publish --source ./test-data/sample-client --output ./test-updates --key ./test-keys/private.key --version 1.0.0
-if errorlevel 1 (
+set RESULT=%errorlevel%
+cd ..
+
+if %RESULT% neq 0 (
     echo.
     echo ERROR: Failed to generate manifest
     exit /b 1
@@ -237,7 +283,7 @@ echo    Starting Test Server
 echo ========================================
 echo.
 
-if not exist "test-updates\manifest.json" (
+if not exist "app\test-updates\manifest.json" (
     echo ERROR: Test manifest not found!
     echo Run option [4] to generate it first.
     echo.
@@ -251,7 +297,9 @@ echo.
 echo Press Ctrl+C to stop the server
 echo.
 
+cd app
 cargo run -p host-server -- --dir ./test-updates --port 8080
+cd ..
 
 echo.
 echo Server stopped.
@@ -271,7 +319,7 @@ echo    Starting Launcher (Dev Mode)
 echo ========================================
 echo.
 
-if not exist "node_modules" (
+if not exist "app\node_modules" (
     echo WARNING: node_modules not found
     echo Installing dependencies first...
     call :NPM_INSTALL_FUNCTION
@@ -285,7 +333,9 @@ echo.
 echo Starting Tauri dev server...
 echo.
 
+cd app
 npm run tauri dev
+cd ..
 
 echo.
 echo Launcher stopped.
@@ -306,8 +356,12 @@ echo ========================================
 echo.
 
 echo [1/5] Syncing branding to config...
+cd app
 node sync-branding-config.js
-if errorlevel 1 (
+set RESULT=%errorlevel%
+cd ..
+
+if %RESULT% neq 0 (
     echo ERROR: Failed to sync branding config
     goto ERROR_EXIT
 )
@@ -318,7 +372,7 @@ call :SYNC_BRANDING_FUNCTION
 
 echo.
 echo [3/5] Installing dependencies...
-if not exist "node_modules" (
+if not exist "app\node_modules" (
     call :NPM_INSTALL_FUNCTION
     if errorlevel 1 goto ERROR_EXIT
 ) else (
@@ -326,9 +380,13 @@ if not exist "node_modules" (
 )
 
 echo.
-echo [4/6] Building frontend...
+echo [4/5] Building frontend...
+cd app
 call npm run build
-if errorlevel 1 (
+set RESULT=%errorlevel%
+cd ..
+
+if %RESULT% neq 0 (
     echo ERROR: Frontend build failed
     goto ERROR_EXIT
 )
@@ -336,8 +394,12 @@ if errorlevel 1 (
 echo.
 echo [5/5] Building Tauri application...
 echo This will take several minutes...
+cd app
 call npm run tauri build
-if errorlevel 1 (
+set RESULT=%errorlevel%
+cd ..
+
+if %RESULT% neq 0 (
     echo ERROR: Tauri build failed
     goto ERROR_EXIT
 )
@@ -348,9 +410,9 @@ echo    Build Complete!
 echo ========================================
 echo.
 echo Your launcher is at:
-echo   src-tauri\target\release\ultimaforge.exe
+echo   app\src-tauri\target\release\ultimaforge.exe
 echo.
-dir /B "src-tauri\target\release\*.exe" 2>nul
+dir /B "app\src-tauri\target\release\*.exe" 2>nul
 echo.
 echo Press any key to return to menu...
 pause >nul
@@ -367,11 +429,11 @@ echo    Clean Build Artifacts
 echo ========================================
 echo.
 echo This will delete:
-echo   - node_modules
-echo   - target
-echo   - dist
-echo   - Cargo.lock
-echo   - package-lock.json
+echo   - app\node_modules
+echo   - app\target
+echo   - app\dist
+echo   - app\Cargo.lock
+echo   - app\package-lock.json
 echo.
 set /p confirm="Are you sure? (y/N): "
 
@@ -386,28 +448,28 @@ if /i not "%confirm%"=="y" (
 echo.
 echo Cleaning...
 
-if exist "node_modules" (
-    echo Removing node_modules...
-    rmdir /S /Q "node_modules" 2>nul
+if exist "app\node_modules" (
+    echo Removing app\node_modules...
+    rmdir /S /Q "app\node_modules" 2>nul
 )
 
-if exist "target" (
-    echo Removing target...
-    rmdir /S /Q "target" 2>nul
+if exist "app\target" (
+    echo Removing app\target...
+    rmdir /S /Q "app\target" 2>nul
 )
 
-if exist "src-tauri\target" (
-    echo Removing src-tauri\target...
-    rmdir /S /Q "src-tauri\target" 2>nul
+if exist "app\src-tauri\target" (
+    echo Removing app\src-tauri\target...
+    rmdir /S /Q "app\src-tauri\target" 2>nul
 )
 
-if exist "dist" (
-    echo Removing dist...
-    rmdir /S /Q "dist" 2>nul
+if exist "app\dist" (
+    echo Removing app\dist...
+    rmdir /S /Q "app\dist" 2>nul
 )
 
-if exist "Cargo.lock" del /Q "Cargo.lock" 2>nul
-if exist "package-lock.json" del /Q "package-lock.json" 2>nul
+if exist "app\Cargo.lock" del /Q "app\Cargo.lock" 2>nul
+if exist "app\package-lock.json" del /Q "app\package-lock.json" 2>nul
 
 echo.
 echo Clean complete!
@@ -442,16 +504,20 @@ echo.
 echo Creating test file changes...
 
 REM Create a timestamp file to simulate a change
-echo Build Date: %DATE% %TIME% > test-data\sample-client\build-info.txt
-echo Version: %new_version% >> test-data\sample-client\build-info.txt
+if not exist "app\test-data\sample-client" mkdir "app\test-data\sample-client"
+echo Build Date: %DATE% %TIME% > app\test-data\sample-client\build-info.txt
+echo Version: %new_version% >> app\test-data\sample-client\build-info.txt
 
 echo.
 echo Publishing version %new_version%...
 echo.
 
+cd app
 cargo run -p publish-cli -- publish --source ./test-data/sample-client --output ./test-updates --key ./test-keys/private.key --version %new_version%
+set RESULT=%errorlevel%
+cd ..
 
-if errorlevel 1 (
+if %RESULT% neq 0 (
     echo.
     echo ERROR: Failed to publish new version
     echo.
@@ -507,16 +573,19 @@ echo Generating app icons from branding\sidebar-logo.png...
 echo.
 
 REM Ensure icons directory exists
-if not exist "src-tauri\icons" mkdir "src-tauri\icons"
+if not exist "app\src-tauri\icons" mkdir "app\src-tauri\icons"
 
 REM Generate PNG icons
-powershell -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Drawing; $source = 'branding/sidebar-logo.png'; $outputDir = 'src-tauri/icons'; $img = [System.Drawing.Image]::FromFile((Resolve-Path $source)); function Resize-Image($size, $filename) { $newImg = New-Object System.Drawing.Bitmap($size, $size); $graphics = [System.Drawing.Graphics]::FromImage($newImg); $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality; $graphics.DrawImage($img, 0, 0, $size, $size); $newImg.Save(\"$outputDir/$filename\", [System.Drawing.Imaging.ImageFormat]::Png); $graphics.Dispose(); $newImg.Dispose(); Write-Host \"Created $filename (${size}x${size})\" }; Resize-Image 32 '32x32.png'; Resize-Image 128 '128x128.png'; Resize-Image 256 '128x128@2x.png'; Resize-Image 256 'icon.png'; $img.Dispose(); Write-Host ''"
+powershell -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Drawing; $source = 'branding/sidebar-logo.png'; $outputDir = 'app/src-tauri/icons'; $img = [System.Drawing.Image]::FromFile((Resolve-Path $source)); function Resize-Image($size, $filename) { $newImg = New-Object System.Drawing.Bitmap($size, $size); $graphics = [System.Drawing.Graphics]::FromImage($newImg); $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality; $graphics.DrawImage($img, 0, 0, $size, $size); $newImg.Save(\"$outputDir/$filename\", [System.Drawing.Imaging.ImageFormat]::Png); $graphics.Dispose(); $newImg.Dispose(); Write-Host \"Created $filename (${size}x${size})\" }; Resize-Image 32 '32x32.png'; Resize-Image 128 '128x128.png'; Resize-Image 256 '128x128@2x.png'; Resize-Image 256 'icon.png'; $img.Dispose(); Write-Host ''"
 
 REM Generate proper multi-resolution .ico file
 echo.
+cd app
 powershell -ExecutionPolicy Bypass -File "generate-ico.ps1"
+set RESULT=%errorlevel%
+cd ..
 
-if errorlevel 1 (
+if %RESULT% neq 0 (
     echo.
     echo ERROR: Failed to generate icons
     echo.
@@ -527,7 +596,9 @@ if errorlevel 1 (
 
 REM Generate installer branding images
 echo.
+cd app
 powershell -ExecutionPolicy Bypass -File "generate-installer-images.ps1"
+cd ..
 
 if errorlevel 1 (
     echo.
@@ -539,14 +610,14 @@ echo ========================================
 echo  Icons Generated Successfully!
 echo ========================================
 echo.
-echo Generated in src-tauri\icons\:
+echo Generated in app\src-tauri\icons\:
 echo   - 32x32.png (taskbar, small icons)
 echo   - 128x128.png (standard size)
 echo   - 128x128@2x.png (retina displays)
 echo   - icon.png (256x256 main icon)
 echo   - icon.ico (Windows multi-resolution)
 echo.
-echo Generated in src-tauri\installer-assets\:
+echo Generated in app\src-tauri\installer-assets\:
 echo   - nsis-header.bmp (installer header)
 echo   - nsis-sidebar.bmp (installer wizard sidebar)
 echo.
@@ -575,11 +646,16 @@ echo ========================================
 echo.
 
 echo Running Rust tests...
+cd app
 cargo test
+set RESULT=%errorlevel%
+cd ..
 
 echo.
 echo Running npm tests...
+cd app
 npm test
+cd ..
 
 echo.
 echo Tests complete!

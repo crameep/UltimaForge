@@ -29,30 +29,24 @@ UltimaForge provides server owners with a professional, turnkey solution for dis
    cd ultimaforge
    ```
 
-2. **Run the setup:**
+2. **Install prerequisites (first-time only):**
    ```bash
    ultimaforge.bat
-   # Select option 3: Install Prerequisites
+   # Select option 0: Install Prerequisites
    ```
 
 3. **Configure your branding:**
    - Edit `branding/brand.json` with your server details
-   - Add your logo to `branding/logo.png`
+   - Add your logo to `branding/sidebar-logo.png`
    - Add background image to `branding/hero-bg.png`
 
-4. **Generate signing keys:**
-   ```bash
-   ultimaforge.bat
-   # Select option 4: Generate Keypair
-   ```
-
-5. **Build your installer:**
+4. **Build your installer:**
    ```bash
    ultimaforge.bat
    # Select option 7: Build Production Installer
    ```
 
-Your branded installer will be in `src-tauri/target/release/bundle/nsis/`
+Your branded installer will be in `app/src-tauri/target/release/bundle/nsis/`
 
 ### For Players
 
@@ -67,8 +61,7 @@ Download and run the installer provided by your server administrator. The launch
 ## 📚 Documentation
 
 - **[Setup Guide](docs/SETUP.md)** - Detailed environment setup and configuration
-- **[Quick Start](QUICKSTART.md)** - Using `ultimaforge.bat` for development
-- **[Branding Guide](branding-template/README.md)** - Customizing your launcher
+- **[Branding Guide](app/branding-template/README.md)** - Customizing your launcher
 - **[Publishing Guide](docs/PUBLISHING.md)** - Hosting updates and generating manifests
 - **[Security Guide](docs/SECURITY.md)** - Understanding the security model
 
@@ -98,19 +91,30 @@ ultimaforge.bat  # Select option 6 for launcher only
 
 ```
 ultimaforge/
-├── src/                  # React frontend (TypeScript)
-├── src-tauri/           # Rust backend (Tauri)
-│   └── src/
-│       ├── commands/    # Tauri IPC commands
-│       ├── installer.rs # Installation logic
-│       ├── updater.rs   # Atomic update system
-│       ├── launcher.rs  # Game process spawning
-│       └── signature.rs # Ed25519 verification
-├── branding/            # Your server branding
-├── public/              # Static assets
-├── docs/                # Documentation
-└── ultimaforge.bat      # Development menu
+├── ultimaforge.bat          # "Run this" - main development tool
+├── README.md                # "Read this" - getting started
+├── branding/                # "Edit YOUR branding here"
+│   ├── brand.json           # Server name, colors, URLs
+│   ├── sidebar-logo.png     # Your server logo
+│   └── hero-bg.png          # Background image
+├── docs/                    # Reference documentation
+└── app/                     # "Don't touch" - all technical internals
+    ├── src/                 # React frontend (TypeScript)
+    ├── src-tauri/           # Rust backend (Tauri)
+    │   └── src/
+    │       ├── commands/    # Tauri IPC commands
+    │       ├── installer.rs # Installation logic
+    │       ├── updater.rs   # Atomic update system
+    │       ├── launcher.rs  # Game process spawning
+    │       └── signature.rs # Ed25519 verification
+    ├── public/              # Static assets
+    ├── scripts/             # Build/setup scripts
+    ├── branding-template/   # Template for new servers
+    ├── package.json         # Node.js config
+    └── Cargo.toml           # Rust config
 ```
+
+**For Server Owners:** You only need to interact with `branding/` and `ultimaforge.bat`. All technical build files are in `app/`.
 
 ---
 

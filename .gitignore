@@ -1,11 +1,11 @@
 # Build Outputs
-/target/
-/dist/
-/src-tauri/target/
-/src-tauri/gen/
+/app/target/
+/app/dist/
+/app/src-tauri/target/
+/app/src-tauri/gen/
 
 # Dependencies
-/node_modules/
+/app/node_modules/
 
 # Lock Files (uncomment if you want to ignore them)
 # Cargo.lock
@@ -51,10 +51,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Test Data (keep structure, ignore generated content)
-/test-updates/*.json
-/test-updates/*.sig
-/test-updates/blobs/
-!/test-updates/.gitkeep
+/app/test-updates/*.json
+/app/test-updates/*.sig
+/app/test-updates/blobs/
+!/app/test-updates/.gitkeep
 
 # Auto Claude (development artifacts)
 .auto-claude/

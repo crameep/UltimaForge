@@ -25,7 +25,8 @@
       "Bash(npm outdated:*)",
       "Bash(cargo tree:*)",
       "Bash(npm uninstall:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(git mv:*)"
     ]
   }
 }
