@@ -15,6 +15,7 @@ import {
   startInstall,
   onVerifyProgress,
   isRunningAsAdmin,
+  relaunchAsAdmin,
 } from "../lib/api";
 
 import type {
@@ -78,6 +79,8 @@ export interface UseSettingsActions {
   clearCache: () => Promise<boolean>;
   /** Check if running with admin privileges */
   checkAdminStatus: () => Promise<void>;
+  /** Relaunch app with admin privileges */
+  relaunchAsAdmin: () => Promise<void>;
   /** Clear error message */
   clearError: () => void;
   /** Clear success message */
@@ -322,6 +325,21 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   }, []);
 
   /**
+   * Relaunch app with admin privileges.
+   */
+  const handleRelaunchAsAdmin = useCallback(async () => {
+    setErrorMessage(null);
+
+    try {
+      await relaunchAsAdmin();
+      // App will exit and relaunch with admin privileges
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to relaunch as admin";
+      setErrorMessage(msg);
+    }
+  }, []);
+
+  /**
    * Clear error message.
    */
   const handleClearError = useCallback(() => {
@@ -388,6 +406,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     repairInstallation: handleRepairInstallation,
     clearCache: handleClearCache,
     checkAdminStatus: handleCheckAdminStatus,
+    relaunchAsAdmin: handleRelaunchAsAdmin,
     clearError: handleClearError,
     clearSuccess: handleClearSuccess,
     reset,
