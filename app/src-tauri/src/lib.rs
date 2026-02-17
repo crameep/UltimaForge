@@ -19,9 +19,8 @@ pub mod updater;
 #[cfg(test)]
 mod security_tests;
 
-use config::BrandConfig;
+use config::{default_config_path, BrandConfig, LauncherConfig};
 use state::AppState;
-use std::path::PathBuf;
 use tauri::Manager;
 use tracing::{error, info, warn};
 use tracing_subscriber;
@@ -65,7 +64,27 @@ pub fn run() {
             let app_state = match load_brand_config() {
                 Some(brand_config) => {
                     info!("Brand config loaded: {}", brand_config.product.display_name);
-                    AppState::with_brand_config(brand_config)
+
+                    // Load launcher configuration from disk
+                    let config_path = default_config_path(&brand_config.product.server_name);
+                    let launcher_config = match LauncherConfig::load(&config_path) {
+                        Ok(config) => {
+                            info!(
+                                "Loaded launcher config from {:?}, install_complete: {}",
+                                config_path, config.install_complete
+                            );
+                            config
+                        }
+                        Err(e) => {
+                            warn!("Failed to load launcher config: {}, using defaults", e);
+                            LauncherConfig::new()
+                        }
+                    };
+
+                    // Create state and initialize with both configs
+                    let state = AppState::new();
+                    state.initialize(brand_config, launcher_config);
+                    state
                 }
                 None => {
                     warn!("Starting without brand configuration - some features may not work");
