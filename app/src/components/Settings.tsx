@@ -332,6 +332,43 @@ export function Settings({ onBack }: SettingsProps) {
             </div>
           )}
         </section>
+
+        {/* About */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">About</h2>
+
+          <div className="settings-about">
+            <div className="settings-about-header">
+              <span className="settings-about-name">UltimaForge Launcher</span>
+              <span className="settings-about-version">v0.1.0</span>
+            </div>
+            <p className="settings-about-description">
+              A modern game launcher for managing your UltimaForge installation.
+            </p>
+            <div className="settings-about-credits">
+              <span className="settings-about-credits-label">Built by</span>
+              <span className="settings-about-credits-value">UltimaForge Team</span>
+            </div>
+            <div className="settings-about-links">
+              <a
+                href="https://ultimaforge.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="settings-about-link"
+              >
+                Website
+              </a>
+              <a
+                href="https://discord.gg/ultimaforge"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="settings-about-link"
+              >
+                Discord
+              </a>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
