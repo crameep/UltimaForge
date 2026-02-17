@@ -95,6 +95,16 @@ pub async fn check_install_status(
                 if let Some(detected_ver) = detection_result.detected_version {
                     current_version = Some(detected_ver);
                 }
+
+                // Persist the detection to LauncherConfig
+                let mut launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+                launcher_config.set_from_detection(path.clone());
+                if let Some(ref ver) = current_version {
+                    launcher_config.set_version(ver);
+                }
+                state.set_launcher_config(launcher_config);
+
+                info!("Saved detected installation configuration");
             } else {
                 info!(
                     "No valid installation detected at {} (confidence: {})",
