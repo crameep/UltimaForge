@@ -1581,4 +1581,273 @@ mod tests {
         let result = installer.validate_install_path(path, 0);
         assert!(!result.is_valid);
     }
+
+    // =============================================================
+    // Detection Function Tests
+    // =============================================================
+
+    #[test]
+    fn test_detection_confidence_display() {
+        assert_eq!(DetectionConfidence::High.to_string(), "High");
+        assert_eq!(DetectionConfidence::Medium.to_string(), "Medium");
+        assert_eq!(DetectionConfidence::Low.to_string(), "Low");
+        assert_eq!(DetectionConfidence::None.to_string(), "None");
+    }
+
+    #[test]
+    fn test_detection_confidence_equality() {
+        assert_eq!(DetectionConfidence::High, DetectionConfidence::High);
+        assert_ne!(DetectionConfidence::High, DetectionConfidence::Low);
+    }
+
+    #[test]
+    fn test_detection_result_not_detected() {
+        let result = DetectionResult::not_detected();
+        assert!(!result.detected);
+        assert!(result.install_path.is_none());
+        assert_eq!(result.confidence, DetectionConfidence::None);
+        assert!(result.detected_version.is_none());
+        assert!(result.found_executables.is_empty());
+        assert!(result.found_data_files.is_empty());
+        assert!(result.missing_files.is_empty());
+    }
+
+    #[test]
+    fn test_detection_result_detected() {
+        let path = PathBuf::from("/test/path");
+        let result = DetectionResult::detected(path.clone(), DetectionConfidence::High);
+        assert!(result.detected);
+        assert_eq!(result.install_path, Some(path));
+        assert_eq!(result.confidence, DetectionConfidence::High);
+    }
+
+    #[test]
+    fn test_detection_result_is_valid_installation() {
+        // High confidence should be valid
+        let high = DetectionResult::detected(PathBuf::from("/test"), DetectionConfidence::High);
+        assert!(high.is_valid_installation());
+
+        // Medium confidence should be valid
+        let medium = DetectionResult::detected(PathBuf::from("/test"), DetectionConfidence::Medium);
+        assert!(medium.is_valid_installation());
+
+        // Low confidence should NOT be valid
+        let low = DetectionResult::detected(PathBuf::from("/test"), DetectionConfidence::Low);
+        assert!(!low.is_valid_installation());
+
+        // Not detected should NOT be valid
+        let none = DetectionResult::not_detected();
+        assert!(!none.is_valid_installation());
+    }
+
+    #[test]
+    fn test_detection_result_default() {
+        let result = DetectionResult::default();
+        assert!(!result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::None);
+    }
+
+    #[test]
+    fn test_detect_existing_installation_nonexistent_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let nonexistent = temp_dir.path().join("does_not_exist");
+
+        let result = detect_existing_installation(&nonexistent);
+        assert!(!result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::None);
+    }
+
+    #[test]
+    fn test_detect_existing_installation_empty_directory() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(!result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::None);
+        assert!(result.found_executables.is_empty());
+        assert!(result.found_data_files.is_empty());
+    }
+
+    #[test]
+    fn test_detect_existing_installation_file_not_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("somefile.txt");
+        fs::write(&file_path, "content").unwrap();
+
+        let result = detect_existing_installation(&file_path);
+        assert!(!result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::None);
+    }
+
+    #[test]
+    fn test_detect_existing_installation_executable_only() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create just an executable
+        fs::write(temp_dir.path().join("client.exe"), "fake exe").unwrap();
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::Low);
+        assert!(result.found_executables.contains(&"client.exe".to_string()));
+        assert!(result.found_data_files.is_empty());
+        assert!(!result.is_valid_installation());
+    }
+
+    #[test]
+    fn test_detect_existing_installation_data_files_only() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create just data files (no executable)
+        for data_file in DETECTION_DATA_FILES {
+            fs::write(temp_dir.path().join(data_file), "fake data").unwrap();
+        }
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::Low);
+        assert!(result.found_executables.is_empty());
+        assert_eq!(result.found_data_files.len(), DETECTION_DATA_FILES.len());
+        assert!(!result.is_valid_installation());
+    }
+
+    #[test]
+    fn test_detect_existing_installation_partial_data_files() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create executable
+        fs::write(temp_dir.path().join("client.exe"), "fake exe").unwrap();
+
+        // Create only 2 data files (below MIN_DATA_FILES_FOR_MEDIUM threshold)
+        fs::write(temp_dir.path().join("art.mul"), "fake data").unwrap();
+        fs::write(temp_dir.path().join("artidx.mul"), "fake data").unwrap();
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        // With only 2 data files (less than MIN_DATA_FILES_FOR_MEDIUM=3), should be Low
+        assert_eq!(result.confidence, DetectionConfidence::Low);
+        assert!(!result.is_valid_installation());
+    }
+
+    #[test]
+    fn test_detect_existing_installation_medium_confidence() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create executable
+        fs::write(temp_dir.path().join("client.exe"), "fake exe").unwrap();
+
+        // Create exactly MIN_DATA_FILES_FOR_MEDIUM data files
+        for i in 0..MIN_DATA_FILES_FOR_MEDIUM {
+            fs::write(temp_dir.path().join(DETECTION_DATA_FILES[i]), "fake data").unwrap();
+        }
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::Medium);
+        assert!(result.is_valid_installation());
+    }
+
+    #[test]
+    fn test_detect_existing_installation_high_confidence() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create executable
+        fs::write(temp_dir.path().join("ClassicUO.exe"), "fake exe").unwrap();
+
+        // Create ALL data files
+        for data_file in DETECTION_DATA_FILES {
+            fs::write(temp_dir.path().join(data_file), "fake data").unwrap();
+        }
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::High);
+        assert!(result.is_valid_installation());
+        assert!(result.found_executables.contains(&"ClassicUO.exe".to_string()));
+        assert_eq!(result.found_data_files.len(), DETECTION_DATA_FILES.len());
+        assert!(result.missing_files.is_empty());
+    }
+
+    #[test]
+    fn test_detect_existing_installation_valid_complete() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create both executables (client.exe and ClassicUO.exe)
+        fs::write(temp_dir.path().join("client.exe"), "fake exe").unwrap();
+        fs::write(temp_dir.path().join("ClassicUO.exe"), "fake exe").unwrap();
+
+        // Create ALL data files
+        for data_file in DETECTION_DATA_FILES {
+            fs::write(temp_dir.path().join(data_file), "fake data").unwrap();
+        }
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::High);
+        assert!(result.is_valid_installation());
+        // On case-insensitive filesystems (Windows), client.exe matches multiple patterns
+        // Just verify we found multiple executables
+        assert!(result.found_executables.len() >= 2);
+    }
+
+    #[test]
+    fn test_detect_existing_installation_install_path_populated() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create minimal installation
+        fs::write(temp_dir.path().join("client.exe"), "fake exe").unwrap();
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.install_path.is_some());
+        assert_eq!(result.install_path.unwrap(), temp_dir.path().to_path_buf());
+    }
+
+    #[test]
+    fn test_detect_existing_installation_missing_files_tracked() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create executable but only one data file
+        fs::write(temp_dir.path().join("client.exe"), "fake exe").unwrap();
+        fs::write(temp_dir.path().join("art.mul"), "fake data").unwrap();
+
+        let result = detect_existing_installation(temp_dir.path());
+        // Should track the missing data files
+        assert!(!result.missing_files.is_empty());
+        // art.mul is present, so all others should be in missing_files
+        assert_eq!(result.missing_files.len(), DETECTION_DATA_FILES.len() - 1);
+        assert!(!result.missing_files.contains(&"art.mul".to_string()));
+    }
+
+    #[test]
+    fn test_detect_existing_installation_case_sensitivity() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Test that both Client.exe and client.exe are detected
+        fs::write(temp_dir.path().join("Client.exe"), "fake exe").unwrap();
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        assert!(result.found_executables.contains(&"Client.exe".to_string()));
+    }
+
+    #[test]
+    fn test_detect_existing_installation_classicuo_executable() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Test ClassicUO executable variations
+        fs::write(temp_dir.path().join("classicuo.exe"), "fake exe").unwrap();
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        assert!(result.found_executables.contains(&"classicuo.exe".to_string()));
+    }
+
+    #[test]
+    fn test_detection_constants() {
+        // Verify that our constants are defined correctly
+        assert!(!DETECTION_EXECUTABLES.is_empty());
+        assert!(!DETECTION_DATA_FILES.is_empty());
+        assert!(MIN_DATA_FILES_FOR_MEDIUM > 0);
+        assert!(MIN_DATA_FILES_FOR_MEDIUM <= DETECTION_DATA_FILES.len());
+    }
 }
