@@ -144,18 +144,18 @@ function App() {
     );
   }
 
-  // Show loading state while initializing
+  // Show loading state while detecting installation
   if (phase === "Initializing") {
     return (
       <Layout
         phase={phase}
-        statusMessage="Checking installation..."
+        statusMessage="Detecting installation..."
         version="v0.1.0"
       >
         <div className="main-content">
           <div className="hero-section">
             <h1 className="hero-title">{brandInfo?.display_name || "UltimaForge"}</h1>
-            <p className="hero-subtitle">Loading...</p>
+            <p className="hero-subtitle">Detecting installation...</p>
           </div>
         </div>
       </Layout>
