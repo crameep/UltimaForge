@@ -33,6 +33,10 @@ export interface UseSettingsState {
   isVerifying: boolean;
   /** Whether cache is being cleared */
   isClearing: boolean;
+  /** Whether repair is in progress */
+  isRepairing: boolean;
+  /** Whether running with admin privileges */
+  isAdmin: boolean;
   /** Current user settings */
   settings: UserSettings | null;
   /** Installation path (read-only) */
@@ -96,6 +100,10 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isRepairing, setIsRepairing] = useState(false);
+
+  // Admin state
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Settings data
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -280,6 +288,8 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     setIsSaving(false);
     setIsVerifying(false);
     setIsClearing(false);
+    setIsRepairing(false);
+    setIsAdmin(false);
     setSettings(null);
     setInstallPath(null);
     setCurrentVersion(null);
@@ -301,6 +311,8 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     isSaving,
     isVerifying,
     isClearing,
+    isRepairing,
+    isAdmin,
     settings,
     installPath,
     currentVersion,
