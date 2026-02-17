@@ -132,8 +132,10 @@ function Message({
  */
 function AdminBanner({
   onRelaunchAsAdmin,
+  isElevating,
 }: {
   onRelaunchAsAdmin: () => void;
+  isElevating?: boolean;
 }) {
   return (
     <div className="settings-admin-banner">
@@ -144,15 +146,17 @@ function AdminBanner({
             Running without administrator privileges
           </span>
           <span className="settings-admin-banner-description">
-            Some operations may require elevation to complete successfully.
+            File repairs and some maintenance operations may require elevation.
+            Click &quot;Run as Admin&quot; to restart with full permissions.
           </span>
         </div>
       </div>
       <button
         className="settings-admin-banner-button"
         onClick={onRelaunchAsAdmin}
+        disabled={isElevating}
       >
-        Run as Admin
+        {isElevating ? "Requesting..." : "Run as Admin"}
       </button>
     </div>
   );
@@ -225,7 +229,9 @@ export function Settings({ onBack }: SettingsProps) {
 
         {/* Admin Privilege Banner */}
         {!state.isAdmin && (
-          <AdminBanner onRelaunchAsAdmin={actions.relaunchAsAdmin} />
+          <AdminBanner
+            onRelaunchAsAdmin={actions.relaunchAsAdmin}
+          />
         )}
 
         {/* Installation Info */}
@@ -383,10 +389,22 @@ export function Settings({ onBack }: SettingsProps) {
                 </span>
               </div>
 
+              {/* Success state: All files valid, no repair needed */}
+              {state.verifyResult.success && state.verifyResult.invalid_files.length === 0 && (
+                <div className="settings-verify-success">
+                  <span className="settings-verify-success-text">
+                    Your installation is healthy. No files need repair.
+                  </span>
+                </div>
+              )}
+
+              {/* Failure state: Show files needing repair */}
               {state.verifyResult.invalid_files.length > 0 && (
                 <div className="settings-verify-invalid">
                   <span className="settings-verify-invalid-label">
-                    Files needing repair:
+                    {state.verifyResult.invalid_files.length === 1
+                      ? "1 file needs repair:"
+                      : `${state.verifyResult.invalid_files.length} files need repair:`}
                   </span>
                   <div className="settings-verify-invalid-list">
                     {state.verifyResult.invalid_files.map((file) => (
@@ -402,6 +420,20 @@ export function Settings({ onBack }: SettingsProps) {
                   >
                     {state.isRepairing ? "Repairing..." : "Repair Now"}
                   </button>
+                  {!state.isAdmin && (
+                    <span className="settings-verify-admin-hint">
+                      Note: Repair may require administrator privileges
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Error state: Verification itself failed */}
+              {state.verifyResult.error && (
+                <div className="settings-verify-error">
+                  <span className="settings-verify-error-text">
+                    Verification failed: {state.verifyResult.error}
+                  </span>
                 </div>
               )}
             </div>

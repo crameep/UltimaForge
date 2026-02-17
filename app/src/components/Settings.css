@@ -382,6 +382,11 @@
   outline-offset: 2px;
 }
 
+.settings-admin-banner-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ========================================
    VERIFY RESULTS
    ======================================== */
@@ -470,6 +475,40 @@
 .settings-repair-now-button:focus {
   outline: 2px solid var(--color-error);
   outline-offset: 2px;
+}
+
+/* Verify success state (no repair needed) */
+.settings-verify-success {
+  padding: var(--spacing-sm);
+  background-color: var(--color-success-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-success);
+}
+
+.settings-verify-success-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-success);
+}
+
+/* Verify error state (verification itself failed) */
+.settings-verify-error {
+  padding: var(--spacing-sm);
+  background-color: var(--color-error-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-error);
+}
+
+.settings-verify-error-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+}
+
+/* Admin hint for repair section */
+.settings-verify-admin-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: var(--spacing-xs);
 }
 
 /* Spinning icon animation for action buttons */

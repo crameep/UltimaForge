@@ -229,12 +229,19 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
       const result = await verifyInstallation();
       setVerifyResult(result);
 
-      if (result.success) {
-        setSuccessMessage(`Verification complete: ${result.valid_files}/${result.total_files} files valid`);
-      } else if (result.error) {
+      if (result.error) {
+        // Verification process itself encountered an error
         setErrorMessage(result.error);
+      } else if (result.success && result.invalid_files.length === 0) {
+        // All files valid, no repair needed
+        setSuccessMessage("All files verified successfully. Your installation is up to date.");
+      } else if (result.invalid_files.length > 0) {
+        // Some files need repair - this is informational, not an error
+        // Don't set errorMessage, let the UI show the repair options
+        setSuccessMessage(null);
       } else {
-        setErrorMessage(`${result.invalid_files.length} files need repair`);
+        // Default case: verification complete
+        setSuccessMessage(`Verification complete: ${result.valid_files}/${result.total_files} files valid`);
       }
 
       return result;
@@ -253,8 +260,14 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
    */
   const handleRepairInstallation = useCallback(async (): Promise<boolean> => {
     if (!installPath) {
-      setErrorMessage("No installation path available");
+      setErrorMessage("No installation path available. Please complete installation first.");
       return false;
+    }
+
+    // Check if there's actually anything to repair
+    if (verifyResult && verifyResult.success && verifyResult.invalid_files.length === 0) {
+      setSuccessMessage("No repair needed. All files are already valid.");
+      return true;
     }
 
     setIsRepairing(true);
@@ -266,23 +279,38 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
       const response = await startInstall(installPath);
 
       if (response.success) {
-        setSuccessMessage("Installation repaired successfully");
+        // Clear the verify result since files have been repaired
+        setVerifyResult(null);
+        setSuccessMessage("Installation repaired successfully. All files are now valid.");
         // Reload settings to get updated state
         await handleLoadSettings();
         return true;
       } else {
-        setErrorMessage(response.error || "Failed to repair installation");
+        // Provide more descriptive error message for repair failures
+        const errorMsg = response.error || "Failed to repair installation";
+        if (errorMsg.toLowerCase().includes("permission") || errorMsg.toLowerCase().includes("access denied")) {
+          setErrorMessage(`Repair failed: ${errorMsg}. Try running as administrator.`);
+        } else if (errorMsg.toLowerCase().includes("network") || errorMsg.toLowerCase().includes("download")) {
+          setErrorMessage(`Repair failed: ${errorMsg}. Check your internet connection and try again.`);
+        } else {
+          setErrorMessage(`Repair failed: ${errorMsg}`);
+        }
         return false;
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to repair installation";
-      setErrorMessage(msg);
+      // Provide context for common error scenarios
+      if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("access denied")) {
+        setErrorMessage(`Repair failed: ${msg}. Try running as administrator.`);
+      } else {
+        setErrorMessage(`Repair failed: ${msg}`);
+      }
       return false;
     } finally {
       setIsRepairing(false);
       setVerifyProgress(null);
     }
-  }, [installPath, handleLoadSettings]);
+  }, [installPath, verifyResult, handleLoadSettings]);
 
   /**
    * Clear cached data.
@@ -329,13 +357,21 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
    */
   const handleRelaunchAsAdmin = useCallback(async () => {
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     try {
       await relaunchAsAdmin();
       // App will exit and relaunch with admin privileges
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to relaunch as admin";
-      setErrorMessage(msg);
+      // Provide more descriptive error messages for elevation failures
+      if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("declined")) {
+        setErrorMessage("Administrator access was declined. Some operations may not work correctly.");
+      } else if (msg.toLowerCase().includes("uac") || msg.toLowerCase().includes("elevation")) {
+        setErrorMessage("Unable to request administrator privileges. Please try running the launcher as administrator manually.");
+      } else {
+        setErrorMessage(`Failed to restart with administrator privileges: ${msg}`);
+      }
     }
   }, []);
 
