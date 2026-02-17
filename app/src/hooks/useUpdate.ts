@@ -48,7 +48,7 @@ export interface UseUpdateState {
  */
 export interface UseUpdateActions {
   /** Check for available updates */
-  checkForUpdates: () => Promise<void>;
+  checkForUpdates: () => Promise<UpdateCheckResponse | null>;
   /** Start the update process */
   startUpdate: () => Promise<void>;
   /** Dismiss the update notification */
@@ -126,8 +126,9 @@ export function useUpdate(): [UseUpdateState, UseUpdateActions] {
 
   /**
    * Check for available updates.
+   * @returns The update check response, or null if an error occurred.
    */
-  const handleCheckForUpdates = useCallback(async () => {
+  const handleCheckForUpdates = useCallback(async (): Promise<UpdateCheckResponse | null> => {
     setIsChecking(true);
     setErrorMessage(null);
 
@@ -139,10 +140,13 @@ export function useUpdate(): [UseUpdateState, UseUpdateActions] {
       if (result.error) {
         setErrorMessage(result.error);
       }
+
+      return result;
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to check for updates"
       );
+      return null;
     } finally {
       setIsChecking(false);
     }
