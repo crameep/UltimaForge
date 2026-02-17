@@ -472,6 +472,21 @@
   outline-offset: 2px;
 }
 
+/* Spinning icon animation for action buttons */
+.settings-action-icon.spinning {
+  animation: settings-spin 1s linear infinite;
+}
+
+/* Repair-specific action button styling */
+.settings-action-button.repairing {
+  border-color: var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+
+.settings-action-button.repairing .settings-action-icon {
+  color: var(--color-warning);
+}
+
 /* ========================================
    PROGRESS
    ======================================== */
@@ -510,6 +525,15 @@
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
   border-radius: var(--progress-radius);
   transition: width var(--transition-base);
+}
+
+/* Repair progress variant */
+.settings-progress.repair .settings-progress-fill {
+  background: linear-gradient(90deg, var(--color-warning), var(--color-warning-hover, var(--color-warning)));
+}
+
+.settings-progress.repair .settings-progress-label {
+  color: var(--color-warning);
 }
 
 /* ========================================

@@ -63,25 +63,36 @@ function ActionButton({
   description,
   icon,
   disabled,
+  loading,
+  variant,
   onClick,
 }: {
   label: string;
   description: string;
   icon: string;
   disabled?: boolean;
+  loading?: boolean;
+  variant?: "default" | "repairing";
   onClick: () => void;
 }) {
+  const buttonClass = [
+    "settings-action-button",
+    variant === "repairing" ? "repairing" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const iconClass = ["settings-action-icon", loading ? "spinning" : ""]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <button
-      className="settings-action-button"
-      disabled={disabled}
-      onClick={onClick}
-    >
+    <button className={buttonClass} disabled={disabled} onClick={onClick}>
       <div className="settings-action-content">
         <span className="settings-action-label">{label}</span>
         <span className="settings-action-description">{description}</span>
       </div>
-      <span className="settings-action-icon">{icon}</span>
+      <span className={iconClass}>{icon}</span>
     </button>
   );
 }
@@ -297,6 +308,7 @@ export function Settings({ onBack }: SettingsProps) {
               label="Verify Installation"
               description="Check all game files for corruption or missing files"
               icon={state.isVerifying ? "\u21BB" : "\u2713"}
+              loading={state.isVerifying}
               disabled={
                 state.isVerifying ||
                 !state.installComplete ||
@@ -309,6 +321,7 @@ export function Settings({ onBack }: SettingsProps) {
               label="Clear Cache"
               description="Remove cached manifests and temporary files"
               icon={state.isClearing ? "\u21BB" : "\u2672"}
+              loading={state.isClearing}
               disabled={state.isClearing}
               onClick={actions.clearCache}
             />
@@ -317,6 +330,8 @@ export function Settings({ onBack }: SettingsProps) {
               label="Repair Installation"
               description="Re-download and fix corrupted or damaged game files"
               icon={state.isRepairing ? "\u21BB" : "\u2699"}
+              loading={state.isRepairing}
+              variant={state.isRepairing ? "repairing" : "default"}
               disabled={
                 state.isRepairing ||
                 state.isVerifying ||
@@ -391,7 +406,7 @@ export function Settings({ onBack }: SettingsProps) {
 
           {/* Repair Progress */}
           {state.isRepairing && state.verifyProgress && (
-            <div className="settings-progress">
+            <div className="settings-progress repair">
               <div className="settings-progress-header">
                 <span className="settings-progress-label">
                   Repairing files...
