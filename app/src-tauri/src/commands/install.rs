@@ -228,7 +228,19 @@ pub async fn start_install(
             // Update launcher config
             let mut launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
             launcher_config.set_installed(install_path, &version);
-            state.set_launcher_config(launcher_config);
+            state.set_launcher_config(launcher_config.clone());
+
+            // Save config to disk (Bug fix: was only in-memory before)
+            let config_path = default_config_path(&brand_config.product.server_name);
+
+            match launcher_config.save(&config_path) {
+                Ok(()) => {
+                    info!("Saved installation configuration to {}", config_path.display());
+                }
+                Err(e) => {
+                    warn!("Failed to save installation configuration: {}", e);
+                }
+            }
 
             Ok(InstallResponse {
                 success: true,
