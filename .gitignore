@@ -1,4 +1,5 @@
 # Build Outputs
+/target/
 /app/target/
 /app/dist/
 /app/src-tauri/target/

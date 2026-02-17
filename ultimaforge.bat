@@ -114,7 +114,7 @@ if not exist "app\test-updates\manifest.json" (
 
 echo.
 echo [Step 4/5] Starting test server in new window...
-start "UltimaForge Server" cmd /k "cd app && echo Starting server... && cargo run -p host-server -- --dir ./test-updates --port 8080"
+start "UltimaForge Server" cmd /k "echo Starting server... && cargo run -p host-server -- --dir ./app/test-updates --port 8080"
 
 echo Waiting for server to start...
 timeout /t 3 >nul
@@ -257,10 +257,8 @@ echo.
 
 if not exist "app\test-updates" mkdir "app\test-updates"
 
-cd app
-cargo run -p publish-cli -- publish --source ./test-data/sample-client --output ./test-updates --key ./test-keys/private.key --version 1.0.0
+cargo run -p publish-cli -- publish --source ./app/test-data/sample-client --output ./app/test-updates --key ./app/test-keys/private.key --version 1.0.0
 set RESULT=%errorlevel%
-cd ..
 
 if %RESULT% neq 0 (
     echo.
@@ -297,9 +295,7 @@ echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-cd app
-cargo run -p host-server -- --dir ./test-updates --port 8080
-cd ..
+cargo run -p host-server -- --dir ./app/test-updates --port 8080
 
 echo.
 echo Server stopped.
@@ -512,10 +508,8 @@ echo.
 echo Publishing version %new_version%...
 echo.
 
-cd app
-cargo run -p publish-cli -- publish --source ./test-data/sample-client --output ./test-updates --key ./test-keys/private.key --version %new_version%
+cargo run -p publish-cli -- publish --source ./app/test-data/sample-client --output ./app/test-updates --key ./app/test-keys/private.key --version %new_version%
 set RESULT=%errorlevel%
-cd ..
 
 if %RESULT% neq 0 (
     echo.
@@ -646,10 +640,7 @@ echo ========================================
 echo.
 
 echo Running Rust tests...
-cd app
 cargo test
-set RESULT=%errorlevel%
-cd ..
 
 echo.
 echo Running npm tests...

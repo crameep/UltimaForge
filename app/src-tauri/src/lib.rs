@@ -32,7 +32,7 @@ use tracing_subscriber;
 /// making the launcher completely self-contained with no external dependencies.
 fn load_brand_config() -> Option<BrandConfig> {
     // Embed the brand.json file at compile time
-    const BRAND_JSON: &str = include_str!("../../branding/brand.json");
+    const BRAND_JSON: &str = include_str!("../../../branding/brand.json");
 
     match serde_json::from_str::<BrandConfig>(BRAND_JSON) {
         Ok(config) => {
