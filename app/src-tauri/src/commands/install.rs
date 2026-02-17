@@ -6,7 +6,7 @@
 //! - Performing full installation
 
 use crate::config::LauncherConfig;
-use crate::installer::{Installer, PathValidationResult};
+use crate::installer::{detect_existing_installation, Installer, PathValidationResult};
 use crate::state::{AppState, AppStatus};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -25,6 +25,8 @@ pub struct InstallStatusResponse {
     pub current_version: Option<String>,
     /// Whether installation is complete.
     pub install_complete: bool,
+    /// Whether the installation was auto-detected (vs explicitly installed).
+    pub was_detected: bool,
 }
 
 /// Request for starting installation.
@@ -48,6 +50,8 @@ pub struct InstallResponse {
 /// Checks the current installation status.
 ///
 /// Returns information about whether installation is needed and the current state.
+/// If installation would be needed, attempts to detect an existing installation
+/// at the configured path and auto-configures if found.
 #[tauri::command]
 pub async fn check_install_status(
     state: State<'_, AppState>,
@@ -56,7 +60,7 @@ pub async fn check_install_status(
 
     let launcher_config = state.launcher_config();
 
-    let (install_path, current_version, install_complete) = match launcher_config {
+    let (install_path, mut current_version, mut install_complete) = match launcher_config {
         Some(config) => (
             config.install_path,
             config.current_version,
@@ -65,13 +69,58 @@ pub async fn check_install_status(
         None => (None, None, false),
     };
 
-    let needs_install = install_path.is_none() || !install_complete;
+    let mut needs_install = install_path.is_none() || !install_complete;
+    let mut was_detected = false;
+
+    // If installation would be needed but we have a configured path,
+    // try to detect an existing installation at that location
+    if needs_install {
+        if let Some(ref path) = install_path {
+            info!("Attempting to detect existing installation at: {}", path.display());
+            let detection_result = detect_existing_installation(path);
+
+            if detection_result.is_valid_installation() {
+                info!(
+                    "Detected valid installation at {} with {} confidence",
+                    path.display(),
+                    detection_result.confidence
+                );
+
+                // Auto-configure: mark as complete since we detected valid files
+                install_complete = true;
+                needs_install = false;
+                was_detected = true;
+
+                // Use detected version if available, otherwise keep existing
+                if let Some(detected_ver) = detection_result.detected_version {
+                    current_version = Some(detected_ver);
+                }
+
+                // Persist the detection to LauncherConfig
+                let mut launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+                launcher_config.set_from_detection(path.clone());
+                if let Some(ref ver) = current_version {
+                    launcher_config.set_version(ver);
+                }
+                state.set_launcher_config(launcher_config);
+
+                info!("Saved detected installation configuration");
+            } else {
+                info!(
+                    "No valid installation detected at {} (confidence: {})",
+                    path.display(),
+                    detection_result.confidence
+                );
+            }
+        }
+    }
 
     Ok(InstallStatusResponse {
         needs_install,
         install_path,
         current_version,
         install_complete,
+        was_detected,
     })
 }
 
@@ -206,11 +255,13 @@ mod tests {
             install_path: Some(PathBuf::from("/game")),
             current_version: Some("1.0.0".to_string()),
             install_complete: false,
+            was_detected: false,
         };
 
         let json = serde_json::to_string(&response).expect("Should serialize");
         assert!(json.contains("needs_install"));
         assert!(json.contains("install_path"));
+        assert!(json.contains("was_detected"));
     }
 
     #[test]

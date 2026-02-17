@@ -19,9 +19,8 @@ pub mod updater;
 #[cfg(test)]
 mod security_tests;
 
-use config::BrandConfig;
+use config::{default_config_path, BrandConfig, LauncherConfig};
 use state::AppState;
-use std::path::PathBuf;
 use tauri::Manager;
 use tracing::{error, info, warn};
 use tracing_subscriber;
@@ -65,7 +64,27 @@ pub fn run() {
             let app_state = match load_brand_config() {
                 Some(brand_config) => {
                     info!("Brand config loaded: {}", brand_config.product.display_name);
-                    AppState::with_brand_config(brand_config)
+
+                    // Load launcher configuration from disk
+                    let config_path = default_config_path(&brand_config.product.server_name);
+                    let launcher_config = match LauncherConfig::load(&config_path) {
+                        Ok(config) => {
+                            info!(
+                                "Loaded launcher config from {:?}, install_complete: {}",
+                                config_path, config.install_complete
+                            );
+                            config
+                        }
+                        Err(e) => {
+                            warn!("Failed to load launcher config: {}, using defaults", e);
+                            LauncherConfig::new()
+                        }
+                    };
+
+                    // Create state and initialize with both configs
+                    let state = AppState::new();
+                    state.initialize(brand_config, launcher_config);
+                    state
                 }
                 None => {
                     warn!("Starting without brand configuration - some features may not work");
@@ -114,4 +133,152 @@ pub fn run() {
     app_result
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// ============================================
+// UNIT TESTS FOR CONFIG LOADING AT STARTUP
+// ============================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use config::{BrandConfig, LauncherConfig};
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    /// Test that the embedded brand.json can be parsed at startup.
+    ///
+    /// This verifies the config loading that occurs in lib.rs::load_brand_config().
+    /// The brand.json is embedded at compile time, so we test parsing it directly.
+    #[test]
+    fn test_config_loading() {
+        // Test 1: Embedded brand.json should parse successfully
+        const BRAND_JSON: &str = include_str!("../../../branding/brand.json");
+
+        let brand_config = serde_json::from_str::<BrandConfig>(BRAND_JSON)
+            .expect("Embedded brand.json should be valid JSON");
+
+        // Verify required fields are present and valid
+        assert!(
+            !brand_config.product.display_name.is_empty(),
+            "Brand config should have a display name"
+        );
+        assert!(
+            !brand_config.product.server_name.is_empty(),
+            "Brand config should have a server name"
+        );
+        assert!(
+            !brand_config.update_url.is_empty(),
+            "Brand config should have an update URL"
+        );
+        assert!(
+            !brand_config.public_key.is_empty(),
+            "Brand config should have a public key"
+        );
+
+        // Verify the config passes validation
+        brand_config
+            .validate()
+            .expect("Brand config should pass validation");
+
+        // Test 2: LauncherConfig defaults should be valid at startup
+        let launcher_config = LauncherConfig::new();
+        assert!(
+            launcher_config.is_first_run(),
+            "New launcher config should indicate first run"
+        );
+        assert!(
+            launcher_config.install_path.is_none(),
+            "New launcher config should have no install path"
+        );
+        assert!(
+            !launcher_config.install_complete,
+            "New launcher config should not be marked as complete"
+        );
+
+        // Test 3: LauncherConfig should load defaults for non-existent file
+        let nonexistent_path = PathBuf::from("/nonexistent/path/launcher.json");
+        let loaded_config = LauncherConfig::load(&nonexistent_path)
+            .expect("Loading from nonexistent path should return defaults");
+        assert!(
+            loaded_config.is_first_run(),
+            "Loaded config from nonexistent file should be first run"
+        );
+
+        // Test 4: Config path generation should work
+        let config_path = default_config_path(&brand_config.product.server_name);
+        assert!(
+            config_path.to_string_lossy().contains(&brand_config.product.server_name),
+            "Config path should contain server name"
+        );
+        assert!(
+            config_path.to_string_lossy().ends_with("launcher.json"),
+            "Config path should end with launcher.json"
+        );
+    }
+
+    /// Test that LauncherConfig can be saved and loaded correctly.
+    #[test]
+    fn test_config_loading_save_load_roundtrip() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let config_path = temp_dir.path().join("test_launcher.json");
+
+        // Create a config with some values set
+        let mut original_config = LauncherConfig::new();
+        original_config.install_path = Some(PathBuf::from("/test/install/path"));
+        original_config.current_version = Some("1.0.0".to_string());
+        original_config.install_complete = true;
+
+        // Save the config
+        original_config
+            .save(&config_path)
+            .expect("Should save config successfully");
+
+        // Load the config
+        let loaded_config = LauncherConfig::load(&config_path)
+            .expect("Should load config successfully");
+
+        // Verify roundtrip
+        assert_eq!(
+            loaded_config.install_path,
+            Some(PathBuf::from("/test/install/path")),
+            "Install path should match after roundtrip"
+        );
+        assert_eq!(
+            loaded_config.current_version,
+            Some("1.0.0".to_string()),
+            "Current version should match after roundtrip"
+        );
+        assert!(
+            loaded_config.install_complete,
+            "Install complete should be true after roundtrip"
+        );
+        assert!(
+            !loaded_config.is_first_run(),
+            "Should not be first run after setting install_complete"
+        );
+    }
+
+    /// Test that the load_brand_config function works correctly.
+    #[test]
+    fn test_config_loading_brand_function() {
+        // Call the actual load_brand_config function
+        let brand_config = load_brand_config()
+            .expect("load_brand_config should return a valid config");
+
+        // Verify the loaded config has expected structure
+        assert!(
+            !brand_config.product.display_name.is_empty(),
+            "Loaded brand config should have display name"
+        );
+        assert!(
+            brand_config.update_url.starts_with("http"),
+            "Update URL should be a valid HTTP(S) URL"
+        );
+        assert_eq!(
+            brand_config.public_key.len(),
+            64,
+            "Public key should be 64 hex characters"
+        );
+    }
 }

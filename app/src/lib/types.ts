@@ -110,6 +110,8 @@ export interface InstallStatusResponse {
   current_version: string | null;
   /** Whether installation is complete */
   install_complete: boolean;
+  /** Whether the installation was auto-detected */
+  was_detected: boolean;
 }
 
 /**

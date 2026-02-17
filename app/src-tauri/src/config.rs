@@ -502,6 +502,31 @@ impl LauncherConfig {
         self.install_complete = true;
     }
 
+    /// Sets the install path from a detected installation.
+    ///
+    /// This method is used when auto-detection finds an existing installation.
+    /// Unlike `set_installed`, this does not set the version since the version
+    /// will be determined later from the manifest during update checking.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The detected installation path
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let mut config = LauncherConfig::new();
+    /// config.set_from_detection(PathBuf::from("/game/uo"));
+    /// assert!(config.install_complete);
+    /// assert!(config.install_path.is_some());
+    /// assert!(config.current_version.is_none()); // Version will be fetched from manifest
+    /// ```
+    pub fn set_from_detection(&mut self, path: PathBuf) {
+        self.install_path = Some(path);
+        self.install_complete = true;
+        // current_version remains None - will be fetched from manifest during update check
+    }
+
     /// Updates the current version after a successful update.
     pub fn set_version(&mut self, version: &str) {
         self.current_version = Some(version.to_string());
@@ -970,6 +995,52 @@ mod tests {
 
         assert_eq!(config.install_path, Some(PathBuf::from("/game/uo")));
         assert_eq!(config.current_version, Some("1.0.0".to_string()));
+        assert!(config.install_complete);
+    }
+
+    #[test]
+    fn test_launcher_config_set_from_detection() {
+        let mut config = LauncherConfig::new();
+
+        // Initially should be first run
+        assert!(config.is_first_run());
+        assert!(config.install_path.is_none());
+        assert!(config.current_version.is_none());
+        assert!(!config.install_complete);
+
+        // Set from detection
+        config.set_from_detection(PathBuf::from("/detected/uo"));
+
+        // Should have install_path set and install_complete = true
+        assert_eq!(config.install_path, Some(PathBuf::from("/detected/uo")));
+        assert!(config.install_complete);
+
+        // Version should remain None (to be fetched from manifest later)
+        assert!(config.current_version.is_none());
+
+        // Should no longer be first run
+        assert!(!config.is_first_run());
+    }
+
+    #[test]
+    fn test_launcher_config_set_from_detection_preserves_other_settings() {
+        let mut config = LauncherConfig::new();
+
+        // Set some custom settings
+        config.auto_launch = true;
+        config.close_on_launch = false;
+        config.check_updates_on_startup = false;
+
+        // Set from detection
+        config.set_from_detection(PathBuf::from("/game/uo"));
+
+        // Custom settings should be preserved
+        assert!(config.auto_launch);
+        assert!(!config.close_on_launch);
+        assert!(!config.check_updates_on_startup);
+
+        // Detection fields should be set
+        assert_eq!(config.install_path, Some(PathBuf::from("/game/uo")));
         assert!(config.install_complete);
     }
 
