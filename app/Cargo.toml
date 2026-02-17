@@ -2,6 +2,8 @@
 resolver = "2"
 members = [
     "src-tauri",
+    "tools/host-server",
+    "tools/publish-cli",
 ]
 
 [workspace.package]

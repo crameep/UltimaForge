@@ -3,6 +3,7 @@
 /app/dist/
 /app/src-tauri/target/
 /app/src-tauri/gen/
+/app/tools/*/target/
 
 # Dependencies
 /app/node_modules/
