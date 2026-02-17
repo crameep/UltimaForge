@@ -484,6 +484,79 @@
 }
 
 /* ========================================
+   ABOUT SECTION
+   ======================================== */
+
+.settings-about {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.settings-about-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.settings-about-name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.settings-about-version {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-hover);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.settings-about-description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+}
+
+.settings-about-credits {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.settings-about-credits-label {
+  color: var(--color-text-muted);
+}
+
+.settings-about-credits-value {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.settings-about-links {
+  display: flex;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-about-link {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.settings-about-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+/* ========================================
    RESPONSIVE ADJUSTMENTS
    ======================================== */
 
@@ -510,5 +583,16 @@
 
   .settings-action-icon {
     align-self: flex-end;
+  }
+
+  .settings-about-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+
+  .settings-about-links {
+    flex-direction: column;
+    gap: var(--spacing-sm);
   }
 }
