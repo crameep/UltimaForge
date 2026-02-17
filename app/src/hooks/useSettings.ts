@@ -12,6 +12,7 @@ import {
   saveSettings,
   verifyInstallation,
   clearCache,
+  startInstall,
   onVerifyProgress,
 } from "../lib/api";
 
@@ -70,6 +71,8 @@ export interface UseSettingsActions {
   saveSettings: () => Promise<boolean>;
   /** Verify installation integrity */
   verifyInstallation: () => Promise<VerifyResponse | null>;
+  /** Repair damaged installation files */
+  repairInstallation: () => Promise<boolean>;
   /** Clear cached data */
   clearCache: () => Promise<boolean>;
   /** Clear error message */
@@ -240,6 +243,42 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   }, []);
 
   /**
+   * Repair damaged installation files.
+   */
+  const handleRepairInstallation = useCallback(async (): Promise<boolean> => {
+    if (!installPath) {
+      setErrorMessage("No installation path available");
+      return false;
+    }
+
+    setIsRepairing(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setVerifyProgress(null);
+
+    try {
+      const response = await startInstall(installPath);
+
+      if (response.success) {
+        setSuccessMessage("Installation repaired successfully");
+        // Reload settings to get updated state
+        await handleLoadSettings();
+        return true;
+      } else {
+        setErrorMessage(response.error || "Failed to repair installation");
+        return false;
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to repair installation";
+      setErrorMessage(msg);
+      return false;
+    } finally {
+      setIsRepairing(false);
+      setVerifyProgress(null);
+    }
+  }, [installPath, handleLoadSettings]);
+
+  /**
    * Clear cached data.
    */
   const handleClearCache = useCallback(async (): Promise<boolean> => {
@@ -329,6 +368,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     updateSetting: handleUpdateSetting,
     saveSettings: handleSaveSettings,
     verifyInstallation: handleVerifyInstallation,
+    repairInstallation: handleRepairInstallation,
     clearCache: handleClearCache,
     clearError: handleClearError,
     clearSuccess: handleClearSuccess,
