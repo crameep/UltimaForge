@@ -377,6 +377,13 @@ export function Settings({ onBack }: SettingsProps) {
                       </span>
                     ))}
                   </div>
+                  <button
+                    className="settings-repair-now-button"
+                    disabled={state.isRepairing || !state.installPath}
+                    onClick={actions.repairInstallation}
+                  >
+                    {state.isRepairing ? "Repairing..." : "Repair Now"}
+                  </button>
                 </div>
               )}
             </div>
