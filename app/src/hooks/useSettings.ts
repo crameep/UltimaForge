@@ -14,6 +14,7 @@ import {
   clearCache,
   startInstall,
   onVerifyProgress,
+  isRunningAsAdmin,
 } from "../lib/api";
 
 import type {
@@ -75,6 +76,8 @@ export interface UseSettingsActions {
   repairInstallation: () => Promise<boolean>;
   /** Clear cached data */
   clearCache: () => Promise<boolean>;
+  /** Check if running with admin privileges */
+  checkAdminStatus: () => Promise<void>;
   /** Clear error message */
   clearError: () => void;
   /** Clear success message */
@@ -306,6 +309,19 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   }, []);
 
   /**
+   * Check if running with admin privileges.
+   */
+  const handleCheckAdminStatus = useCallback(async () => {
+    try {
+      const admin = await isRunningAsAdmin();
+      setIsAdmin(admin);
+    } catch {
+      // Default to false on error
+      setIsAdmin(false);
+    }
+  }, []);
+
+  /**
    * Clear error message.
    */
   const handleClearError = useCallback(() => {
@@ -339,10 +355,11 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     setVerifyProgress(null);
   }, []);
 
-  // Load settings on mount
+  // Load settings and check admin status on mount
   useEffect(() => {
     handleLoadSettings();
-  }, [handleLoadSettings]);
+    handleCheckAdminStatus();
+  }, [handleLoadSettings, handleCheckAdminStatus]);
 
   // Assemble state object
   const state: UseSettingsState = {
@@ -370,6 +387,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     verifyInstallation: handleVerifyInstallation,
     repairInstallation: handleRepairInstallation,
     clearCache: handleClearCache,
+    checkAdminStatus: handleCheckAdminStatus,
     clearError: handleClearError,
     clearSuccess: handleClearSuccess,
     reset,
