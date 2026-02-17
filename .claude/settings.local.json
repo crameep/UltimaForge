@@ -32,7 +32,8 @@
       "Bash(copy:*)",
       "Bash(git ls-tree:*)",
       "Bash(git checkout:*)",
-      "Bash(cargo metadata:*)"
+      "Bash(cargo metadata:*)",
+      "Bash(cargo clean:*)"
     ]
   }
 }
