@@ -1033,6 +1033,220 @@ impl Installer {
 /// Result type for installer operations.
 pub type InstallResult<T> = Result<T, InstallError>;
 
+/// Confidence level for installation detection.
+///
+/// Indicates how confident we are that a detected path contains a valid UO installation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DetectionConfidence {
+    /// All expected files present (executable + all data files).
+    High,
+    /// Executable present with some data files.
+    Medium,
+    /// Only some files present (partial installation).
+    Low,
+    /// No installation detected.
+    None,
+}
+
+impl std::fmt::Display for DetectionConfidence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::High => write!(f, "High"),
+            Self::Medium => write!(f, "Medium"),
+            Self::Low => write!(f, "Low"),
+            Self::None => write!(f, "None"),
+        }
+    }
+}
+
+/// Result of detecting an existing installation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DetectionResult {
+    /// Whether an installation was detected.
+    pub detected: bool,
+    /// Path where installation was detected (if any).
+    pub install_path: Option<PathBuf>,
+    /// Confidence level of the detection.
+    pub confidence: DetectionConfidence,
+    /// Detected version (if determinable from files).
+    pub detected_version: Option<String>,
+    /// List of found executables.
+    pub found_executables: Vec<String>,
+    /// List of found data files.
+    pub found_data_files: Vec<String>,
+    /// List of missing expected files.
+    pub missing_files: Vec<String>,
+}
+
+impl DetectionResult {
+    /// Creates a new empty detection result (no installation detected).
+    pub fn not_detected() -> Self {
+        Self {
+            detected: false,
+            install_path: None,
+            confidence: DetectionConfidence::None,
+            detected_version: None,
+            found_executables: Vec::new(),
+            found_data_files: Vec::new(),
+            missing_files: Vec::new(),
+        }
+    }
+
+    /// Creates a detection result for a found installation.
+    pub fn detected(path: PathBuf, confidence: DetectionConfidence) -> Self {
+        Self {
+            detected: true,
+            install_path: Some(path),
+            confidence,
+            detected_version: None,
+            found_executables: Vec::new(),
+            found_data_files: Vec::new(),
+            missing_files: Vec::new(),
+        }
+    }
+
+    /// Returns true if a valid installation was detected with at least medium confidence.
+    pub fn is_valid_installation(&self) -> bool {
+        self.detected && matches!(self.confidence, DetectionConfidence::High | DetectionConfidence::Medium)
+    }
+}
+
+impl Default for DetectionResult {
+    fn default() -> Self {
+        Self::not_detected()
+    }
+}
+
+/// Known UO client executable names to search for.
+const DETECTION_EXECUTABLES: &[&str] = &[
+    "client.exe",
+    "Client.exe",
+    "ClassicUO.exe",
+    "classicuo.exe",
+];
+
+/// Required UO data files that indicate a valid installation.
+const DETECTION_DATA_FILES: &[&str] = &[
+    "art.mul",
+    "artidx.mul",
+    "map0.mul",
+    "staidx0.mul",
+    "statics0.mul",
+];
+
+/// Minimum number of data files required for medium confidence.
+const MIN_DATA_FILES_FOR_MEDIUM: usize = 3;
+
+/// Detects an existing UO installation at the specified path.
+///
+/// This function performs a heuristic-based detection of UO client files
+/// without requiring network access or a manifest. It checks for known
+/// executable names and data files to determine if a valid installation exists.
+///
+/// # Arguments
+///
+/// * `path` - The path to check for an existing installation
+///
+/// # Returns
+///
+/// A `DetectionResult` containing detection status and confidence level.
+///
+/// # Detection Heuristics
+///
+/// - **High confidence**: At least one executable AND all required data files present
+/// - **Medium confidence**: At least one executable AND some data files present
+/// - **Low confidence**: Some files present but missing executable or most data files
+/// - **None**: No relevant files found
+///
+/// # Example
+///
+/// ```ignore
+/// use ultimaforge_lib::installer::detect_existing_installation;
+///
+/// let result = detect_existing_installation(Path::new("C:\\Games\\UO"));
+/// if result.is_valid_installation() {
+///     println!("Found UO installation at {:?}", result.install_path);
+/// }
+/// ```
+pub fn detect_existing_installation(path: &Path) -> DetectionResult {
+    info!("Detecting existing installation at: {}", path.display());
+
+    // Check if the path exists and is a directory
+    if !path.exists() {
+        debug!("Path does not exist: {}", path.display());
+        return DetectionResult::not_detected();
+    }
+
+    if !path.is_dir() {
+        debug!("Path is not a directory: {}", path.display());
+        return DetectionResult::not_detected();
+    }
+
+    let mut result = DetectionResult {
+        detected: false,
+        install_path: Some(path.to_path_buf()),
+        confidence: DetectionConfidence::None,
+        detected_version: None,
+        found_executables: Vec::new(),
+        found_data_files: Vec::new(),
+        missing_files: Vec::new(),
+    };
+
+    // Check for executables
+    for exe in DETECTION_EXECUTABLES {
+        let exe_path = path.join(exe);
+        if exe_path.exists() && exe_path.is_file() {
+            debug!("Found executable: {}", exe);
+            result.found_executables.push(exe.to_string());
+        }
+    }
+
+    // Check for data files
+    for data_file in DETECTION_DATA_FILES {
+        let data_path = path.join(data_file);
+        if data_path.exists() && data_path.is_file() {
+            debug!("Found data file: {}", data_file);
+            result.found_data_files.push(data_file.to_string());
+        } else {
+            result.missing_files.push(data_file.to_string());
+        }
+    }
+
+    // Determine confidence level based on found files
+    let has_executable = !result.found_executables.is_empty();
+    let data_file_count = result.found_data_files.len();
+    let all_data_files = data_file_count == DETECTION_DATA_FILES.len();
+
+    result.confidence = if has_executable && all_data_files {
+        // High: Has executable and all data files
+        DetectionConfidence::High
+    } else if has_executable && data_file_count >= MIN_DATA_FILES_FOR_MEDIUM {
+        // Medium: Has executable and some data files
+        DetectionConfidence::Medium
+    } else if has_executable || data_file_count > 0 {
+        // Low: Has some files but incomplete
+        DetectionConfidence::Low
+    } else {
+        // None: No relevant files found
+        DetectionConfidence::None
+    };
+
+    result.detected = result.confidence != DetectionConfidence::None;
+
+    if result.detected {
+        info!(
+            "Detected installation with {} confidence: {} executables, {} data files",
+            result.confidence,
+            result.found_executables.len(),
+            result.found_data_files.len()
+        );
+    } else {
+        debug!("No installation detected at: {}", path.display());
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
