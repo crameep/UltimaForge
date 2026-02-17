@@ -349,7 +349,7 @@ export function Settings({ onBack }: SettingsProps) {
           )}
 
           {/* Verify Result */}
-          {state.verifyResult && !state.isVerifying && (
+          {state.verifyResult && !state.isVerifying && !state.isRepairing && (
             <div className="settings-verify-result">
               <div
                 className={`settings-verify-summary ${
@@ -386,6 +386,27 @@ export function Settings({ onBack }: SettingsProps) {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Repair Progress */}
+          {state.isRepairing && state.verifyProgress && (
+            <div className="settings-progress">
+              <div className="settings-progress-header">
+                <span className="settings-progress-label">
+                  Repairing files...
+                </span>
+                <span className="settings-progress-value">
+                  {state.verifyProgress.processed_files} /{" "}
+                  {state.verifyProgress.total_files}
+                </span>
+              </div>
+              <div className="settings-progress-bar">
+                <div
+                  className="settings-progress-fill"
+                  style={{ width: `${verifyPercentage}%` }}
+                />
+              </div>
             </div>
           )}
         </section>
