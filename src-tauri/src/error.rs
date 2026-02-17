@@ -380,7 +380,7 @@ impl InstallError {
             }
             Self::Cancelled => "Installation cancelled.".to_string(),
             Self::PermissionDenied { path } => {
-                format!("No permission to write to '{}'. Try running as administrator.", path.display())
+                format!("Administrator rights required to install to '{}'. Please close the launcher, right-click it, select 'Run as administrator', and try again. Alternatively, choose a different installation folder in your user directory (e.g., Documents or AppData).", path.display())
             }
             Self::ReadOnlyFilesystem { path } => {
                 format!("Cannot write to '{}'. The drive may be write-protected.", path.display())

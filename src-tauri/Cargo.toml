@@ -15,11 +15,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
-tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-shell = "2"
-tauri-plugin-process = "2"
 
 # Serialization
 serde.workspace = true
@@ -45,6 +41,10 @@ thiserror.workspace = true
 
 # Time and date
 chrono = { version = "0.4", features = ["serde"] }
+
+# Windows API (for elevation detection)
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading"] }
 
 [dev-dependencies]
 tempfile = "3.10"

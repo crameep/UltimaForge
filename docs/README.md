@@ -78,80 +78,11 @@ Every update you publish is **signed with your private key**. The launcher only 
 
 ## Getting Started
 
-Getting UltimaForge set up involves three main steps. Don't worry—our setup scripts handle most of the technical work.
+Ready to build your launcher? See:
 
-### Step 1: Set Up Your Build Environment
-
-You'll need [Git](https://git-scm.com/downloads) installed, then run:
-
-```bash
-git clone https://github.com/your-org/ultimaforge.git
-cd ultimaforge
-```
-
-**Run the setup script** (this installs everything else automatically):
-
-```powershell
-# Windows (PowerShell as Administrator)
-.\scripts\setup.ps1
-```
-
-```bash
-# Mac or Linux
-./scripts/setup.sh
-```
-
-### Step 2: Configure Your Branding
-
-Copy the template and edit the config file:
-
-```bash
-cp -r branding-template/* branding/
-```
-
-Open `branding/brand.json` in any text editor and fill in:
-
-```json
-{
-  "product": {
-    "displayName": "Your Server Name",
-    "serverName": "YourServer"
-  },
-  "updateUrl": "https://updates.yourserver.com",
-  "publicKey": "<your-key-goes-here>"
-}
-```
-
-> **Note:** You'll generate the public key in the next step.
-
-### Step 3: Generate Your Security Keys
-
-Run this command to create your signing keys:
-
-```bash
-cargo run -p publish-cli -- keygen --output ./keys
-```
-
-Copy the public key (a 64-character code) into your `brand.json` file.
-
-> **Keep your private key secret!** The private key (`keys/private.key`) is what you use to sign updates. Never share it or commit it to version control.
-
-### Step 4: Build Your Launcher
-
-```bash
-npm install
-npm run tauri build
-```
-
-Your finished launcher is in `src-tauri/target/release/`. Distribute this file to your players!
-
-### Step 5: Set Up Your Update Server
-
-To publish updates to your players, you need a web server. See [PUBLISHING.md](PUBLISHING.md) for detailed instructions on:
-
-- Publishing your game files
-- Setting up the update server
-- Pushing updates when your server changes
+- **[Root README.md](../README.md)** - Quick Start guide using `ultimaforge.bat`
+- **[SETUP.md](SETUP.md)** - Detailed environment setup and configuration
+- **[QUICKSTART.md](../QUICKSTART.md)** - Development workflow with ultimaforge.bat
 
 ## What Your Players Experience
 

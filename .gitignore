@@ -1,10 +1,78 @@
-# Auto Claude data directory
-.auto-claude/
+# Build Outputs
+/target/
+/dist/
+/src-tauri/target/
+/src-tauri/gen/
 
-# Auto Claude generated files
+# Dependencies
+/node_modules/
+
+# Lock Files (uncomment if you want to ignore them)
+# Cargo.lock
+# package-lock.json
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.history/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Test Data (keep structure, ignore generated content)
+/test-updates/*.json
+/test-updates/*.sig
+/test-updates/blobs/
+!/test-updates/.gitkeep
+
+# Auto Claude (development artifacts)
+.auto-claude/
 .auto-claude-security.json
 .auto-claude-status
 .claude_settings.json
 .worktrees/
 .security-key
 logs/security/
+
+# Temporary Files
+*.tmp
+*.temp
+.cache/
+
+# Tauri (built installers)
+*.app
+*.AppImage
+*.deb
+*.dmg
+*.msi

@@ -269,6 +269,9 @@ pub async fn save_settings(
 }
 
 /// Gets the brand configuration for display.
+///
+/// Images are served from the embedded dist/branding/ folder via the webview,
+/// so paths like "/branding/image.png" work directly in both dev and production.
 #[tauri::command]
 pub async fn get_brand_config(state: State<'_, AppState>) -> Result<BrandInfo, String> {
     info!("Getting brand configuration");
@@ -277,7 +280,27 @@ pub async fn get_brand_config(state: State<'_, AppState>) -> Result<BrandInfo, S
         .brand_config()
         .ok_or("Brand configuration not available")?;
 
+    // Images are already embedded in dist/branding/ and served by the webview
+    // No path conversion needed - just return the config as-is
     Ok(BrandInfo::from(&brand_config))
+}
+
+/// Gets the launcher's installation directory.
+///
+/// Returns the directory where the launcher executable is installed.
+/// Used for defaulting the game install path to {launcher_dir}\{server_name}
+#[tauri::command]
+pub async fn get_launcher_dir() -> Result<String, String> {
+    match std::env::current_exe() {
+        Ok(exe_path) => {
+            if let Some(dir) = exe_path.parent() {
+                Ok(dir.display().to_string())
+            } else {
+                Err("Could not get launcher directory".to_string())
+            }
+        }
+        Err(e) => Err(format!("Failed to get executable path: {}", e)),
+    }
 }
 
 /// Saves brand configuration to branding/brand.json.
@@ -453,6 +476,122 @@ pub async fn get_repair_list(state: State<'_, AppState>) -> Result<Vec<String>, 
         .get_repair_list(&install_path)
         .await
         .map_err(|e| format!("Failed to get repair list: {}", e))
+}
+
+/// Checks if the application is currently running with administrator privileges.
+///
+/// Returns true if running as admin, false otherwise.
+#[tauri::command]
+pub fn is_running_as_admin() -> Result<bool, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::mem;
+        use windows::Win32::Foundation::BOOL;
+        use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+        use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+
+        unsafe {
+            let mut token = std::mem::zeroed();
+
+            // Open process token
+            if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).is_err() {
+                return Ok(false);
+            }
+
+            let mut elevation: TOKEN_ELEVATION = mem::zeroed();
+            let mut size = 0u32;
+
+            // Get token elevation information
+            if GetTokenInformation(
+                token,
+                TokenElevation,
+                Some(&mut elevation as *mut _ as *mut _),
+                mem::size_of::<TOKEN_ELEVATION>() as u32,
+                &mut size,
+            ).is_err() {
+                return Ok(false);
+            }
+
+            Ok(elevation.TokenIsElevated != 0)
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(false)
+    }
+}
+
+/// Gets a recommended installation path in the user's AppData directory.
+///
+/// Returns a path like: C:\Users\{User}\AppData\Local\{ServerName}
+#[tauri::command]
+pub async fn get_recommended_install_path(state: State<'_, AppState>) -> Result<String, String> {
+    let brand_config = state
+        .brand_config()
+        .ok_or("Brand configuration not available")?;
+
+    let server_name = &brand_config.product.server_name;
+
+    // Get AppData\Local directory
+    let local_app_data = std::env::var("LOCALAPPDATA")
+        .or_else(|_| std::env::var("APPDATA"))
+        .map_err(|_| "Could not determine AppData directory".to_string())?;
+
+    let recommended_path = format!("{}\\{}", local_app_data, server_name);
+
+    Ok(recommended_path)
+}
+
+/// Relaunches the application with administrator privileges.
+///
+/// On Windows, this uses the "runas" verb to request UAC elevation.
+/// The current instance will exit after launching the elevated instance.
+///
+/// Note: This only works in production builds. In dev mode, it will return an error
+/// instructing the user to manually restart in admin mode.
+#[tauri::command]
+pub async fn relaunch_as_admin() -> Result<(), String> {
+    info!("Relaunching application with administrator privileges");
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+
+        // Get the current executable path
+        let exe_path = std::env::current_exe()
+            .map_err(|e| format!("Failed to get executable path: {}", e))?;
+
+        // Check if we're running in dev mode (executable is in target/debug or target/release without being installed)
+        let exe_path_str = exe_path.to_string_lossy();
+        let is_dev_mode = exe_path_str.contains("target\\debug") || exe_path_str.contains("target\\release");
+
+        if is_dev_mode {
+            return Err("Elevation requires a production build. Please close this window, right-click the launcher shortcut or executable, select 'Run as administrator', and try again.".to_string());
+        }
+
+        // Use Windows shell to launch with elevation
+        let _status = Command::new("powershell")
+            .args([
+                "-Command",
+                &format!(
+                    "Start-Process -FilePath '{}' -Verb RunAs",
+                    exe_path.display()
+                ),
+            ])
+            .spawn()
+            .map_err(|e| format!("Failed to relaunch with elevation: {}", e))?;
+
+        info!("Elevated instance launched, exiting current instance");
+
+        // Exit the current instance
+        std::process::exit(0);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Elevation is only supported on Windows".to_string())
+    }
 }
 
 #[cfg(test)]

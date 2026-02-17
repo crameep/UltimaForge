@@ -6,7 +6,26 @@
       "Bash(git commit:*)",
       "Bash(cmd /c sync-branding.bat)",
       "Bash(cmd /c ultimaforge.bat)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(convert:*)",
+      "Bash(python3:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(cargo build:*)",
+      "Bash(identify:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File:*)",
+      "Bash(npm run tauri:*)",
+      "Bash(cmd /c \"copy /Y branding\\\\brand.json public\\\\branding\\\\brand.json\")",
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "WebFetch(domain:v2.tauri.app)",
+      "WebFetch(domain:docs.rs)",
+      "Bash(node sync-branding-config.js:*)",
+      "Bash(du -sh:*)",
+      "Bash(wc:*)",
+      "Bash(npm outdated:*)",
+      "Bash(cargo tree:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(git branch:*)"
     ]
   }
 }

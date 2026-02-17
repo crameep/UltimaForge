@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 import "./PatchNotes.css";
 
 interface PatchNotesProps {
@@ -60,47 +61,6 @@ function PatchNotesEmpty() {
       <span className="patch-notes-empty-text">No patch notes available.</span>
     </div>
   );
-}
-
-/**
- * Parse simple markdown content to HTML.
- * Supports: headers, bold, italic, links, lists, code blocks.
- */
-function parseMarkdown(markdown: string): string {
-  let html = markdown
-    // Escape HTML entities
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    // Headers
-    .replace(/^### (.+)$/gm, "<h4>$1</h4>")
-    .replace(/^## (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^# (.+)$/gm, "<h2>$1</h2>")
-    // Bold
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/__(.+?)__/g, "<strong>$1</strong>")
-    // Italic
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/_(.+?)_/g, "<em>$1</em>")
-    // Inline code
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    // Links
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-    // Unordered lists
-    .replace(/^\s*[-*]\s+(.+)$/gm, "<li>$1</li>")
-    // Line breaks
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/\n/g, "<br />");
-
-  // Wrap list items in ul tags
-  html = html.replace(/(<li>.*?<\/li>)+/g, "<ul>$&</ul>");
-
-  // Wrap in paragraph if not already wrapped
-  if (!html.startsWith("<h") && !html.startsWith("<ul")) {
-    html = `<p>${html}</p>`;
-  }
-
-  return html;
 }
 
 /**
@@ -197,10 +157,9 @@ export function PatchNotes({
           {error && <PatchNotesError error={error} onRetry={handleRetry} />}
 
           {!isLoading && !error && content && (
-            <div
-              className="patch-notes-content"
-              dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
-            />
+            <div className="patch-notes-content">
+              <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
           )}
 
           {!isLoading && !error && !content && <PatchNotesEmpty />}

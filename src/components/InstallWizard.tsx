@@ -101,6 +101,8 @@ function DirectoryStep({
   onSetPath,
   onNext,
   onPrev,
+  onRelaunchAsAdmin,
+  onUseRecommendedPath,
 }: {
   installPath: string;
   pathValidation: ReturnType<typeof useInstall>[0]["pathValidation"];
@@ -109,8 +111,11 @@ function DirectoryStep({
   onSetPath: (path: string) => void;
   onNext: () => void;
   onPrev: () => void;
+  onRelaunchAsAdmin: () => void;
+  onUseRecommendedPath: () => void;
 }) {
   const canProceed = pathValidation?.is_valid && !isValidating;
+  const requiresElevation = pathValidation?.requires_elevation ?? false;
 
   return (
     <div className="wizard-content">
@@ -170,7 +175,17 @@ function DirectoryStep({
           </div>
         )}
 
-        {/* Additional info */}
+        {/* Elevation required warning */}
+        {pathValidation && pathValidation.requires_elevation && (
+          <div className="wizard-validation warning">
+            <span className="wizard-validation-icon">&#9888;</span>
+            <span>
+              This location requires administrator rights. Choose an option below:
+            </span>
+          </div>
+        )}
+
+        {/* Non-empty directory warning */}
         {pathValidation && !pathValidation.is_empty && pathValidation.exists && (
           <div className="wizard-validation warning">
             <span className="wizard-validation-icon">&#9888;</span>
@@ -185,13 +200,34 @@ function DirectoryStep({
         <button className="wizard-button secondary" onClick={onPrev}>
           Back
         </button>
-        <button
-          className="wizard-button primary"
-          onClick={onNext}
-          disabled={!canProceed}
-        >
-          {isValidating ? "Validating..." : "Continue"}
-        </button>
+
+        {/* Show elevation options if required */}
+        {requiresElevation && canProceed ? (
+          <>
+            <button
+              className="wizard-button secondary"
+              onClick={onUseRecommendedPath}
+              title="Use a recommended folder in your user directory"
+            >
+              Use Recommended Folder
+            </button>
+            <button
+              className="wizard-button primary"
+              onClick={onRelaunchAsAdmin}
+              title="Restart the launcher with administrator rights"
+            >
+              Run as Administrator
+            </button>
+          </>
+        ) : (
+          <button
+            className="wizard-button primary"
+            onClick={onNext}
+            disabled={!canProceed}
+          >
+            {isValidating ? "Validating..." : "Continue"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -533,6 +569,8 @@ export function InstallWizard({
             onSetPath={actions.setInstallPath}
             onNext={actions.nextStep}
             onPrev={actions.prevStep}
+            onRelaunchAsAdmin={actions.relaunchAsAdmin}
+            onUseRecommendedPath={actions.useRecommendedPath}
           />
         )}
 

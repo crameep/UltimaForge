@@ -20,6 +20,9 @@ export function useBrand() {
     const loadBrand = async () => {
       try {
         const brand = await getBrandConfig();
+
+        // Images are served from embedded dist/branding/ folder
+        // Paths like /branding/image.png work directly in both dev and production
         setBrandInfo(brand);
         setError(null);
 

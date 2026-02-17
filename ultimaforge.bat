@@ -144,6 +144,14 @@ if exist "branding\sidebar-logo.png" (
     )
 )
 
+if exist "branding\brand.json" (
+    copy /Y "branding\brand.json" "public\branding\brand.json" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo [OK] brand.json
+        set /a COPIED+=1
+    )
+)
+
 for %%f in (branding\*.png branding\*.jpg) do (
     if not "%%~nxf"=="hero-bg.png" if not "%%~nxf"=="sidebar-logo.png" (
         copy /Y "%%f" "public\branding\%%~nxf" >nul 2>&1
@@ -297,11 +305,19 @@ echo    Building Production Launcher
 echo ========================================
 echo.
 
-echo [1/4] Syncing branding...
+echo [1/5] Syncing branding to config...
+node sync-branding-config.js
+if errorlevel 1 (
+    echo ERROR: Failed to sync branding config
+    goto ERROR_EXIT
+)
+
+echo.
+echo [2/5] Syncing branding assets...
 call :SYNC_BRANDING_FUNCTION
 
 echo.
-echo [2/4] Installing dependencies...
+echo [3/5] Installing dependencies...
 if not exist "node_modules" (
     call :NPM_INSTALL_FUNCTION
     if errorlevel 1 goto ERROR_EXIT
@@ -310,7 +326,7 @@ if not exist "node_modules" (
 )
 
 echo.
-echo [3/4] Building frontend...
+echo [4/6] Building frontend...
 call npm run build
 if errorlevel 1 (
     echo ERROR: Frontend build failed
@@ -318,7 +334,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [4/4] Building Tauri application...
+echo [5/5] Building Tauri application...
 echo This will take several minutes...
 call npm run tauri build
 if errorlevel 1 (
@@ -490,7 +506,15 @@ if not exist "branding\sidebar-logo.png" (
 echo Generating app icons from branding\sidebar-logo.png...
 echo.
 
-powershell -Command "Add-Type -AssemblyName System.Drawing; $source = 'branding/sidebar-logo.png'; $outputDir = 'src-tauri/icons'; $img = [System.Drawing.Image]::FromFile((Resolve-Path $source)); function Resize-Image($size, $filename) { $newImg = New-Object System.Drawing.Bitmap($size, $size); $graphics = [System.Drawing.Graphics]::FromImage($newImg); $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $graphics.DrawImage($img, 0, 0, $size, $size); $newImg.Save(\"$outputDir/$filename\", [System.Drawing.Imaging.ImageFormat]::Png); $graphics.Dispose(); $newImg.Dispose(); Write-Host \"Created $filename (${size}x${size})\" }; if (!(Test-Path $outputDir)) { New-Item -ItemType Directory -Path $outputDir | Out-Null }; Resize-Image 32 '32x32.png'; Resize-Image 128 '128x128.png'; Resize-Image 256 '128x128@2x.png'; Resize-Image 256 'icon.png'; $icon = [System.Drawing.Icon]::FromHandle(([System.Drawing.Bitmap]$img).GetHicon()); $stream = [System.IO.File]::Create(\"$outputDir/icon.ico\"); $icon.Save($stream); $stream.Close(); $icon.Dispose(); Write-Host 'Created icon.ico (multi-resolution)'; $img.Dispose(); Write-Host ''; Write-Host 'All icons generated successfully!' -ForegroundColor Green"
+REM Ensure icons directory exists
+if not exist "src-tauri\icons" mkdir "src-tauri\icons"
+
+REM Generate PNG icons
+powershell -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Drawing; $source = 'branding/sidebar-logo.png'; $outputDir = 'src-tauri/icons'; $img = [System.Drawing.Image]::FromFile((Resolve-Path $source)); function Resize-Image($size, $filename) { $newImg = New-Object System.Drawing.Bitmap($size, $size); $graphics = [System.Drawing.Graphics]::FromImage($newImg); $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality; $graphics.DrawImage($img, 0, 0, $size, $size); $newImg.Save(\"$outputDir/$filename\", [System.Drawing.Imaging.ImageFormat]::Png); $graphics.Dispose(); $newImg.Dispose(); Write-Host \"Created $filename (${size}x${size})\" }; Resize-Image 32 '32x32.png'; Resize-Image 128 '128x128.png'; Resize-Image 256 '128x128@2x.png'; Resize-Image 256 'icon.png'; $img.Dispose(); Write-Host ''"
+
+REM Generate proper multi-resolution .ico file
+echo.
+powershell -ExecutionPolicy Bypass -File "generate-ico.ps1"
 
 if errorlevel 1 (
     echo.
@@ -501,23 +525,37 @@ if errorlevel 1 (
     goto MENU
 )
 
+REM Generate installer branding images
+echo.
+powershell -ExecutionPolicy Bypass -File "generate-installer-images.ps1"
+
+if errorlevel 1 (
+    echo.
+    echo WARNING: Installer images may have issues, but icons generated OK
+)
+
 echo.
 echo ========================================
 echo  Icons Generated Successfully!
 echo ========================================
 echo.
-echo Generated icons in src-tauri\icons\:
+echo Generated in src-tauri\icons\:
 echo   - 32x32.png (taskbar, small icons)
 echo   - 128x128.png (standard size)
 echo   - 128x128@2x.png (retina displays)
 echo   - icon.png (256x256 main icon)
 echo   - icon.ico (Windows multi-resolution)
 echo.
-echo Your branded icon will appear in:
+echo Generated in src-tauri\installer-assets\:
+echo   - nsis-header.bmp (installer header)
+echo   - nsis-sidebar.bmp (installer wizard sidebar)
+echo.
+echo Your branding will appear in:
 echo   - Application window
 echo   - Taskbar
 echo   - Desktop shortcut
 echo   - Add/Remove Programs
+echo   - NSIS Installer screens
 echo.
 echo Next: Build production (option 7) to create installer
 echo.

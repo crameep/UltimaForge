@@ -204,6 +204,15 @@ export async function getThemeColors(): Promise<ThemeColors> {
 }
 
 /**
+ * Gets the launcher's installation directory.
+ *
+ * @returns Path to the directory where the launcher is installed.
+ */
+export async function getLauncherDir(): Promise<string> {
+  return invoke<string>("get_launcher_dir");
+}
+
+/**
  * Verifies the installation integrity.
  *
  * @returns Verification result with list of any invalid files.
@@ -228,6 +237,34 @@ export async function clearCache(): Promise<SaveResponse> {
  */
 export async function getRepairList(): Promise<string[]> {
   return invoke<string[]>("get_repair_list");
+}
+
+/**
+ * Checks if the application is currently running with administrator privileges.
+ *
+ * @returns True if running as admin, false otherwise.
+ */
+export async function isRunningAsAdmin(): Promise<boolean> {
+  return invoke<boolean>("is_running_as_admin");
+}
+
+/**
+ * Gets a recommended installation path in the user's AppData directory.
+ *
+ * @returns Path like C:\Users\{User}\AppData\Local\{ServerName}
+ */
+export async function getRecommendedInstallPath(): Promise<string> {
+  return invoke<string>("get_recommended_install_path");
+}
+
+/**
+ * Relaunches the application with administrator privileges.
+ *
+ * On Windows, this requests UAC elevation. The current app will exit
+ * and a new elevated instance will start.
+ */
+export async function relaunchAsAdmin(): Promise<void> {
+  return invoke<void>("relaunch_as_admin");
 }
 
 // ============================================================================

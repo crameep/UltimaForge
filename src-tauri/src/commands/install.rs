@@ -5,9 +5,9 @@
 //! - Validating installation paths
 //! - Performing full installation
 
-use crate::config::{BrandConfig, LauncherConfig};
-use crate::installer::{InstallProgress, Installer, PathValidationResult};
-use crate::state::{AppPhase, AppState, AppStatus};
+use crate::config::LauncherConfig;
+use crate::installer::{Installer, PathValidationResult};
+use crate::state::{AppState, AppStatus};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::Emitter;

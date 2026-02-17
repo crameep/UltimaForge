@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "timestamp": "2026-02-16T16:24:05Z",
+  "version": "1.01",
+  "timestamp": "2026-02-16T17:55:33Z",
   "client_executable": "client.exe",
   "client_args": [],
   "files": [
@@ -8,6 +8,12 @@
       "path": "art.mul",
       "sha256": "91790cf5cc7cb525e818bcd97318092d9ac109b77328480a3494f0cd479d6cfc",
       "size": 696,
+      "required": true
+    },
+    {
+      "path": "build-info.txt",
+      "sha256": "694d957725cb409fc2e0920ff30e09ef386953091223411f2d2616693ef265c7",
+      "size": 57,
       "required": true
     },
     {
@@ -23,5 +29,5 @@
       "required": true
     }
   ],
-  "total_size": 2000
+  "total_size": 2057
 }

@@ -63,7 +63,7 @@ function App() {
     };
 
     checkInstallation();
-  }, []);
+  }, [updateActions]);
 
   // Sync update state with app phase
   useEffect(() => {

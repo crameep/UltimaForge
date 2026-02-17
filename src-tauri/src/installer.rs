@@ -213,11 +213,13 @@ pub struct PathValidationResult {
     pub has_sufficient_space: bool,
     /// Whether we have write permissions.
     pub is_writable: bool,
+    /// Whether this path requires administrator elevation.
+    pub requires_elevation: bool,
 }
 
 impl PathValidationResult {
     /// Creates a valid result.
-    pub fn valid(available_space: u64, exists: bool, is_empty: bool) -> Self {
+    pub fn valid(available_space: u64, exists: bool, is_empty: bool, is_writable: bool, requires_elevation: bool) -> Self {
         Self {
             is_valid: true,
             reason: None,
@@ -225,7 +227,8 @@ impl PathValidationResult {
             is_empty,
             available_space,
             has_sufficient_space: true,
-            is_writable: true,
+            is_writable,
+            requires_elevation,
         }
     }
 
@@ -239,6 +242,7 @@ impl PathValidationResult {
             available_space: 0,
             has_sufficient_space: false,
             is_writable: false,
+            requires_elevation: false,
         }
     }
 }
@@ -380,6 +384,66 @@ impl Installer {
         &self.brand_config
     }
 
+    /// Checks if a path requires administrator elevation to write to.
+    ///
+    /// Returns true if the path is in a protected system location like Program Files.
+    fn path_requires_elevation(path: &Path) -> bool {
+        if let Some(path_str) = path.to_str() {
+            let path_lower = path_str.to_lowercase();
+
+            // Check for common protected directories on Windows
+            path_lower.contains("\\program files\\")
+                || path_lower.contains("\\program files (x86)\\")
+                || path_lower.contains("\\windows\\")
+                || path_lower.starts_with("c:\\program files\\")
+                || path_lower.starts_with("c:\\program files (x86)\\")
+                || path_lower.starts_with("c:\\windows\\")
+        } else {
+            false
+        }
+    }
+
+    /// Checks if the current process is running with elevated privileges.
+    fn is_running_elevated() -> bool {
+        #[cfg(target_os = "windows")]
+        {
+            use std::mem;
+            use windows::Win32::Foundation::BOOL;
+            use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+            use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+
+            unsafe {
+                let mut token = std::mem::zeroed();
+
+                // Open process token
+                if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).is_err() {
+                    return false;
+                }
+
+                let mut elevation: TOKEN_ELEVATION = mem::zeroed();
+                let mut size = 0u32;
+
+                // Get token elevation information
+                if GetTokenInformation(
+                    token,
+                    TokenElevation,
+                    Some(&mut elevation as *mut _ as *mut _),
+                    mem::size_of::<TOKEN_ELEVATION>() as u32,
+                    &mut size,
+                ).is_err() {
+                    return false;
+                }
+
+                elevation.TokenIsElevated != 0
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            false
+        }
+    }
+
     /// Validates an installation path without performing installation.
     ///
     /// # Arguments
@@ -419,10 +483,15 @@ impl Installer {
         // Try to get available disk space
         let available_space = self.get_available_space(path);
 
+        // Check if path requires elevation
+        let requires_elevation = Self::path_requires_elevation(path) && !Self::is_running_elevated();
+
         // Check write permissions by trying to create the directory
         let is_writable = self.check_write_permission(path);
 
-        if !is_writable {
+        // If we don't have write permissions and the path doesn't require elevation,
+        // then it's invalid (we can't fix it with UAC)
+        if !is_writable && !requires_elevation {
             return PathValidationResult {
                 is_valid: false,
                 reason: Some("Insufficient permissions to write to this directory".to_string()),
@@ -431,6 +500,7 @@ impl Installer {
                 available_space,
                 has_sufficient_space: available_space >= required_space + MIN_FREE_SPACE_BUFFER,
                 is_writable: false,
+                requires_elevation,
             };
         }
 
@@ -448,11 +518,12 @@ impl Installer {
                 is_empty,
                 available_space,
                 has_sufficient_space: false,
-                is_writable: true,
+                is_writable,
+                requires_elevation,
             };
         }
 
-        PathValidationResult::valid(available_space, exists, is_empty)
+        PathValidationResult::valid(available_space, exists, is_empty, is_writable, requires_elevation)
     }
 
     /// Gets available disk space for a path.
@@ -649,9 +720,18 @@ impl Installer {
         }
 
         // Create installation directory
-        fs::create_dir_all(install_path).map_err(|e| InstallError::CreateDirectoryFailed {
-            path: install_path.to_path_buf(),
-            source: e,
+        fs::create_dir_all(install_path).map_err(|e| {
+            // Check if this is a permission error
+            if e.kind() == std::io::ErrorKind::PermissionDenied {
+                InstallError::PermissionDenied {
+                    path: install_path.to_path_buf(),
+                }
+            } else {
+                InstallError::CreateDirectoryFailed {
+                    path: install_path.to_path_buf(),
+                    source: e,
+                }
+            }
         })?;
 
         // Initialize install log

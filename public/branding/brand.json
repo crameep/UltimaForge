@@ -1,0 +1,34 @@
+{
+  "product": {
+    "displayName": "Unchained File Server",
+    "serverName": "Unchained",
+    "description": "Test configuration for E2E testing",
+    "supportEmail": "support@example.com",
+    "website": "https://example.com",
+    "discord": "https://discord.gg/example"
+  },
+  "updateUrl": "http://localhost:8080",
+  "publicKey": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+  "ui": {
+    "colors": {
+      "primary": "#1a1a2e",
+      "secondary": "#e94560",
+      "background": "#16213e",
+      "text": "#eaeaea"
+    },
+    "backgroundImage": "/branding/unchainedbg.png",
+    "logoUrl": "/branding/sidebar-logo.png",
+    "sidebarBackground": "/branding/sidebar-texture.png",
+    "showPatchNotes": true,
+    "windowTitle": "Unchained Patcher",
+    "heroTitle": "Welcome to Unchained",
+    "heroSubtitle": "Your adventure begins here",
+    "sidebarSubtitle": "Free Shard Launcher",
+    "sidebarLinks": [
+      { "label": "Home", "icon": "🏠" },
+      { "label": "Settings", "icon": "⚙️" },
+      { "label": "Discord", "icon": "💬", "url": "https://discord.gg/example" }
+    ]
+  },
+  "brandVersion": "1.0"
+}

@@ -22,56 +22,29 @@ mod security_tests;
 use config::BrandConfig;
 use state::AppState;
 use std::path::PathBuf;
+use tauri::Manager;
 use tracing::{error, info, warn};
 use tracing_subscriber;
 
-/// Finds and loads the brand configuration from branding/brand.json.
+/// Loads the brand configuration embedded in the binary at compile time.
 ///
-/// Searches in the following order:
-/// 1. Relative to the executable (production)
-/// 2. Relative to the current working directory (development)
-/// 3. One level up from CWD (src-tauri dev mode)
-/// 4. Two levels up from executable (Tauri dev bundle structure)
+/// The brand.json file is embedded directly into the executable using include_str!,
+/// making the launcher completely self-contained with no external dependencies.
 fn load_brand_config() -> Option<BrandConfig> {
-    let brand_file = "branding/brand.json";
+    // Embed the brand.json file at compile time
+    const BRAND_JSON: &str = include_str!("../../branding/brand.json");
 
-    let search_paths = vec![
-        // Try relative to the executable first (production)
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.join(brand_file))),
-        // Relative to CWD (development)
-        Some(PathBuf::from(brand_file)),
-        // One level up from CWD (src-tauri dev mode)
-        Some(PathBuf::from("../branding/brand.json")),
-        // Two levels up from executable (Tauri dev bundle)
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().and_then(|p| p.parent().map(|p| p.join(brand_file)))),
-    ];
-
-    for path_opt in search_paths {
-        if let Some(path) = path_opt {
-            if path.exists() {
-                info!("Found brand config at: {}", path.display());
-                match BrandConfig::load(&path) {
-                    Ok(config) => {
-                        info!("Successfully loaded brand: {}", config.product.display_name);
-                        return Some(config);
-                    }
-                    Err(e) => {
-                        error!("Failed to load brand config from {}: {}", path.display(), e);
-                    }
-                }
-            } else {
-                info!("Brand config not found at: {}", path.display());
-            }
+    match serde_json::from_str::<BrandConfig>(BRAND_JSON) {
+        Ok(config) => {
+            info!("Successfully loaded embedded brand config: {}", config.product.display_name);
+            Some(config)
+        }
+        Err(e) => {
+            error!("Failed to parse embedded brand config: {}", e);
+            error!("This should not happen - brand.json may be malformed");
+            None
         }
     }
-
-    warn!("Brand configuration not found in any search location");
-    warn!("CWD: {:?}", std::env::current_dir());
-    None
 }
 
 #[tauri::command]
@@ -84,25 +57,26 @@ pub fn run() {
     // Initialize tracing for structured logging
     tracing_subscriber::fmt::init();
 
-    // Load brand configuration at startup
-    let app_state = match load_brand_config() {
-        Some(brand_config) => {
-            info!("Brand config loaded: {}", brand_config.product.display_name);
-            AppState::with_brand_config(brand_config)
-        }
-        None => {
-            warn!("Starting without brand configuration - some features may not work");
-            AppState::new()
-        }
-    };
-
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_fs::init())
+    // Create app with managed state
+    let app_result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_process::init())
-        .manage(app_state)
+        .setup(|app| {
+            // Load embedded brand configuration
+            let app_state = match load_brand_config() {
+                Some(brand_config) => {
+                    info!("Brand config loaded: {}", brand_config.product.display_name);
+                    AppState::with_brand_config(brand_config)
+                }
+                None => {
+                    warn!("Starting without brand configuration - some features may not work");
+                    AppState::new()
+                }
+            };
+
+            // Store state in app using state management
+            app.manage(app_state);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // Legacy command
             greet,
@@ -126,12 +100,18 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::settings::get_brand_config,
+            commands::settings::get_launcher_dir,
             commands::settings::save_brand_config,
             commands::settings::get_theme_colors,
             commands::settings::verify_installation,
             commands::settings::clear_cache,
             commands::settings::get_repair_list,
-        ])
+            commands::settings::get_recommended_install_path,
+            commands::settings::is_running_as_admin,
+            commands::settings::relaunch_as_admin,
+        ]);
+
+    app_result
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

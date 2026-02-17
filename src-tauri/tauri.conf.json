@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "UltimaForge",
+  "productName": "Unchained Patcher",
   "version": "0.0.1",
   "identifier": "com.ultimaforge.launcher",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "UltimaForge",
+        "title": "Unchained Patcher",
         "width": 900,
         "height": 600,
         "resizable": true,
@@ -34,8 +34,14 @@
       "icons/icon.png",
       "icons/icon.ico"
     ],
-    "resources": [
-      "../branding/*"
-    ]
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "installer-assets/nsis-header.bmp",
+        "sidebarImage": "installer-assets/nsis-sidebar.bmp",
+        "displayLanguageSelector": false,
+        "installMode": "currentUser"
+      }
+    }
   }
 }

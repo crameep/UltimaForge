@@ -150,6 +150,8 @@ export interface PathValidationResult {
   has_sufficient_space: boolean;
   /** Whether we have write permissions */
   is_writable: boolean;
+  /** Whether the path requires elevation (admin rights) */
+  requires_elevation: boolean;
 }
 
 // ============================================================================
