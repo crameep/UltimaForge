@@ -114,7 +114,12 @@ function DirectoryStep({
   onRelaunchAsAdmin: () => void;
   onUseRecommendedPath: () => void;
 }) {
-  const canProceed = pathValidation?.is_valid && !isValidating;
+  // Disable only when explicitly invalid. Allow proceeding when:
+  // - Path is non-empty AND validation is null (not yet validated)
+  // - Path is non-empty AND validation is valid
+  // Disable when validating to prevent race conditions with old validation state
+  const isExplicitlyInvalid = pathValidation?.is_valid === false;
+  const canProceed = installPath.trim().length > 0 && !isExplicitlyInvalid && !isValidating;
   const requiresElevation = pathValidation?.requires_elevation ?? false;
 
   return (
