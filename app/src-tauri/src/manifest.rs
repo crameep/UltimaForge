@@ -246,9 +246,19 @@ impl FileEntry {
     }
 
     /// Validates the file entry.
+    ///
+    /// Uses Component-based path validation to prevent path traversal attacks.
+    /// This is more secure than string-based checks which can be bypassed with
+    /// mixed path separators (e.g., `foo/bar\..\secret`).
     pub fn validate(&self) -> Result<(), ManifestError> {
-        // Check for path traversal attacks
-        if self.path.contains("..") || self.path.starts_with('/') || self.path.starts_with('\\') {
+        // Check for path traversal attacks using Component-based validation
+        // This rejects:
+        // - Absolute paths (/etc/passwd, C:\Windows)
+        // - Windows drive prefixes (C:, D:)
+        // - UNC paths (\\server\share)
+        // - Parent directory traversal (.., foo/../bar)
+        let path = Path::new(&self.path);
+        if !is_safe_relative_path(path) {
             return Err(ManifestError::InvalidPath(self.path.clone()));
         }
 
