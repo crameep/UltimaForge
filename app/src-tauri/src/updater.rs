@@ -33,6 +33,7 @@ use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::Instant;
 use tauri::Emitter;
 use tracing::{debug, error, info, warn};
@@ -984,22 +985,11 @@ impl Updater {
         progress_callback(&progress);
         log.log(TransactionLogEntry::new("DOWNLOAD_START", None, "STARTED"));
 
+        // Wrap progress_callback in a Mutex for interior mutability.
+        // This allows us to call the FnMut callback from within the Fn download callback.
+        let progress_callback = Mutex::new(progress_callback);
+
         let mut downloaded_bytes = 0u64;
-        let download_callback = |dl_progress: &DownloadProgress| {
-            let mut up = UpdateProgress {
-                state: UpdateState::Downloading,
-                total_files: progress.total_files,
-                processed_files: progress.processed_files,
-                total_bytes: progress.total_bytes,
-                downloaded_bytes: downloaded_bytes + dl_progress.downloaded,
-                current_file: Some(dl_progress.file_path.clone()),
-                speed_bps: dl_progress.speed_bps,
-                eta_secs: dl_progress.eta_secs,
-                target_version: progress.target_version.clone(),
-                error_message: None,
-            };
-            progress_callback(&up);
-        };
 
         // Download each file
         for file in &files_to_update {
@@ -1032,11 +1022,37 @@ impl Updater {
                 })?;
             }
 
+            // Capture current state for this file's download progress callback
+            let current_downloaded = downloaded_bytes;
+            let total_files_val = progress.total_files;
+            let processed_files_val = progress.processed_files;
+            let total_bytes_val = progress.total_bytes;
+            let target_version_val = progress.target_version.clone();
+            let progress_callback_ref = &progress_callback;
+
+            let download_progress = move |dl_progress: &DownloadProgress| {
+                let up = UpdateProgress {
+                    state: UpdateState::Downloading,
+                    total_files: total_files_val,
+                    processed_files: processed_files_val,
+                    total_bytes: total_bytes_val,
+                    downloaded_bytes: current_downloaded + dl_progress.downloaded,
+                    current_file: Some(dl_progress.file_path.clone()),
+                    speed_bps: dl_progress.speed_bps,
+                    eta_secs: dl_progress.eta_secs,
+                    target_version: target_version_val.clone(),
+                    error_message: None,
+                };
+                if let Ok(mut callback) = progress_callback_ref.lock() {
+                    callback(&up);
+                }
+            };
+
             match self.downloader.download_file(
                 &blob_url,
                 &staged_path,
                 Some(&file.sha256),
-                |_| {},
+                download_progress,
             ).await {
                 Ok(_) => {
                     downloaded_bytes += file.size;
@@ -1060,7 +1076,9 @@ impl Updater {
 
         // Step 3: Verify staged hashes
         progress.state = UpdateState::Verifying;
-        progress_callback(&progress);
+        if let Ok(mut callback) = progress_callback.lock() {
+            callback(&progress);
+        }
         log.log(TransactionLogEntry::new("VERIFY_START", None, "STARTED"));
 
         if let Err(e) = self.verify_staged_hashes(&files_to_update) {
@@ -1074,7 +1092,9 @@ impl Updater {
 
         // Step 4: Backup current files
         progress.state = UpdateState::BackingUp;
-        progress_callback(&progress);
+        if let Ok(mut callback) = progress_callback.lock() {
+            callback(&progress);
+        }
         log.log(TransactionLogEntry::new("BACKUP_START", None, "STARTED"));
 
         if let Err(e) = self.backup_current_files(&files_to_update) {
@@ -1091,7 +1111,9 @@ impl Updater {
 
         // Step 5: Apply staged files
         progress.state = UpdateState::Applying;
-        progress_callback(&progress);
+        if let Ok(mut callback) = progress_callback.lock() {
+            callback(&progress);
+        }
         log.log(TransactionLogEntry::new("APPLY_START", None, "STARTED"));
 
         match self.apply_staged_files(&files_to_update) {
@@ -1106,7 +1128,9 @@ impl Updater {
 
                 // Attempt rollback
                 progress.state = UpdateState::RollingBack;
-                progress_callback(&progress);
+                if let Ok(mut callback) = progress_callback.lock() {
+                    callback(&progress);
+                }
                 log.log(TransactionLogEntry::new("ROLLBACK_START", None, "STARTED"));
 
                 match self.rollback() {
@@ -1142,7 +1166,9 @@ impl Updater {
         // Success!
         progress.state = UpdateState::Completed;
         progress.downloaded_bytes = progress.total_bytes;
-        progress_callback(&progress);
+        if let Ok(mut callback) = progress_callback.lock() {
+            callback(&progress);
+        }
 
         log.log_session_end(true);
         info!("Update to version {} completed successfully", target_version);
@@ -1983,5 +2009,91 @@ mod tests {
                 path
             );
         }
+    }
+
+    /// Tests that the progress callback pattern works correctly with Mutex wrapping.
+    /// This verifies the Mutex-wrapped FnMut pattern used in perform_update.
+    #[test]
+    fn test_progress_callback() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+
+        // Simulate the pattern used in perform_update
+        let call_count = Arc::new(AtomicUsize::new(0));
+        let last_state = Arc::new(Mutex::new(UpdateState::Idle));
+
+        let call_count_clone = call_count.clone();
+        let last_state_clone = last_state.clone();
+
+        // This simulates the FnMut progress callback the UI would provide
+        let progress_callback = move |progress: &UpdateProgress| {
+            call_count_clone.fetch_add(1, Ordering::SeqCst);
+            if let Ok(mut state) = last_state_clone.lock() {
+                *state = progress.state.clone();
+            }
+        };
+
+        // Wrap in Mutex like perform_update does
+        let progress_callback = Mutex::new(progress_callback);
+
+        // Create test progress
+        let mut progress = UpdateProgress::new();
+        progress.total_files = 5;
+        progress.total_bytes = 10000;
+        progress.state = UpdateState::Downloading;
+
+        // Simulate calling progress_callback through the Mutex
+        if let Ok(callback) = progress_callback.lock() {
+            callback(&progress);
+        }
+
+        assert_eq!(call_count.load(Ordering::SeqCst), 1);
+        assert_eq!(*last_state.lock().unwrap(), UpdateState::Downloading);
+
+        // Update progress and call again (simulating download progress)
+        progress.downloaded_bytes = 5000;
+        progress.processed_files = 2;
+        progress.state = UpdateState::Verifying;
+
+        if let Ok(callback) = progress_callback.lock() {
+            callback(&progress);
+        }
+
+        assert_eq!(call_count.load(Ordering::SeqCst), 2);
+        assert_eq!(*last_state.lock().unwrap(), UpdateState::Verifying);
+
+        // Test that the pattern works with nested closures (like download_progress closure)
+        let current_downloaded = 1000u64;
+        let total_files_val = progress.total_files;
+        let processed_files_val = progress.processed_files;
+        let total_bytes_val = progress.total_bytes;
+        let target_version_val = progress.target_version.clone();
+        let progress_callback_ref = &progress_callback;
+
+        // Simulate the download_progress closure pattern
+        let download_progress = |dl_progress: &crate::downloader::DownloadProgress| {
+            let up = UpdateProgress {
+                state: UpdateState::Downloading,
+                total_files: total_files_val,
+                processed_files: processed_files_val,
+                total_bytes: total_bytes_val,
+                downloaded_bytes: current_downloaded + dl_progress.downloaded,
+                current_file: Some(dl_progress.file_path.clone()),
+                speed_bps: dl_progress.speed_bps,
+                eta_secs: dl_progress.eta_secs,
+                target_version: target_version_val.clone(),
+                error_message: None,
+            };
+            if let Ok(callback) = progress_callback_ref.lock() {
+                callback(&up);
+            }
+        };
+
+        // Simulate a download progress update
+        let dl_progress = crate::downloader::DownloadProgress::new(500, 2000, "test_file.exe");
+        download_progress(&dl_progress);
+
+        assert_eq!(call_count.load(Ordering::SeqCst), 3);
+        assert_eq!(*last_state.lock().unwrap(), UpdateState::Downloading);
     }
 }
