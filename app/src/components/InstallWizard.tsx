@@ -134,7 +134,6 @@ function DirectoryStep({
             value={installPath}
             onChange={(e) => onSetPath(e.target.value)}
             placeholder="Select a directory..."
-            readOnly
           />
           <button
             className="wizard-button secondary"
