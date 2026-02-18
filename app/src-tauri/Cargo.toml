@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
 
 # Serialization
 serde.workspace = true
@@ -41,6 +42,9 @@ thiserror.workspace = true
 
 # Time and date
 chrono = { version = "0.4", features = ["serde"] }
+
+# Disk space (cross-platform)
+fs4 = "0.13"
 
 # Windows API (for elevation detection)
 [target.'cfg(windows)'.dependencies]
