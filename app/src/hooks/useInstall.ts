@@ -136,6 +136,8 @@ export function useInstall(): [UseInstallState, UseInstallActions] {
     const setDefaultPath = async () => {
       if (installPath) return; // Don't override if already set
 
+      let pathToSet: string;
+
       try {
         const brand = await getBrandConfig();
         const serverName = brand.server_name || brand.display_name || "Game";
@@ -143,12 +145,30 @@ export function useInstall(): [UseInstallState, UseInstallActions] {
 
         // Default to {launcher_dir}\{ServerName}
         // e.g., C:\Program Files\Unchained Patcher\Unchained
-        const defaultPath = `${launcherDir}\\${serverName}`;
-        setInstallPathState(defaultPath);
+        pathToSet = `${launcherDir}\\${serverName}`;
       } catch (err) {
         console.warn("Failed to get default install path:", err);
         // Fallback to generic path
-        setInstallPathState("C:\\Games\\Game");
+        pathToSet = "C:\\Games\\Game";
+      }
+
+      // Set the path state
+      setInstallPathState(pathToSet);
+
+      // Validate the default path immediately so user sees validation status on wizard load
+      setIsValidating(true);
+      try {
+        const result = await validateInstallPath(pathToSet);
+        setPathValidation(result);
+      } catch (error) {
+        setPathValidation({
+          ...defaultValidation,
+          is_valid: false,
+          reason:
+            error instanceof Error ? error.message : "Failed to validate path",
+        });
+      } finally {
+        setIsValidating(false);
       }
     };
 
