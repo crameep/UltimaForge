@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Layout } from "./components/Layout";
 import { InstallWizard } from "./components/InstallWizard";
 import { UpdateProgress, useUpdate } from "./components/UpdateProgress";
@@ -7,7 +7,7 @@ import { PatchNotes } from "./components/PatchNotes";
 import { Settings } from "./components/Settings";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
-import { getSettings } from "./lib/api";
+import { getSettings, validateClient, launchGame } from "./lib/api";
 import { checkForLauncherUpdate } from "./lib/launcherUpdater";
 import "./App.css";
 
@@ -32,6 +32,9 @@ function App() {
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
+
+  // Track auto-launch to prevent duplicate launches (one-shot)
+  const autoLaunchTriggeredRef = useRef(false);
 
   // Brand configuration
   const { brandInfo } = useBrand();
@@ -142,9 +145,55 @@ function App() {
     setStatusMessage("Installation complete!");
   };
 
-  const handleUpdateComplete = () => {
+  const handleUpdateComplete = async () => {
     setPhase("Ready");
     setStatusMessage("Update complete!");
+
+    // Check if auto-launch is enabled and hasn't already triggered
+    if (autoLaunchTriggeredRef.current) {
+      return; // Already launched, prevent duplicate
+    }
+
+    try {
+      const settingsResponse = await getSettings();
+      const autoLaunchEnabled = settingsResponse.settings?.auto_launch ?? false;
+
+      if (autoLaunchEnabled) {
+        // Mark as triggered to prevent duplicate launches
+        autoLaunchTriggeredRef.current = true;
+
+        // Validate client before launching
+        const validationResult = await validateClient();
+        if (!validationResult.is_valid) {
+          // Validation failed - show error but don't block user
+          setStatusMessage(
+            `Update complete. Auto-launch failed: ${validationResult.error || "Validation failed"}`
+          );
+          return;
+        }
+
+        // Launch the game
+        setStatusMessage("Update complete! Launching game...");
+        const launchResult = await launchGame();
+
+        if (launchResult.success) {
+          setPhase("GameRunning");
+          setStatusMessage(
+            launchResult.pid
+              ? `Game running (PID: ${launchResult.pid})`
+              : "Game is running"
+          );
+        } else {
+          // Launch failed - show error but don't block user
+          setStatusMessage(
+            `Update complete. Auto-launch failed: ${launchResult.error || "Launch failed"}`
+          );
+        }
+      }
+    } catch (error) {
+      // Settings fetch failed - just complete without auto-launch
+      // No need to block update completion
+    }
   };
 
   const handleUpdateDismiss = () => {
