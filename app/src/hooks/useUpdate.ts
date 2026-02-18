@@ -43,6 +43,8 @@ export interface UseUpdateState {
   isComplete: boolean;
   /** Whether the update was rolled back */
   wasRolledBack: boolean;
+  /** Whether auto-launch is pending after update completion (one-shot flag) */
+  autoLaunchPending: boolean;
 }
 
 /**
@@ -59,6 +61,10 @@ export interface UseUpdateActions {
   retryUpdate: () => Promise<void>;
   /** Reset the update state */
   reset: () => void;
+  /** Set auto-launch pending flag (called when update completes with auto_launch enabled) */
+  setAutoLaunchPending: (pending: boolean) => void;
+  /** Clear auto-launch pending flag (called after launch attempt) */
+  clearAutoLaunchPending: () => void;
 }
 
 /**
@@ -98,6 +104,7 @@ function useUpdateInternal(): [UseUpdateState, UseUpdateActions] {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [wasRolledBack, setWasRolledBack] = useState(false);
+  const [autoLaunchPending, setAutoLaunchPendingState] = useState(false);
 
   // Subscribe to update progress events
   useEffect(() => {
@@ -228,6 +235,23 @@ function useUpdateInternal(): [UseUpdateState, UseUpdateActions] {
     setErrorMessage(null);
     setIsComplete(false);
     setWasRolledBack(false);
+    setAutoLaunchPendingState(false);
+  }, []);
+
+  /**
+   * Set auto-launch pending flag.
+   * Called when update completes and auto_launch setting is enabled.
+   */
+  const setAutoLaunchPending = useCallback((pending: boolean) => {
+    setAutoLaunchPendingState(pending);
+  }, []);
+
+  /**
+   * Clear auto-launch pending flag.
+   * Called after launch attempt to prevent duplicate launches.
+   */
+  const clearAutoLaunchPending = useCallback(() => {
+    setAutoLaunchPendingState(false);
   }, []);
 
   // Assemble state object
@@ -240,6 +264,7 @@ function useUpdateInternal(): [UseUpdateState, UseUpdateActions] {
     errorMessage,
     isComplete,
     wasRolledBack,
+    autoLaunchPending,
   };
 
   // Memoize actions object to prevent unnecessary re-renders (Bug fix)
@@ -250,8 +275,10 @@ function useUpdateInternal(): [UseUpdateState, UseUpdateActions] {
       dismissUpdate: handleDismissUpdate,
       retryUpdate: handleRetryUpdate,
       reset,
+      setAutoLaunchPending,
+      clearAutoLaunchPending,
     }),
-    [handleCheckForUpdates, handleStartUpdate, handleDismissUpdate, handleRetryUpdate, reset]
+    [handleCheckForUpdates, handleStartUpdate, handleDismissUpdate, handleRetryUpdate, reset, setAutoLaunchPending, clearAutoLaunchPending]
   );
 
   return [state, actions];
