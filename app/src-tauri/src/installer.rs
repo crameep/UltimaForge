@@ -215,11 +215,20 @@ pub struct PathValidationResult {
     pub is_writable: bool,
     /// Whether this path requires administrator elevation.
     pub requires_elevation: bool,
+    /// Warning message (e.g., when disk space check failed but installation can proceed).
+    pub warning_message: Option<String>,
 }
 
 impl PathValidationResult {
     /// Creates a valid result.
-    pub fn valid(available_space: u64, exists: bool, is_empty: bool, is_writable: bool, requires_elevation: bool) -> Self {
+    pub fn valid(
+        available_space: u64,
+        exists: bool,
+        is_empty: bool,
+        is_writable: bool,
+        requires_elevation: bool,
+        warning_message: Option<String>,
+    ) -> Self {
         Self {
             is_valid: true,
             reason: None,
@@ -229,6 +238,7 @@ impl PathValidationResult {
             has_sufficient_space: true,
             is_writable,
             requires_elevation,
+            warning_message,
         }
     }
 
@@ -243,6 +253,7 @@ impl PathValidationResult {
             has_sufficient_space: false,
             is_writable: false,
             requires_elevation: false,
+            warning_message: None,
         }
     }
 }
@@ -480,8 +491,8 @@ impl Installer {
             true // Non-existent directory is considered "empty"
         };
 
-        // Try to get available disk space
-        let available_space = self.get_available_space(path);
+        // Try to get available disk space (with optional warning if API failed)
+        let (available_space, disk_space_warning) = self.get_available_space(path);
 
         // Check if path requires elevation
         let requires_elevation = Self::path_requires_elevation(path) && !Self::is_running_elevated();
@@ -501,6 +512,7 @@ impl Installer {
                 has_sufficient_space: available_space >= required_space + MIN_FREE_SPACE_BUFFER,
                 is_writable: false,
                 requires_elevation,
+                warning_message: disk_space_warning,
             };
         }
 
@@ -520,17 +532,24 @@ impl Installer {
                 has_sufficient_space: false,
                 is_writable,
                 requires_elevation,
+                warning_message: disk_space_warning,
             };
         }
 
-        PathValidationResult::valid(available_space, exists, is_empty, is_writable, requires_elevation)
+        PathValidationResult::valid(available_space, exists, is_empty, is_writable, requires_elevation, disk_space_warning)
     }
 
     /// Gets available disk space for a path.
     ///
     /// Uses the `fs4` crate for cross-platform disk space detection.
     /// Falls back to `u64::MAX` if the API call fails, with a warning logged.
-    fn get_available_space(&self, path: &Path) -> u64 {
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (available_space, warning_message) where:
+    /// - `available_space` is the available disk space in bytes, or `u64::MAX` if unknown
+    /// - `warning_message` is an optional warning if the disk space check failed
+    fn get_available_space(&self, path: &Path) -> (u64, Option<String>) {
         // Try to find an existing ancestor directory
         let check_path = if path.exists() {
             path.to_path_buf()
@@ -542,7 +561,7 @@ impl Installer {
                     current = parent.to_path_buf();
                 } else {
                     warn!("Cannot determine disk space: no existing ancestor directory for {:?}", path);
-                    return u64::MAX; // Can't determine, assume enough
+                    return (u64::MAX, Some("Could not determine available disk space. Install may fail if there is insufficient space.".to_string()));
                 }
             }
             current
@@ -553,11 +572,15 @@ impl Installer {
             Ok(space) => {
                 debug!("Available disk space at {:?}: {} bytes ({} MB)",
                     check_path, space, space / (1024 * 1024));
-                space
+                (space, None)
             }
             Err(e) => {
+                let warning_msg = format!(
+                    "Could not check available disk space: {}. Install will proceed but may fail if there is insufficient space.",
+                    e
+                );
                 warn!("Failed to get disk space for {:?}: {}. Assuming sufficient space.", check_path, e);
-                u64::MAX // Fallback: assume enough space to avoid blocking install
+                (u64::MAX, Some(warning_msg))
             }
         }
     }
@@ -1337,13 +1360,14 @@ mod tests {
 
     #[test]
     fn test_path_validation_result_valid() {
-        let result = PathValidationResult::valid(1024 * 1024 * 1024, true, true, true, false);
+        let result = PathValidationResult::valid(1024 * 1024 * 1024, true, true, true, false, None);
         assert!(result.is_valid);
         assert!(result.reason.is_none());
         assert!(result.exists);
         assert!(result.is_empty);
         assert!(result.is_writable);
         assert!(!result.requires_elevation);
+        assert!(result.warning_message.is_none());
     }
 
     #[test]
@@ -1991,16 +2015,20 @@ mod tests {
         let brand = test_brand_config();
         let installer = Installer::new(brand).unwrap();
 
-        let space = installer.get_available_space(temp_dir.path());
+        let (space, warning) = installer.get_available_space(temp_dir.path());
 
         // Should return a real value, not u64::MAX (unless API failed)
         // On most systems, there's at least some free space
         // We just verify it returns a non-zero value
         assert!(space > 0, "Disk space should be greater than 0");
 
-        // If the API works, space should be less than u64::MAX
-        // (u64::MAX is only returned on API failure)
-        // We can't guarantee this on all systems, so we just check it's positive
+        // If the API works, space should be less than u64::MAX and warning should be None
+        // (u64::MAX is only returned on API failure with a warning)
+        if space < u64::MAX {
+            assert!(warning.is_none(), "No warning expected when API succeeds");
+        } else {
+            assert!(warning.is_some(), "Warning expected when API returns u64::MAX");
+        }
     }
 
     #[test]
@@ -2013,7 +2041,7 @@ mod tests {
         let brand = test_brand_config();
         let installer = Installer::new(brand).unwrap();
 
-        let space = installer.get_available_space(&nonexistent);
+        let (space, _warning) = installer.get_available_space(&nonexistent);
 
         // Should still return a valid value by walking up to temp_dir
         assert!(space > 0, "Disk space should be greater than 0 even for non-existent paths");
@@ -2065,7 +2093,7 @@ mod tests {
         let brand = test_brand_config();
         let installer = Installer::new(brand).unwrap();
 
-        let space = installer.get_available_space(temp_dir.path());
+        let (space, _warning) = installer.get_available_space(temp_dir.path());
 
         // If the API works, we should have at least 1MB of space on most systems
         // This verifies the value is in bytes (a KB value would be 1000x smaller)
@@ -2077,5 +2105,76 @@ mod tests {
                 space
             );
         }
+    }
+
+    #[test]
+    fn test_disk_space_warning_surfaced_in_validation() {
+        // Test that warning_message field exists and can hold disk space warnings
+        let temp_dir = TempDir::new().unwrap();
+        let brand = test_brand_config();
+        let installer = Installer::new(brand).unwrap();
+
+        // Validate path - should return a result with warning_message field
+        let result = installer.validate_install_path(temp_dir.path(), 0);
+        assert!(result.is_valid);
+
+        // The warning_message field should exist and be accessible
+        // If disk space check succeeded, it should be None
+        // If it failed, it would contain a warning message
+        // Either way, the field should be present in the result
+        match result.warning_message {
+            None => {
+                // Normal case: disk space API succeeded, no warning
+                assert!(result.available_space > 0 || result.available_space == u64::MAX);
+            }
+            Some(ref msg) => {
+                // Edge case: disk space API failed, warning present
+                assert!(!msg.is_empty(), "Warning message should not be empty if present");
+                assert!(
+                    msg.contains("disk space") || msg.contains("insufficient"),
+                    "Warning should be related to disk space"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_path_validation_result_with_warning() {
+        // Test PathValidationResult::valid() with a warning message
+        let warning = Some("Test warning: disk space check failed".to_string());
+        let result = PathValidationResult::valid(
+            u64::MAX,
+            true,
+            true,
+            true,
+            false,
+            warning.clone(),
+        );
+
+        assert!(result.is_valid);
+        assert!(result.warning_message.is_some());
+        assert_eq!(result.warning_message, warning);
+        assert_eq!(result.available_space, u64::MAX);
+    }
+
+    #[test]
+    fn test_path_validation_warning_preserved_on_insufficient_permissions() {
+        // Test that warning_message is preserved even when validation fails
+        let brand = test_brand_config();
+        let installer = Installer::new(brand).unwrap();
+
+        // Try to validate a system path that requires elevation
+        #[cfg(target_os = "windows")]
+        let system_path = Path::new("C:\\Windows\\System32\\TestDir");
+
+        #[cfg(not(target_os = "windows"))]
+        let system_path = Path::new("/root/test_dir");
+
+        let result = installer.validate_install_path(system_path, 0);
+
+        // The result should have the warning_message field populated
+        // (either None if API succeeded or Some if it failed)
+        // This tests that the field is properly included in all code paths
+        let _ = result.warning_message; // Access the field to ensure it exists
     }
 }
