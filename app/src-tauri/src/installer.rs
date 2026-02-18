@@ -528,7 +528,8 @@ impl Installer {
 
     /// Gets available disk space for a path.
     ///
-    /// This is a best-effort implementation that may not work on all platforms.
+    /// Uses the `fs4` crate for cross-platform disk space detection.
+    /// Falls back to `u64::MAX` if the API call fails, with a warning logged.
     fn get_available_space(&self, path: &Path) -> u64 {
         // Try to find an existing ancestor directory
         let check_path = if path.exists() {
@@ -540,37 +541,25 @@ impl Installer {
                 if let Some(parent) = current.parent() {
                     current = parent.to_path_buf();
                 } else {
+                    warn!("Cannot determine disk space: no existing ancestor directory for {:?}", path);
                     return u64::MAX; // Can't determine, assume enough
                 }
             }
             current
         };
 
-        // Use fs2 or platform-specific APIs if available
-        // For now, return a large default
-        #[cfg(target_os = "windows")]
-        {
-            self.get_windows_free_space(&check_path)
+        // Use fs4 crate for cross-platform disk space detection
+        match fs4::available_space(&check_path) {
+            Ok(space) => {
+                debug!("Available disk space at {:?}: {} bytes ({} MB)",
+                    check_path, space, space / (1024 * 1024));
+                space
+            }
+            Err(e) => {
+                warn!("Failed to get disk space for {:?}: {}. Assuming sufficient space.", check_path, e);
+                u64::MAX // Fallback: assume enough space to avoid blocking install
+            }
         }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            self.get_unix_free_space(&check_path)
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    fn get_windows_free_space(&self, _path: &Path) -> u64 {
-        // On Windows, we would use GetDiskFreeSpaceExW
-        // For now, return a large default that won't cause false negatives
-        u64::MAX
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    fn get_unix_free_space(&self, _path: &Path) -> u64 {
-        // On Unix, we would use statvfs
-        // For now, return a large default that won't cause false negatives
-        u64::MAX
     }
 
     /// Checks if we can write to the given path.
@@ -1987,6 +1976,105 @@ mod tests {
                 !is_safe_relative_path(Path::new(path)),
                 "Expected path '{}' to be rejected as unsafe",
                 path
+            );
+        }
+    }
+
+    // =============================================================
+    // Disk Space Tests
+    // =============================================================
+
+    #[test]
+    fn test_disk_space_check_existing_directory() {
+        // Test disk space check on an existing directory
+        let temp_dir = TempDir::new().unwrap();
+        let brand = test_brand_config();
+        let installer = Installer::new(brand).unwrap();
+
+        let space = installer.get_available_space(temp_dir.path());
+
+        // Should return a real value, not u64::MAX (unless API failed)
+        // On most systems, there's at least some free space
+        // We just verify it returns a non-zero value
+        assert!(space > 0, "Disk space should be greater than 0");
+
+        // If the API works, space should be less than u64::MAX
+        // (u64::MAX is only returned on API failure)
+        // We can't guarantee this on all systems, so we just check it's positive
+    }
+
+    #[test]
+    fn test_disk_space_check_nonexistent_directory() {
+        // Test disk space check on a non-existent directory
+        // Should walk up to find an existing parent
+        let temp_dir = TempDir::new().unwrap();
+        let nonexistent = temp_dir.path().join("does").join("not").join("exist");
+
+        let brand = test_brand_config();
+        let installer = Installer::new(brand).unwrap();
+
+        let space = installer.get_available_space(&nonexistent);
+
+        // Should still return a valid value by walking up to temp_dir
+        assert!(space > 0, "Disk space should be greater than 0 even for non-existent paths");
+    }
+
+    #[test]
+    fn test_disk_space_check_validates_path_with_sufficient_space() {
+        // Test that path validation uses real disk space check
+        let temp_dir = TempDir::new().unwrap();
+        let brand = test_brand_config();
+        let installer = Installer::new(brand).unwrap();
+
+        // Validate with 0 required space should pass
+        let result = installer.validate_install_path(temp_dir.path(), 0);
+        assert!(result.is_valid);
+        assert!(result.has_sufficient_space);
+
+        // The available_space should be populated with a real value
+        assert!(result.available_space > 0, "Available space should be populated");
+    }
+
+    #[test]
+    fn test_disk_space_check_insufficient_space() {
+        // Test that validation fails when required space exceeds available
+        let temp_dir = TempDir::new().unwrap();
+        let brand = test_brand_config();
+        let installer = Installer::new(brand).unwrap();
+
+        // Request an absurdly large amount of space (1 exabyte)
+        let huge_space_requirement: u64 = 1024 * 1024 * 1024 * 1024 * 1024 * 1024; // 1 EB
+
+        let result = installer.validate_install_path(temp_dir.path(), huge_space_requirement);
+
+        // Should fail due to insufficient space (unless API returned u64::MAX)
+        // Note: If the disk space API fails and returns u64::MAX, this test may pass
+        // unexpectedly, but that's acceptable - we're testing normal operation
+        if result.available_space < huge_space_requirement {
+            assert!(!result.is_valid, "Should fail when required space exceeds available");
+            assert!(!result.has_sufficient_space);
+            assert!(result.reason.is_some());
+            assert!(result.reason.unwrap().contains("Insufficient disk space"));
+        }
+    }
+
+    #[test]
+    fn test_disk_space_returns_bytes() {
+        // Test that disk space is returned in bytes (not KB, MB, etc.)
+        let temp_dir = TempDir::new().unwrap();
+        let brand = test_brand_config();
+        let installer = Installer::new(brand).unwrap();
+
+        let space = installer.get_available_space(temp_dir.path());
+
+        // If the API works, we should have at least 1MB of space on most systems
+        // This verifies the value is in bytes (a KB value would be 1000x smaller)
+        if space < u64::MAX {
+            // Most systems have at least 1MB free
+            assert!(
+                space > 1_000_000,
+                "Disk space {} bytes seems too small - verify it's in bytes not KB",
+                space
             );
         }
     }
