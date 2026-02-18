@@ -1386,4 +1386,371 @@ mod tests {
         // This should fail because the canonical path is outside base
         assert!(matches!(result, Err(ManifestError::PathContainment { .. })));
     }
+
+    // ==================== Cross-Platform Path Validation Tests ====================
+    //
+    // These tests ensure path validation works correctly across Windows and Unix
+    // platforms, covering all attack vectors mentioned in the security spec:
+    // - Windows drive paths (C:\x, D:\x)
+    // - UNC paths (\\server\share)
+    // - Unix absolute paths (/abs)
+    // - Backslash parent traversal (..\x)
+    // - Mixed separator traversal (foo/..\bar)
+    // - Extended Windows paths (\\?\)
+    // - Device paths (CON, NUL)
+
+    mod cross_platform_path_tests {
+        use super::*;
+        use std::path::Path;
+
+        // === Windows Drive Path Tests ===
+
+        #[test]
+        fn test_rejects_windows_drive_c() {
+            // C:\x - Windows C: drive path
+            assert!(!is_safe_relative_path(Path::new("C:\\x")));
+            assert!(!is_safe_relative_path(Path::new("C:\\Windows")));
+            assert!(!is_safe_relative_path(Path::new("C:\\Program Files\\app.exe")));
+        }
+
+        #[test]
+        fn test_rejects_windows_drive_various_letters() {
+            // Various drive letters
+            assert!(!is_safe_relative_path(Path::new("D:\\data")));
+            assert!(!is_safe_relative_path(Path::new("E:\\backup")));
+            assert!(!is_safe_relative_path(Path::new("Z:\\network\\share")));
+        }
+
+        #[test]
+        fn test_rejects_windows_drive_lowercase() {
+            // Lowercase drive letters (should also be rejected)
+            assert!(!is_safe_relative_path(Path::new("c:\\users")));
+            assert!(!is_safe_relative_path(Path::new("d:\\files")));
+        }
+
+        #[test]
+        fn test_rejects_windows_drive_with_forward_slash() {
+            // Windows drive with forward slashes (mixed format)
+            assert!(!is_safe_relative_path(Path::new("C:/Windows/System32")));
+            assert!(!is_safe_relative_path(Path::new("D:/Program Files")));
+        }
+
+        // === UNC Path Tests ===
+
+        #[test]
+        fn test_rejects_unc_server_share() {
+            // \\server\share - UNC network paths
+            assert!(!is_safe_relative_path(Path::new("\\\\server\\share")));
+            assert!(!is_safe_relative_path(Path::new("\\\\server\\share\\file.txt")));
+            assert!(!is_safe_relative_path(Path::new("\\\\192.168.1.1\\c$")));
+        }
+
+        #[test]
+        fn test_rejects_unc_with_forward_slashes() {
+            // UNC-like paths with forward slashes
+            assert!(!is_safe_relative_path(Path::new("//server/share")));
+            assert!(!is_safe_relative_path(Path::new("//localhost/c$")));
+        }
+
+        #[test]
+        fn test_rejects_unc_admin_shares() {
+            // Windows administrative shares
+            assert!(!is_safe_relative_path(Path::new("\\\\server\\c$")));
+            assert!(!is_safe_relative_path(Path::new("\\\\server\\admin$")));
+            assert!(!is_safe_relative_path(Path::new("\\\\server\\ipc$")));
+        }
+
+        // === Unix Absolute Path Tests ===
+
+        #[test]
+        fn test_rejects_unix_absolute_paths() {
+            // /abs - Unix absolute paths
+            assert!(!is_safe_relative_path(Path::new("/abs")));
+            assert!(!is_safe_relative_path(Path::new("/etc/passwd")));
+            assert!(!is_safe_relative_path(Path::new("/var/log/auth.log")));
+            assert!(!is_safe_relative_path(Path::new("/home/user/.ssh/id_rsa")));
+        }
+
+        #[test]
+        fn test_rejects_unix_root() {
+            // Just root
+            assert!(!is_safe_relative_path(Path::new("/")));
+        }
+
+        #[test]
+        fn test_rejects_unix_tmp() {
+            // Common attack targets
+            assert!(!is_safe_relative_path(Path::new("/tmp/malware")));
+            assert!(!is_safe_relative_path(Path::new("/dev/null")));
+            assert!(!is_safe_relative_path(Path::new("/proc/self/environ")));
+        }
+
+        // === Backslash Parent Traversal Tests ===
+
+        #[test]
+        fn test_rejects_backslash_parent_traversal() {
+            // ..\x - backslash parent directory traversal
+            assert!(!is_safe_relative_path(Path::new("..\\x")));
+            assert!(!is_safe_relative_path(Path::new("..\\secret.txt")));
+            assert!(!is_safe_relative_path(Path::new("..\\..\\..\\etc\\passwd")));
+        }
+
+        #[test]
+        fn test_rejects_backslash_traversal_deep() {
+            // Deep backslash traversal
+            assert!(!is_safe_relative_path(Path::new("..\\..\\..\\..\\Windows\\System32")));
+            assert!(!is_safe_relative_path(Path::new("data\\..\\..\\..\\secret")));
+        }
+
+        #[test]
+        fn test_rejects_backslash_traversal_from_subdir() {
+            // Traversal starting from apparent subdirectory
+            assert!(!is_safe_relative_path(Path::new("subdir\\..\\..\\secret")));
+            assert!(!is_safe_relative_path(Path::new("a\\b\\..\\..\\..\\outside")));
+        }
+
+        // === Mixed Separator Traversal Tests ===
+
+        #[test]
+        fn test_rejects_mixed_forward_back_traversal() {
+            // foo/..\bar - mixed separator traversal
+            assert!(!is_safe_relative_path(Path::new("foo/..\\bar")));
+            assert!(!is_safe_relative_path(Path::new("foo\\../bar")));
+        }
+
+        #[test]
+        fn test_rejects_complex_mixed_traversal() {
+            // Complex mixed separator traversal attempts
+            assert!(!is_safe_relative_path(Path::new("a/b\\..\\../c")));
+            assert!(!is_safe_relative_path(Path::new("data\\maps/..\\..\\secret")));
+            assert!(!is_safe_relative_path(Path::new("foo/bar\\..\\..\\..\\etc\\passwd")));
+        }
+
+        #[test]
+        fn test_rejects_alternating_separators_with_traversal() {
+            // Alternating separators with parent traversal
+            assert!(!is_safe_relative_path(Path::new("a\\b/c\\..\\..\\..\\x")));
+        }
+
+        // === Extended Windows Path Tests ===
+
+        #[test]
+        fn test_rejects_extended_length_paths() {
+            // \\?\ extended-length path prefix (Windows)
+            assert!(!is_safe_relative_path(Path::new("\\\\?\\C:\\Windows")));
+            assert!(!is_safe_relative_path(Path::new("\\\\?\\UNC\\server\\share")));
+        }
+
+        #[test]
+        fn test_rejects_device_namespace_paths() {
+            // \\.\ device namespace (Windows)
+            assert!(!is_safe_relative_path(Path::new("\\\\.\\PhysicalDrive0")));
+            assert!(!is_safe_relative_path(Path::new("\\\\.\\COM1")));
+        }
+
+        // === Windows Device Name Tests ===
+
+        #[test]
+        fn test_accepts_device_like_names_in_safe_context() {
+            // Device-like names as regular filenames should be allowed
+            // (These are just filenames, not actual device references)
+            // Note: Windows treats CON, NUL etc. specially but as path components
+            // they should be validated based on structure, not reserved names
+            assert!(is_safe_relative_path(Path::new("data/CON.txt")));
+            assert!(is_safe_relative_path(Path::new("NUL_file.dat")));
+            assert!(is_safe_relative_path(Path::new("files/COM1_backup.log")));
+        }
+
+        // === Edge Cases ===
+
+        #[test]
+        fn test_rejects_dot_dot_variations() {
+            // Various representations of parent directory
+            assert!(!is_safe_relative_path(Path::new("..")));
+            assert!(!is_safe_relative_path(Path::new("../")));
+            assert!(!is_safe_relative_path(Path::new("..\\")));
+            assert!(!is_safe_relative_path(Path::new("../.")));
+        }
+
+        #[test]
+        fn test_accepts_dots_in_filenames() {
+            // Dots in filenames should be fine (not traversal)
+            assert!(is_safe_relative_path(Path::new("file..txt")));
+            assert!(is_safe_relative_path(Path::new("...hidden")));
+            assert!(is_safe_relative_path(Path::new("data/file...ext")));
+        }
+
+        #[test]
+        fn test_accepts_dot_files() {
+            // Unix-style hidden files (starting with .)
+            assert!(is_safe_relative_path(Path::new(".hidden")));
+            assert!(is_safe_relative_path(Path::new(".config/settings.json")));
+            assert!(is_safe_relative_path(Path::new("data/.gitignore")));
+        }
+
+        #[test]
+        fn test_rejects_trailing_dot_dot() {
+            // Path ending with ..
+            assert!(!is_safe_relative_path(Path::new("foo/..")));
+            assert!(!is_safe_relative_path(Path::new("a/b/c/..")));
+        }
+
+        #[test]
+        fn test_accepts_complex_valid_paths() {
+            // Valid complex paths that should be allowed
+            assert!(is_safe_relative_path(Path::new("data/maps/world-map.mul")));
+            assert!(is_safe_relative_path(Path::new("assets/textures/grass_01.png")));
+            assert!(is_safe_relative_path(Path::new("client/v2.5.0/client.exe")));
+            assert!(is_safe_relative_path(Path::new("./relative/path/file.txt")));
+        }
+
+        #[test]
+        fn test_accepts_deep_nesting() {
+            // Deeply nested but valid paths
+            assert!(is_safe_relative_path(Path::new("a/b/c/d/e/f/g/h/i/j/file.txt")));
+            assert!(is_safe_relative_path(Path::new("level1\\level2\\level3\\level4\\file.dat")));
+        }
+
+        #[test]
+        fn test_spaces_in_paths_allowed() {
+            // Spaces in path components are valid filenames
+            // " .." with a space is a valid filename, not parent traversal
+            assert!(is_safe_relative_path(Path::new("foo/ ../bar")));
+            assert!(is_safe_relative_path(Path::new("my files/data.txt")));
+            assert!(is_safe_relative_path(Path::new("Program Files/app.exe")));
+        }
+
+        #[test]
+        fn test_handles_unicode_paths() {
+            // Unicode characters in paths should be allowed
+            assert!(is_safe_relative_path(Path::new("données/fichier.txt")));
+            assert!(is_safe_relative_path(Path::new("日本語/ファイル.dat")));
+            assert!(is_safe_relative_path(Path::new("данные/файл.txt")));
+        }
+
+        #[test]
+        fn test_rejects_unicode_with_traversal() {
+            // Unicode paths with traversal should still be rejected
+            assert!(!is_safe_relative_path(Path::new("données/../secret")));
+            assert!(!is_safe_relative_path(Path::new("../日本語/file")));
+        }
+    }
+
+    // ==================== Manifest Integration Path Tests ====================
+    //
+    // These tests verify that malicious paths are properly rejected when
+    // parsing manifests, ensuring the path validation is correctly wired up.
+    //
+    // Note: JSON requires backslashes to be escaped as \\, so these tests
+    // use double backslashes in the JSON strings.
+
+    mod manifest_path_integration_tests {
+        use super::*;
+
+        fn make_manifest_json_with_path(path: &str) -> String {
+            format!(
+                r#"{{
+                    "version": "1.0.0",
+                    "timestamp": "2026-02-15T00:00:00Z",
+                    "client_executable": "client.exe",
+                    "files": [
+                        {{
+                            "path": "client.exe",
+                            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                            "size": 500
+                        }},
+                        {{
+                            "path": "{}",
+                            "sha256": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+                            "size": 500
+                        }}
+                    ],
+                    "total_size": 1000
+                }}"#,
+                path
+            )
+        }
+
+        #[test]
+        fn test_manifest_rejects_windows_drive_path() {
+            // JSON-escaped: C:\\Windows\\System32\\cmd.exe -> C:\Windows\System32\cmd.exe
+            let json = make_manifest_json_with_path("C:\\\\Windows\\\\System32\\\\cmd.exe");
+            let result = Manifest::parse_str(&json);
+            assert!(matches!(result, Err(ManifestError::InvalidPath(_))));
+        }
+
+        #[test]
+        fn test_manifest_rejects_unc_path() {
+            // JSON-escaped: \\\\server\\share\\file.txt -> \\server\share\file.txt
+            let json = make_manifest_json_with_path("\\\\\\\\server\\\\share\\\\file.txt");
+            let result = Manifest::parse_str(&json);
+            assert!(matches!(result, Err(ManifestError::InvalidPath(_))));
+        }
+
+        #[test]
+        fn test_manifest_rejects_unix_absolute() {
+            // Forward slashes don't need escaping in JSON
+            let json = make_manifest_json_with_path("/etc/passwd");
+            let result = Manifest::parse_str(&json);
+            assert!(matches!(result, Err(ManifestError::InvalidPath(_))));
+        }
+
+        #[test]
+        fn test_manifest_rejects_backslash_traversal() {
+            // JSON-escaped: ..\\secret.txt -> ..\secret.txt
+            let json = make_manifest_json_with_path("..\\\\secret.txt");
+            let result = Manifest::parse_str(&json);
+            assert!(matches!(result, Err(ManifestError::InvalidPath(_))));
+        }
+
+        #[test]
+        fn test_manifest_rejects_mixed_separator_traversal() {
+            // JSON-escaped: data/..\\..\\secret -> data/..\..\ secret
+            let json = make_manifest_json_with_path("data/..\\\\..\\\\secret");
+            let result = Manifest::parse_str(&json);
+            assert!(matches!(result, Err(ManifestError::InvalidPath(_))));
+        }
+
+        #[test]
+        fn test_manifest_rejects_deep_traversal() {
+            // JSON-escaped deep backslash traversal
+            let json = make_manifest_json_with_path(
+                "..\\\\..\\\\..\\\\..\\\\Windows\\\\System32\\\\calc.exe",
+            );
+            let result = Manifest::parse_str(&json);
+            assert!(matches!(result, Err(ManifestError::InvalidPath(_))));
+        }
+
+        #[test]
+        fn test_manifest_rejects_hidden_traversal_in_subdir() {
+            // Forward slash traversal (no JSON escaping needed)
+            let json = make_manifest_json_with_path("data/subdir/../../../etc/passwd");
+            let result = Manifest::parse_str(&json);
+            assert!(matches!(result, Err(ManifestError::InvalidPath(_))));
+        }
+
+        #[test]
+        fn test_manifest_accepts_valid_nested_path() {
+            // Forward slash relative path (valid)
+            let json = make_manifest_json_with_path("data/maps/map0.mul");
+            let result = Manifest::parse_str(&json);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_manifest_accepts_windows_relative_backslash() {
+            // JSON-escaped: data\\textures\\grass.png -> data\textures\grass.png
+            let json = make_manifest_json_with_path("data\\\\textures\\\\grass.png");
+            let result = Manifest::parse_str(&json);
+            assert!(result.is_ok());
+        }
+
+        #[test]
+        fn test_manifest_accepts_current_dir_prefix() {
+            // Current directory prefix (valid)
+            let json = make_manifest_json_with_path("./config/settings.ini");
+            let result = Manifest::parse_str(&json);
+            assert!(result.is_ok());
+        }
+    }
 }
