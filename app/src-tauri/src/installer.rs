@@ -32,7 +32,7 @@ use crate::config::{BrandConfig, LauncherConfig};
 use crate::downloader::{DownloadProgress, Downloader, DownloaderConfig};
 use crate::error::{DownloadError, InstallError, UpdateError};
 use crate::hash::{hash_file, verify_file_hash};
-use crate::manifest::{FileEntry, Manifest};
+use crate::manifest::{is_safe_relative_path, FileEntry, Manifest};
 use crate::signature;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -754,6 +754,26 @@ impl Installer {
         let files: Vec<&FileEntry> = manifest.iter_files().collect();
 
         for file in &files {
+            // Defense-in-depth: Validate path safety before any filesystem operations.
+            // While the manifest parsing already validates paths using is_safe_relative_path,
+            // we re-validate here to protect against any bypass or modification.
+            let file_path = Path::new(&file.path);
+            if !is_safe_relative_path(file_path) {
+                error!("Path containment violation detected: {}", file.path);
+                log.log(
+                    InstallLogEntry::new("DOWNLOAD", Some(&file.path), "BLOCKED")
+                        .with_details("Path containment violation - possible path traversal attack"),
+                );
+                log.log_session_end(false);
+                return Err(InstallError::InvalidPath {
+                    path: PathBuf::from(&file.path),
+                    reason: format!(
+                        "Path '{}' failed containment validation - possible path traversal attack",
+                        file.path
+                    ),
+                });
+            }
+
             let dest_path = install_path.join(&file.path);
             let blob_url = file.blob_url(&self.brand_config.update_url);
 
@@ -1849,5 +1869,125 @@ mod tests {
         assert!(!DETECTION_DATA_FILES.is_empty());
         assert!(MIN_DATA_FILES_FOR_MEDIUM > 0);
         assert!(MIN_DATA_FILES_FOR_MEDIUM <= DETECTION_DATA_FILES.len());
+    }
+
+    // =============================================================
+    // Path Containment Validation Tests
+    // =============================================================
+
+    use crate::manifest::is_safe_relative_path;
+
+    #[test]
+    fn test_path_containment_safe_paths_in_installer() {
+        // Verify that safe paths are accepted by is_safe_relative_path
+        // These are the types of paths we expect in valid manifests
+        assert!(is_safe_relative_path(Path::new("client.exe")));
+        assert!(is_safe_relative_path(Path::new("data/map0.mul")));
+        assert!(is_safe_relative_path(Path::new("assets/textures/grass.png")));
+        assert!(is_safe_relative_path(Path::new("./config.ini")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_traversal() {
+        // Verify that path traversal attempts are rejected
+        assert!(!is_safe_relative_path(Path::new("../secret.txt")));
+        assert!(!is_safe_relative_path(Path::new("../../../etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new("data/../../../etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new("foo/../bar/../../../secret")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_absolute_paths() {
+        // Verify that absolute paths are rejected
+        assert!(!is_safe_relative_path(Path::new("/etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new("/usr/bin/bash")));
+        assert!(!is_safe_relative_path(Path::new("/")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_windows_absolute() {
+        // Verify that Windows absolute paths are rejected
+        assert!(!is_safe_relative_path(Path::new("C:\\Windows\\System32")));
+        assert!(!is_safe_relative_path(Path::new("D:\\Program Files")));
+        assert!(!is_safe_relative_path(Path::new("\\\\server\\share")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_mixed_separator_traversal() {
+        // Verify that mixed separator path traversal is rejected
+        assert!(!is_safe_relative_path(Path::new("foo/..\\bar")));
+        assert!(!is_safe_relative_path(Path::new("data\\../../../etc")));
+        assert!(!is_safe_relative_path(Path::new("..\\..\\secret")));
+    }
+
+    #[test]
+    fn test_path_containment_accepts_windows_relative_subdirs() {
+        // Verify that Windows-style relative subdirectories are accepted
+        assert!(is_safe_relative_path(Path::new("data\\maps\\map0.mul")));
+        assert!(is_safe_relative_path(Path::new("assets\\textures\\grass.png")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_empty_path() {
+        // Empty paths should be rejected
+        assert!(!is_safe_relative_path(Path::new("")));
+    }
+
+    #[test]
+    fn test_path_containment_accepts_dot_prefixed() {
+        // Paths starting with ./ (current directory) are safe
+        assert!(is_safe_relative_path(Path::new("./file.txt")));
+        assert!(is_safe_relative_path(Path::new("./data/file.txt")));
+    }
+
+    #[test]
+    fn test_path_containment_accepts_hidden_files() {
+        // Unix-style hidden files (starting with .) should be accepted
+        assert!(is_safe_relative_path(Path::new(".hidden")));
+        assert!(is_safe_relative_path(Path::new(".config/settings.json")));
+    }
+
+    #[test]
+    fn test_path_containment_integration_with_installer() {
+        // This test verifies that the path validation logic integrates correctly
+        // with the installer's expected behavior. The installer should:
+        // 1. Accept safe relative paths for downloads
+        // 2. Reject any path traversal attempts
+
+        // Simulate paths that might come from a manifest
+        let valid_paths = vec![
+            "client.exe",
+            "data/map0.mul",
+            "assets/textures/grass.png",
+            "config.ini",
+            "./readme.txt",
+        ];
+
+        for path in valid_paths {
+            assert!(
+                is_safe_relative_path(Path::new(path)),
+                "Expected path '{}' to be valid",
+                path
+            );
+        }
+
+        // These are attack vectors that must be rejected
+        let malicious_paths = vec![
+            "../secret.txt",
+            "../../password.txt",
+            "../../../etc/passwd",
+            "data/../../../etc/passwd",
+            "/etc/passwd",
+            "C:\\Windows\\System32\\cmd.exe",
+            "\\\\server\\share\\file.txt",
+        ];
+
+        for path in malicious_paths {
+            assert!(
+                !is_safe_relative_path(Path::new(path)),
+                "Expected path '{}' to be rejected as unsafe",
+                path
+            );
+        }
     }
 }
