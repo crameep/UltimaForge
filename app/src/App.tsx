@@ -49,7 +49,13 @@ function App() {
           const settings = await getSettings();
           shouldCheckLauncherUpdates =
             settings.settings?.check_updates_on_startup ?? true;
-        } catch {
+        } catch (settingsError) {
+          // Settings fetch failed - default to checking updates (safe default)
+          // Log warning but don't block app startup
+          console.warn(
+            "Failed to fetch settings, defaulting to check_updates_on_startup=true:",
+            settingsError instanceof Error ? settingsError.message : settingsError
+          );
           shouldCheckLauncherUpdates = true;
         }
 
