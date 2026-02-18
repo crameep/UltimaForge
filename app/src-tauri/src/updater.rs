@@ -507,52 +507,24 @@ impl Updater {
     /// Downloads and verifies the manifest from the update server, then
     /// compares it against the current installation to determine which
     /// files need updating.
+    ///
+    /// # Security
+    ///
+    /// This method uses `fetch_verified_manifest()` to ensure the manifest
+    /// signature is verified before any data is trusted. This eliminates
+    /// TOCTOU vulnerabilities by performing atomic fetch-and-verify.
     pub async fn check_for_updates(
         &self,
         current_version: Option<&str>,
     ) -> Result<UpdateCheckResult, UpdateError> {
         info!("Checking for updates from {}", self.brand_config.update_url);
 
-        // Download manifest
-        let manifest_url = format!("{}/manifest.json", self.brand_config.update_url);
-        let manifest_bytes = self
-            .downloader
-            .download_bytes(&manifest_url)
-            .await
-            .map_err(|e| UpdateError::ManifestFetchFailed(e.to_string()))?;
-
-        // Download signature
-        let signature_url = format!("{}/manifest.sig", self.brand_config.update_url);
-        let signature_hex = self
-            .downloader
-            .download_bytes(&signature_url)
-            .await
-            .map_err(|_| UpdateError::MissingSignature)?;
-
-        // Decode hex signature to raw bytes
-        let signature_str = std::str::from_utf8(&signature_hex)
-            .map_err(|_| UpdateError::StagingError("Invalid signature encoding".to_string()))?
-            .trim();
-        let signature_bytes = signature::parse_hex_signature(signature_str)
-            .map_err(|e| UpdateError::StagingError(format!("Invalid signature format: {}", e)))?;
-
-        // Verify signature BEFORE parsing
-        let public_key_bytes: [u8; 32] = self
-            .brand_config
-            .public_key_bytes()
-            .map_err(|e| UpdateError::StagingError(format!("Invalid public key: {}", e)))?
-            .try_into()
-            .map_err(|_| UpdateError::StagingError("Invalid public key length".to_string()))?;
-
-        signature::verify_manifest(&manifest_bytes, &signature_bytes, &public_key_bytes)
-            .map_err(|e| UpdateError::StagingError(format!("Signature verification failed: {}", e)))?;
-
-        // Parse manifest (now safe since signature is verified)
-        let manifest = Manifest::parse(&manifest_bytes)
-            .map_err(|e| UpdateError::StagingError(format!("Invalid manifest: {}", e)))?;
+        // Use the verified manifest helper to atomically fetch and verify
+        let verified = self.fetch_verified_manifest().await?;
+        let manifest = &verified.manifest;
 
         // Compute local file hashes
-        let local_hashes = self.compute_local_hashes(&manifest)?;
+        let local_hashes = self.compute_local_hashes(manifest)?;
 
         // Determine files needing update
         let files_to_update = manifest.files_to_update(&local_hashes);
