@@ -25,7 +25,7 @@ use crate::config::{BrandConfig, LauncherConfig};
 use crate::downloader::{DownloadProgress, Downloader, DownloaderConfig};
 use crate::error::{DownloadError, UpdateError};
 use crate::hash::{hash_file, verify_file_hash};
-use crate::manifest::{FileEntry, Manifest};
+use crate::manifest::{is_safe_relative_path, FileEntry, Manifest};
 use crate::signature;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -599,6 +599,19 @@ impl Updater {
         let mut downloaded = Vec::new();
 
         for file in files {
+            // Defense-in-depth: Validate path safety before any filesystem operations.
+            // While manifest parsing already validates paths using is_safe_relative_path,
+            // we re-validate here to protect against any bypass or modification.
+            let file_path = std::path::Path::new(&file.path);
+            if !is_safe_relative_path(file_path) {
+                error!("Path containment violation detected in download_to_staging: {}", file.path);
+                self.cleanup_staging()?;
+                return Err(UpdateError::StagingError(format!(
+                    "Path containment violation: {} - possible path traversal attack",
+                    file.path
+                )));
+            }
+
             let staged_path = self.staging_path.join(&file.path);
             let blob_url = file.blob_url(&self.brand_config.update_url);
 
@@ -723,6 +736,18 @@ impl Updater {
         self.backed_up_files.clear();
 
         for file in files {
+            // Defense-in-depth: Validate path safety before any filesystem operations.
+            // While manifest parsing already validates paths using is_safe_relative_path,
+            // we re-validate here to protect against any bypass or modification.
+            let file_path = std::path::Path::new(&file.path);
+            if !is_safe_relative_path(file_path) {
+                error!("Path containment violation detected in backup_current_files: {}", file.path);
+                return Err(UpdateError::StagingError(format!(
+                    "Path containment violation: {} - possible path traversal attack",
+                    file.path
+                )));
+            }
+
             let current_path = self.install_path.join(&file.path);
 
             // Only backup if file exists
@@ -767,6 +792,18 @@ impl Updater {
         self.applied_files.clear();
 
         for file in files {
+            // Defense-in-depth: Validate path safety before any filesystem operations.
+            // While manifest parsing already validates paths using is_safe_relative_path,
+            // we re-validate here to protect against any bypass or modification.
+            let file_path = std::path::Path::new(&file.path);
+            if !is_safe_relative_path(file_path) {
+                error!("Path containment violation detected in apply_staged_files: {}", file.path);
+                return Err(UpdateError::StagingError(format!(
+                    "Path containment violation: {} - possible path traversal attack",
+                    file.path
+                )));
+            }
+
             let staged_path = self.staging_path.join(&file.path);
             let target_path = self.install_path.join(&file.path);
 
@@ -966,6 +1003,22 @@ impl Updater {
 
         // Download each file
         for file in &files_to_update {
+            // Defense-in-depth: Validate path safety before any filesystem operations.
+            // While manifest parsing already validates paths using is_safe_relative_path,
+            // we re-validate here to protect against any bypass or modification.
+            let file_path = std::path::Path::new(&file.path);
+            if !is_safe_relative_path(file_path) {
+                error!("Path containment violation detected in perform_update: {}", file.path);
+                log.log(TransactionLogEntry::new("DOWNLOAD", Some(&file.path), "BLOCKED")
+                    .with_details("Path containment violation - possible path traversal attack"));
+                self.cleanup_staging()?;
+                log.log_session_end(false);
+                return Err(UpdateError::StagingError(format!(
+                    "Path containment violation: {} - possible path traversal attack",
+                    file.path
+                )));
+            }
+
             let staged_path = self.staging_path.join(&file.path);
             let blob_url = file.blob_url(&self.brand_config.update_url);
 
@@ -1816,5 +1869,119 @@ mod tests {
             Some("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
             "Hash must come from verified manifest"
         );
+    }
+
+    // =============================================================
+    // Path Containment Validation Tests
+    // =============================================================
+
+    use crate::manifest::is_safe_relative_path;
+
+    #[test]
+    fn test_path_containment_safe_paths_in_updater() {
+        // Verify that safe paths are accepted by is_safe_relative_path
+        // These are the types of paths we expect in valid manifests
+        assert!(is_safe_relative_path(Path::new("client.exe")));
+        assert!(is_safe_relative_path(Path::new("data/map0.mul")));
+        assert!(is_safe_relative_path(Path::new("assets/textures/grass.png")));
+        assert!(is_safe_relative_path(Path::new("./config.ini")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_traversal() {
+        // Verify that path traversal attempts are rejected
+        assert!(!is_safe_relative_path(Path::new("../secret.txt")));
+        assert!(!is_safe_relative_path(Path::new("../../../etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new("data/../../../etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new("foo/../bar/../../../secret")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_absolute_paths() {
+        // Verify that absolute paths are rejected
+        assert!(!is_safe_relative_path(Path::new("/etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new("/usr/bin/bash")));
+        assert!(!is_safe_relative_path(Path::new("/")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_windows_absolute() {
+        // Verify that Windows absolute paths are rejected
+        assert!(!is_safe_relative_path(Path::new("C:\\Windows\\System32")));
+        assert!(!is_safe_relative_path(Path::new("D:\\Program Files")));
+        assert!(!is_safe_relative_path(Path::new("\\\\server\\share")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_mixed_separator_traversal() {
+        // Verify that mixed separator path traversal is rejected
+        assert!(!is_safe_relative_path(Path::new("foo/..\\bar")));
+        assert!(!is_safe_relative_path(Path::new("data\\../../../etc")));
+        assert!(!is_safe_relative_path(Path::new("..\\..\\secret")));
+    }
+
+    #[test]
+    fn test_path_containment_accepts_windows_relative_subdirs() {
+        // Verify that Windows-style relative subdirectories are accepted
+        assert!(is_safe_relative_path(Path::new("data\\maps\\map0.mul")));
+        assert!(is_safe_relative_path(Path::new("assets\\textures\\grass.png")));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_empty_path() {
+        // Empty paths should be rejected
+        assert!(!is_safe_relative_path(Path::new("")));
+    }
+
+    #[test]
+    fn test_path_containment_accepts_dot_prefixed() {
+        // Paths starting with ./ (current directory) are safe
+        assert!(is_safe_relative_path(Path::new("./file.txt")));
+        assert!(is_safe_relative_path(Path::new("./data/file.txt")));
+    }
+
+    #[test]
+    fn test_path_containment_accepts_hidden_files() {
+        // Unix-style hidden files (starting with .) should be accepted
+        assert!(is_safe_relative_path(Path::new(".hidden")));
+        assert!(is_safe_relative_path(Path::new(".config/settings.json")));
+    }
+
+    #[test]
+    fn test_path_containment_integration_with_updater() {
+        // This test verifies that the path validation logic integrates correctly
+        // with the updater's expected path formats
+        let valid_paths = vec![
+            "client.exe",
+            "data/maps/map0.mul",
+            "assets/textures/grass.png",
+            "client/version.txt",
+            "./readme.txt",
+        ];
+
+        for path in valid_paths {
+            assert!(
+                is_safe_relative_path(Path::new(path)),
+                "Expected path '{}' to be valid",
+                path
+            );
+        }
+
+        let malicious_paths = vec![
+            "../secret.txt",
+            "../../../etc/passwd",
+            "data/../../../etc/passwd",
+            "/etc/passwd",
+            "C:\\Windows\\System32",
+            "\\\\server\\share\\file.txt",
+        ];
+
+        for path in malicious_paths {
+            assert!(
+                !is_safe_relative_path(Path::new(path)),
+                "Expected path '{}' to be rejected as unsafe",
+                path
+            );
+        }
     }
 }
