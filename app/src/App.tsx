@@ -7,6 +7,8 @@ import { PatchNotes } from "./components/PatchNotes";
 import { Settings } from "./components/Settings";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
+import { getSettings } from "./lib/api";
+import { checkForLauncherUpdate } from "./lib/launcherUpdater";
 import "./App.css";
 
 type AppPhase =
@@ -42,15 +44,30 @@ function App() {
   useEffect(() => {
     const checkInstallation = async () => {
       try {
+        let shouldCheckLauncherUpdates = true;
+        try {
+          const settings = await getSettings();
+          shouldCheckLauncherUpdates =
+            settings.settings?.check_updates_on_startup ?? true;
+        } catch {
+          shouldCheckLauncherUpdates = true;
+        }
+
+        if (shouldCheckLauncherUpdates) {
+          await checkForLauncherUpdate({ interactive: true });
+        }
+
         const status = await checkNeedsInstall();
         if (status.needs_install || !status.install_complete) {
           setPhase("NeedsInstall");
           setStatusMessage("Installation required");
         } else {
-          // Installation complete, check for updates
-          setPhase("CheckingUpdates");
-          setStatusMessage("Checking for updates...");
-          await updateActions.checkForUpdates();
+          // Installation complete, check for game updates if setting allows
+          if (shouldCheckLauncherUpdates) {
+            setPhase("CheckingUpdates");
+            setStatusMessage("Checking for updates...");
+            await updateActions.checkForUpdates();
+          }
           setPhase("Ready");
           setStatusMessage("");
         }
