@@ -163,36 +163,63 @@ function App() {
         autoLaunchTriggeredRef.current = true;
 
         // Validate client before launching
-        const validationResult = await validateClient();
-        if (!validationResult.is_valid) {
-          // Validation failed - show error but don't block user
+        try {
+          const validationResult = await validateClient();
+          if (!validationResult.is_valid) {
+            // Validation failed - show error gracefully, user can retry via Launch button
+            setStatusMessage(
+              `Update complete. Auto-launch failed: ${validationResult.error || "Validation failed"}. Click Play to launch manually.`
+            );
+            return;
+          }
+        } catch (validationError) {
+          // Validation threw an error - show graceful fallback
+          console.warn(
+            "Auto-launch validation failed:",
+            validationError instanceof Error ? validationError.message : validationError
+          );
           setStatusMessage(
-            `Update complete. Auto-launch failed: ${validationResult.error || "Validation failed"}`
+            "Update complete. Auto-launch unavailable. Click Play to launch manually."
           );
           return;
         }
 
         // Launch the game
         setStatusMessage("Update complete! Launching game...");
-        const launchResult = await launchGame();
+        try {
+          const launchResult = await launchGame();
 
-        if (launchResult.success) {
-          setPhase("GameRunning");
-          setStatusMessage(
-            launchResult.pid
-              ? `Game running (PID: ${launchResult.pid})`
-              : "Game is running"
+          if (launchResult.success) {
+            setPhase("GameRunning");
+            setStatusMessage(
+              launchResult.pid
+                ? `Game running (PID: ${launchResult.pid})`
+                : "Game is running"
+            );
+          } else {
+            // Launch returned failure - show error gracefully
+            setStatusMessage(
+              `Update complete. Auto-launch failed: ${launchResult.error || "Launch failed"}. Click Play to retry.`
+            );
+          }
+        } catch (launchError) {
+          // Launch threw an error - show graceful fallback
+          console.warn(
+            "Auto-launch failed:",
+            launchError instanceof Error ? launchError.message : launchError
           );
-        } else {
-          // Launch failed - show error but don't block user
           setStatusMessage(
-            `Update complete. Auto-launch failed: ${launchResult.error || "Launch failed"}`
+            "Update complete. Auto-launch failed. Click Play to launch manually."
           );
         }
       }
     } catch (error) {
-      // Settings fetch failed - just complete without auto-launch
-      // No need to block update completion
+      // Settings fetch failed - complete without auto-launch, log warning
+      console.warn(
+        "Auto-launch settings fetch failed, skipping auto-launch:",
+        error instanceof Error ? error.message : error
+      );
+      // Status already shows "Update complete!", no need to change
     }
   };
 
