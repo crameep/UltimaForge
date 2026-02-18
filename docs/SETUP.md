@@ -117,6 +117,12 @@ nano branding/brand.json
 
 See [branding-template/README.md](../branding-template/README.md) for configuration details.
 
+**Optional shortcut:** Run the server owner wizard to generate `branding/brand.json`:
+
+```bash
+node app/scripts/server-owner-wizard.js
+```
+
 ### 4. Generate Your Keypair
 
 Generate an Ed25519 keypair for signing manifests:
@@ -301,6 +307,7 @@ taskkill /PID <pid> /F
 2. **Set up update server**: See [PUBLISHING.md](PUBLISHING.md)
 3. **Publish your first update**: Use the publish-cli
 4. **Distribute your launcher**: Share the built executable with players
+5. **Bump version numbers**: Use `node app/scripts/bump-version.js --version x.y.z`
 
 ## Support
 

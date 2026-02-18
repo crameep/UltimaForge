@@ -5,7 +5,9 @@
  * Displays install path, user settings toggles, and maintenance actions.
  */
 
+import { useState } from "react";
 import { useSettings } from "../hooks/useSettings";
+import { checkForLauncherUpdate } from "../lib/launcherUpdater";
 import { calculatePercentage } from "../lib/types";
 import "./Settings.css";
 
@@ -167,6 +169,39 @@ function AdminBanner({
  */
 export function Settings({ onBack }: SettingsProps) {
   const [state, actions] = useSettings();
+  const [launcherUpdateMessage, setLauncherUpdateMessage] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [isCheckingLauncherUpdate, setIsCheckingLauncherUpdate] =
+    useState(false);
+
+  const handleLauncherUpdateCheck = async () => {
+    setIsCheckingLauncherUpdate(true);
+    setLauncherUpdateMessage(null);
+
+    const result = await checkForLauncherUpdate({ interactive: true });
+
+    if (result.error) {
+      setLauncherUpdateMessage({
+        type: "error",
+        message: result.error,
+      });
+    } else if (!result.updateAvailable) {
+      setLauncherUpdateMessage({
+        type: "success",
+        message: "Launcher is up to date.",
+      });
+    } else {
+      const versionText = result.version ? ` (v${result.version})` : "";
+      setLauncherUpdateMessage({
+        type: "success",
+        message: `Launcher update available${versionText}.`,
+      });
+    }
+
+    setIsCheckingLauncherUpdate(false);
+  };
 
   // Show loading state
   if (state.isLoading && !state.settings) {
@@ -224,6 +259,13 @@ export function Settings({ onBack }: SettingsProps) {
             type="success"
             message={state.successMessage}
             onDismiss={actions.clearSuccess}
+          />
+        )}
+        {launcherUpdateMessage && (
+          <Message
+            type={launcherUpdateMessage.type}
+            message={launcherUpdateMessage.message}
+            onDismiss={() => setLauncherUpdateMessage(null)}
           />
         )}
 
@@ -459,6 +501,22 @@ export function Settings({ onBack }: SettingsProps) {
               </div>
             </div>
           )}
+        </section>
+
+        {/* Launcher Updates */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">Launcher Updates</h2>
+
+          <div className="settings-actions">
+            <ActionButton
+              label="Check for launcher updates"
+              description="Download and install the latest launcher build"
+              icon={isCheckingLauncherUpdate ? "\u21BB" : "\u2191"}
+              loading={isCheckingLauncherUpdate}
+              disabled={isCheckingLauncherUpdate}
+              onClick={handleLauncherUpdateCheck}
+            />
+          </div>
         </section>
 
         {/* About */}

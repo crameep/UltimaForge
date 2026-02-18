@@ -48,6 +48,25 @@ cargo run -p host-server -- --dir ./updates --port 8080
 
 Your update server is now running at `http://localhost:8080`.
 
+### Publish Everything (Game + Launcher)
+
+For a single end-to-end flow, use the helper script:
+
+```bash
+# From repo root
+node app/scripts/publish-all.js
+```
+
+Optional flags:
+- `--game-public-key` to run validation after publishing
+
+The script prompts for game source, keys, and launcher binary, then publishes
+both game updates and launcher self-update metadata into the same `updates/`
+folder.
+
+You can set `TAURI_UPDATER_SIGNATURE` to supply the launcher signature without
+being prompted.
+
 ## Publish CLI Commands
 
 ### keygen
@@ -231,6 +250,8 @@ cargo run -p host-server -- --dir ./updates --port 80 --host 0.0.0.0
 | `GET /manifest.json` | Current manifest |
 | `GET /manifest.sig` | Manifest signature |
 | `GET /files/{hash}` | Content-addressed file by SHA-256 hash |
+| `GET /launcher/{target}/{arch}/{current_version}` | Launcher update metadata (Tauri updater) |
+| `GET /launcher/files/{filename}` | Launcher update binaries |
 
 ### Testing the Server
 
@@ -244,6 +265,8 @@ curl http://localhost:8080/manifest.json
 # Validate structure
 curl http://localhost:8080/validate
 ```
+
+The validation response now includes launcher update checks (if `launcher/` is present).
 
 ## Update Workflow
 
@@ -325,6 +348,56 @@ server {
         return 200 'OK';
         add_header Content-Type text/plain;
     }
+}
+```
+
+## Launcher Self-Updates (Tauri)
+
+Launcher self-updates are hosted alongside game updates under a `launcher/` folder.
+
+### Directory Layout
+
+```
+updates/
+├── manifest.json
+├── manifest.sig
+├── files/
+└── launcher/
+    ├── latest.json
+    ├── windows-x86_64.json
+    └── files/
+        └── YourLauncher-1.2.0-x64-setup.exe
+```
+
+### Quick Publish (Local Host Server)
+
+Use the helper script to generate metadata and copy the launcher binary:
+
+```bash
+# Windows (PowerShell)
+app/scripts/publish-launcher-update.ps1
+
+# Linux/macOS
+app/scripts/publish-launcher-update.sh
+```
+
+The script writes metadata to `updates/launcher` by default so the built-in
+host server can serve it immediately.
+
+### Configure the Updater Endpoint
+
+Set your updater endpoint in `app/src-tauri/tauri.conf.json`:
+
+```json
+{
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://updates.yourserver.com/launcher/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "pubkey": "<REPLACE_WITH_TAURI_UPDATER_PUBLIC_KEY>"
+    }
+  }
 }
 ```
 

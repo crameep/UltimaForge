@@ -9,7 +9,7 @@ UltimaForge has **two distinct update concerns**:
 | Update Type | Description | Status |
 |-------------|-------------|--------|
 | **Game File Updates** | Updates to the UO client files players need to play | Fully implemented |
-| **Launcher Self-Update** | Updates to the launcher application itself | Not yet implemented |
+| **Launcher Self-Update** | Updates to the launcher application itself | Implemented |
 
 The launcher can currently update game files (art assets, maps, executables, etc.) but **cannot update itself**. This document explains both systems and outlines the path to implementing self-update.
 
@@ -89,25 +89,19 @@ This ensures players only receive files you've explicitly signed and published.
 
 ---
 
-## What's Missing: Launcher Self-Update (Not Implemented)
+## Launcher Self-Update (Implemented)
 
-The launcher **cannot update itself**. When you release a new version of the launcher with bug fixes, UI improvements, or new features, players must:
+UltimaForge now supports **self-updating the launcher** using Tauri's updater plugin. This enables the launcher to check for new versions, download them, and restart automatically when approved by the user.
 
-1. Manually download the new launcher
-2. Replace their existing installation
-3. Re-launch
-
-This creates friction for both server owners and players.
-
-### Missing Components
+### What It Includes
 
 | Component | Description |
 |-----------|-------------|
-| Version checking | Launcher doesn't check for newer launcher versions |
-| Update manifest | No manifest format for launcher binaries (separate from game files) |
-| Download mechanism | No code to download launcher updates |
-| Apply mechanism | Cannot replace the running executable |
-| Restart handling | No mechanism to restart after self-update |
+| Version checking | Launcher checks for newer versions at startup or manually |
+| Update metadata | Tauri-compatible update manifest hosted by the server |
+| Download mechanism | Built-in updater handles download and verification |
+| Apply mechanism | Running executable replaced safely by the updater |
+| Restart handling | Automatic restart after successful update |
 
 ### Why It's Different from Game Updates
 
@@ -123,163 +117,73 @@ Game file updates and launcher self-updates are fundamentally different:
 
 ---
 
-## Implementation Roadmap
+## Implementation Details
 
-### Option 1: Tauri Updater Plugin (Recommended)
+### Tauri Updater Plugin (Implemented)
 
 Tauri provides a built-in updater plugin that handles the complexity of self-updates across platforms.
 
-#### Pros
+The current implementation:
 
-- Battle-tested implementation across Windows, macOS, and Linux
-- Handles executable replacement and restart automatically
-- Supports code signing verification
-- Well-documented and maintained by the Tauri team
-- Minimal implementation effort
+1. **Enables the updater plugin** in `app/src-tauri/Cargo.toml` and `app/src-tauri/src/lib.rs`
+2. **Configures update endpoints and pubkey** in `app/src-tauri/tauri.conf.json`
+3. **Checks for updates in the UI** and prompts users to download and restart
+4. **Supports manual update checks** via the Settings screen
 
-#### Cons
+### Hosting With the Built-In Host Server
 
-- Less control over update flow
-- Requires hosting update metadata in Tauri's expected format
-- May have different signing requirements from game updates
+The host server can serve launcher updates alongside game updates. Place metadata and binaries here:
 
-#### Implementation Steps
+```
+updates/
+└── launcher/
+    ├── latest.json
+    ├── windows-x86_64.json
+    └── files/
+        └── YourLauncher-1.2.0-x64-setup.exe
+```
 
-1. **Add the updater plugin dependency**:
-   ```toml
-   # app/src-tauri/Cargo.toml
-   [dependencies]
-   tauri-plugin-updater = "2"
-   ```
+The updater endpoint should be:
 
-2. **Configure the updater in tauri.conf.json**:
-   ```json
-   {
-     "plugins": {
-       "updater": {
-         "endpoints": [
-           "https://your-server.com/launcher-updates/{{target}}/{{arch}}/{{current_version}}"
-         ],
-         "pubkey": "<your-public-key>"
-       }
-     }
-   }
-   ```
+```
+http://your-server/launcher/{{target}}/{{arch}}/{{current_version}}
+```
 
-3. **Register the plugin**:
-   ```rust
-   // main.rs
-   fn main() {
-       tauri::Builder::default()
-           .plugin(tauri_plugin_updater::Builder::new().build())
-           .run(tauri::generate_context!())
-           .expect("error while running application");
-   }
-   ```
+Use the helper scripts to generate metadata:
 
-4. **Add frontend check**:
-   ```typescript
-   import { check } from '@tauri-apps/plugin-updater';
+```bash
+app/scripts/publish-launcher-update.ps1
+app/scripts/publish-launcher-update.sh
+```
 
-   async function checkForLauncherUpdate() {
-     const update = await check();
-     if (update) {
-       await update.downloadAndInstall();
-       // App will restart automatically
-     }
-   }
-   ```
+By default the scripts write to `updates/launcher`.
+You can also set `TAURI_UPDATER_SIGNATURE` to avoid manual prompts.
 
-5. **Create update endpoint** that returns Tauri-compatible update metadata:
-   ```json
-   {
-     "version": "1.2.0",
-     "notes": "Bug fixes and performance improvements",
-     "pub_date": "2024-01-15T12:00:00Z",
-     "platforms": {
-       "windows-x86_64": {
-         "signature": "<signature>",
-         "url": "https://your-server.com/launcher-updates/launcher-1.2.0-x64-setup.exe"
-       }
-     }
-   }
-   ```
+The scripts prompt for the **Tauri updater signature** for the binary. Use your
+release signing key to generate this signature (typically via the Tauri CLI or
+CI pipeline), then paste it when prompted.
 
-### Option 2: Custom Self-Update Implementation
+### Update Metadata Format
 
-Build a custom updater using the same patterns as the game file updater.
+The update endpoint must return Tauri-compatible metadata:
 
-#### Pros
+```json
+{
+  "version": "1.2.0",
+  "notes": "Bug fixes and performance improvements",
+  "pub_date": "2024-01-15T12:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "<signature>",
+      "url": "https://your-server.com/launcher-updates/launcher-1.2.0-x64-setup.exe"
+    }
+  }
+}
+```
 
-- Full control over update flow
-- Can reuse existing signing infrastructure
-- Unified update experience for game files and launcher
+### Custom Self-Update (Optional)
 
-#### Cons
-
-- Significant implementation effort
-- Must handle platform-specific executable replacement
-- Must handle process restart carefully
-- Higher maintenance burden
-
-#### Implementation Steps
-
-1. **Create separate launcher manifest format**:
-   ```json
-   {
-     "launcher_version": "1.2.0",
-     "min_supported_version": "1.0.0",
-     "platforms": {
-       "windows-x86_64": {
-         "url": "https://your-server.com/launcher/1.2.0/launcher.exe",
-         "sha256": "abc123...",
-         "size": 15000000
-       },
-       "darwin-aarch64": {
-         "url": "https://your-server.com/launcher/1.2.0/launcher.app.tar.gz",
-         "sha256": "def456...",
-         "size": 18000000
-       }
-     },
-     "signature": "..."
-   }
-   ```
-
-2. **Add version checking endpoint**:
-   ```
-   GET /launcher/latest.json
-   ```
-
-3. **Implement download to temporary location**:
-   - Download new launcher binary to a temp directory
-   - Verify signature and hash
-   - Do NOT replace the running executable yet
-
-4. **Implement restart-and-replace mechanism**:
-
-   **Windows approach**:
-   - Write a small update script/batch file
-   - Launch the script as a detached process
-   - Script waits for main process to exit
-   - Script replaces the executable
-   - Script launches the new version
-   - Script deletes itself
-
-   **macOS/Linux approach**:
-   - Similar shell script approach
-   - Or use a separate updater binary
-
-5. **Handle edge cases**:
-   - User declines update → remember to ask later
-   - Download fails → retry logic
-   - Replace fails → preserve original
-   - Version rollback → detect and handle
-
-### Recommendation
-
-**Start with Tauri's built-in updater plugin (Option 1).** It handles the complex platform-specific concerns and provides a well-tested foundation. The implementation effort is minimal compared to a custom solution.
-
-If you later need features the built-in plugin doesn't support, you can migrate to a custom solution while maintaining the same user experience.
+If you later need custom update behaviors that Tauri's plugin does not support, you can build a bespoke updater. This is not currently required.
 
 ---
 

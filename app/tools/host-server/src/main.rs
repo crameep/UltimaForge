@@ -23,7 +23,9 @@ use tower_http::{
 use tracing::{info, Level, Span};
 
 use health::health_handler;
-use routes::{manifest_handler, root_handler, signature_handler, AppState};
+use routes::{
+    launcher_update_handler, manifest_handler, root_handler, signature_handler, AppState,
+};
 use validation::validate_handler;
 
 /// UltimaForge Host Server - Static file server for update artifacts
@@ -112,6 +114,11 @@ async fn main() {
         .route("/validate", get(validate_handler))
         // Static file serving for update artifacts
         .nest_service("/files", ServeDir::new(serve_dir.join("files")))
+        .nest_service("/launcher/files", ServeDir::new(serve_dir.join("launcher/files")))
+        .route(
+            "/launcher/:target/:arch/:current_version",
+            get(launcher_update_handler),
+        )
         .route("/manifest.json", get(manifest_handler))
         .route("/manifest.sig", get(signature_handler))
         // Add request tracing (logs method, path, status, duration)

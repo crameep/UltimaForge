@@ -59,6 +59,7 @@ pub fn run() {
     // Create app with managed state
     let app_result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             // Load embedded brand configuration
             let app_state = match load_brand_config() {

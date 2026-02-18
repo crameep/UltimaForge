@@ -48,6 +48,10 @@ UltimaForge provides server owners with a professional, turnkey solution for dis
 
 Your branded installer will be in `app/src-tauri/target/release/bundle/nsis/`
 
+**Optional shortcuts:**
+- Run the **Server Owner Wizard** (option `D`) to generate `branding/brand.json`
+- Use **Publish All** (option `E`) to publish game + launcher updates together
+
 ### For Players
 
 Download and run the installer provided by your server administrator. The launcher will:

@@ -1,0 +1,548 @@
+
+running 424 tests
+test commands::install::tests::test_install_response_failure ... ok
+test commands::install::tests::test_install_response_success ... ok
+test commands::install::tests::test_start_install_request_serialization ... ok
+test commands::crypto::tests::test_keypair_response_serialization ... ok
+test commands::install::tests::test_install_status_response_serialization ... ok
+test commands::launch::tests::test_launch_game_request_with_args ... ok
+test commands::launch::tests::test_launch_response_failure ... ok
+test commands::launch::tests::test_launch_game_request_default ... ok
+test commands::launch::tests::test_launch_game_request_serialization ... ok
+test commands::launch::tests::test_launch_response_success ... ok
+test commands::launch::tests::test_validate_client_response_invalid ... ok
+test commands::launch::tests::test_validate_client_response_valid ... ok
+test commands::settings::tests::test_brand_info_serialization ... ok
+test commands::settings::tests::test_get_settings_response ... ok
+test commands::settings::tests::test_save_response_failure ... ok
+test commands::settings::tests::test_save_response_success ... ok
+test commands::settings::tests::test_verify_response_success ... ok
+test commands::settings::tests::test_user_settings_from_launcher_config ... ok
+test commands::crypto::tests::test_generate_keypair_returns_valid_keys ... ok
+test commands::settings::tests::test_user_settings_serialization ... ok
+test commands::settings::tests::test_verify_response_with_invalid_files ... ok
+test commands::update::tests::test_update_check_response_no_update ... ok
+test commands::crypto::tests::test_each_generation_produces_unique_keys ... ok
+test commands::update::tests::test_update_check_response_serialization ... ok
+test commands::update::tests::test_update_response_failure_with_rollback ... ok
+test commands::update::tests::test_update_response_success ... ok
+test config::tests::test_brand_config_builder ... ok
+test config::tests::test_brand_config_builder_missing_required ... ok
+test config::tests::test_config_error_display ... ok
+test config::tests::test_default_config_path ... ok
+test config::tests::test_config_serialization_roundtrip ... ok
+test config::tests::test_brand_config_load_file ... ok
+test config::tests::test_http_update_url_accepted ... ok
+test config::tests::test_install_path_accessor ... ok
+test config::tests::test_launcher_config_default ... ok
+test config::tests::test_launcher_config_is_first_run ... ok
+test config::tests::test_launcher_config_load_nonexistent ... ok
+test config::tests::test_launcher_config_needs_update ... ok
+test config::tests::test_launcher_config_parse_str ... ok
+test config::tests::test_launcher_config_serialization_roundtrip ... ok
+test config::tests::test_launcher_config_set_from_detection ... ok
+test config::tests::test_launcher_config_set_from_detection_preserves_other_settings ... ok
+test config::tests::test_launcher_config_set_installed ... ok
+test config::tests::test_launcher_config_to_json_string ... ok
+test config::tests::test_parse_invalid_color_format ... ok
+test config::tests::test_parse_invalid_public_key_chars ... ok
+test config::tests::test_parse_invalid_public_key_length ... ok
+test commands::crypto::tests::test_generated_keypair_can_sign_and_verify ... ok
+test config::tests::test_parse_invalid_update_url ... ok
+test config::tests::test_parse_minimal_brand_config ... ok
+test config::tests::test_parse_missing_display_name ... ok
+test config::tests::test_parse_missing_server_name ... ok
+test config::tests::test_parse_valid_brand_config ... ok
+test config::tests::test_public_key_bytes ... ok
+test config::tests::test_set_version ... ok
+test config::tests::test_theme_colors_default ... ok
+test config::tests::test_validate_color_shorthand ... ok
+test config::tests::test_window_title_custom ... ok
+test config::tests::test_window_title_fallback ... ok
+test downloader::tests::test_config_builder_pattern ... ok
+test downloader::tests::test_config_defaults ... ok
+test downloader::tests::test_config_with_retries ... ok
+test downloader::tests::test_config_with_timeouts ... ok
+test downloader::tests::test_config_with_user_agent ... ok
+test downloader::tests::test_download_error_display ... ok
+test config::tests::test_launcher_config_creates_parent_dirs ... ok
+test downloader::tests::test_download_error_is_recoverable ... ok
+test downloader::tests::test_download_error_user_message ... ok
+test config::tests::test_launcher_config_save_load ... ok
+test downloader::tests::test_progress_callback_type ... ok
+test downloader::tests::test_downloader_creation ... ok
+test downloader::tests::test_downloader_with_config ... ok
+test downloader::tests::test_progress_is_complete ... ok
+test downloader::tests::test_progress_new ... ok
+test downloader::tests::test_download_invalid_url ... ok
+test downloader::tests::test_progress_percentage ... ok
+test downloader::tests::test_downloader_default ... ok
+test downloader::tests::test_progress_percentage_edge_cases ... ok
+test downloader::tests::test_progress_speed_calculation ... ok
+test downloader::tests::test_progress_with_speed ... ok
+test error::tests::test_download_error_display ... ok
+test error::tests::test_download_error_recoverable ... ok
+test error::tests::test_error_other_constructor ... ok
+test error::tests::test_install_error_display ... ok
+test error::tests::test_install_error_user_messages ... ok
+test error::tests::test_insufficient_space_formatting ... ok
+test error::tests::test_io_error_conversion ... ok
+test error::tests::test_launch_error_display ... ok
+test error::tests::test_launch_error_user_messages ... ok
+test error::tests::test_ultimaforge_error_from_download ... ok
+test error::tests::test_ultimaforge_error_is_recoverable ... ok
+test error::tests::test_ultimaforge_error_user_message ... ok
+test error::tests::test_update_error_downgrade ... ok
+test error::tests::test_update_error_recoverable ... ok
+test hash::tests::test_different_content_different_hash ... ok
+test hash::tests::test_get_blob_url ... ok
+test hash::tests::test_empty_hash_constant ... ok
+test hash::tests::test_get_blob_url_strips_trailing_slash ... ok
+test hash::tests::test_hash_bytes_empty ... ok
+test hash::tests::test_hash_bytes_known_content ... ok
+test hash::tests::test_hash_deterministic ... ok
+test hash::tests::test_hash_error_display ... ok
+test hash::tests::test_validate_hash_format_invalid_chars ... ok
+test hash::tests::test_hash_file_not_found ... ok
+test hash::tests::test_hash_empty_file ... ok
+test hash::tests::test_io_error_includes_path ... ok
+test hash::tests::test_validate_hash_format_too_long ... ok
+test hash::tests::test_hash_binary_content ... ok
+test hash::tests::test_hash_known_content ... ok
+test hash::tests::test_validate_hash_format_valid ... ok
+test hash::tests::test_verify_hash_file_not_found ... ok
+test hash::tests::test_hash_file_consistency ... ok
+test hash::tests::test_validate_hash_format_too_short ... ok
+test installer::tests::test_detection_confidence_display ... ok
+test installer::tests::test_detection_confidence_equality ... ok
+test installer::tests::test_detection_constants ... ok
+test installer::tests::test_detection_result_default ... ok
+test installer::tests::test_detection_result_detected ... ok
+test installer::tests::test_detection_result_is_valid_installation ... ok
+test installer::tests::test_detection_result_not_detected ... ok
+test hash::tests::test_verify_hash_invalid_format ... ok
+test hash::tests::test_verify_hash_invalid ... ok
+test hash::tests::test_verify_hash_valid ... ok
+test installer::tests::test_check_write_permission_new_dir ... ok
+test installer::tests::test_check_write_permission_existing_dir ... ok
+test installer::tests::test_detect_existing_installation_empty_directory ... ok
+test hash::tests::test_verify_hash_case_insensitive ... ok
+test installer::tests::test_detect_existing_installation_case_sensitivity ... ok
+test installer::tests::test_install_log_entry_format ... ok
+test installer::tests::test_detect_existing_installation_file_not_directory ... ok
+test installer::tests::test_detect_existing_installation_executable_only ... ok
+test installer::tests::test_install_progress_default ... ok
+test installer::tests::test_install_progress_file_percentage ... ok
+test installer::tests::test_detect_existing_installation_install_path_populated ... ok
+test installer::tests::test_detect_existing_installation_nonexistent_path ... ok
+test installer::tests::test_install_progress_is_complete ... ok
+test installer::tests::test_install_progress_new ... ok
+test installer::tests::test_install_progress_percentage ... ok
+test installer::tests::test_detect_existing_installation_missing_files_tracked ... ok
+test installer::tests::test_install_progress_set_failed ... ok
+test installer::tests::test_install_state_all_variants ... ok
+test installer::tests::test_install_state_display ... ok
+test installer::tests::test_installer_creation ... ok
+test installer::tests::test_installer_with_config ... ok
+test installer::tests::test_detect_existing_installation_classicuo_executable ... ok
+test installer::tests::test_path_containment_accepts_dot_prefixed ... ok
+test installer::tests::test_path_containment_accepts_hidden_files ... ok
+test installer::tests::test_path_containment_accepts_windows_relative_subdirs ... ok
+test installer::tests::test_path_containment_integration_with_installer ... ok
+test installer::tests::test_path_containment_rejects_absolute_paths ... ok
+test installer::tests::test_path_containment_rejects_empty_path ... ok
+test installer::tests::test_path_containment_rejects_mixed_separator_traversal ... ok
+test installer::tests::test_path_containment_rejects_traversal ... ok
+test installer::tests::test_path_containment_rejects_windows_absolute ... ok
+test installer::tests::test_path_containment_safe_paths_in_installer ... ok
+test installer::tests::test_path_validation_invalid_characters ... ok
+test installer::tests::test_path_validation_result_invalid ... ok
+test installer::tests::test_path_validation_result_valid ... ok
+test installer::tests::test_path_validation_result_with_warning ... ok
+test installer::tests::test_progress_with_all_fields ... ok
+test installer::tests::test_required_size_without_manifest ... ok
+test installer::tests::test_validate_install_path_path_traversal ... ok
+test installer::tests::test_validate_install_path_relative ... ok
+test installer::tests::test_detect_existing_installation_data_files_only ... ok
+test launcher::tests::test_client_launcher_executable_path ... ok
+test launcher::tests::test_client_launcher_new ... ok
+test installer::tests::test_detect_existing_installation_medium_confidence ... ok
+test installer::tests::test_path_validation_warning_preserved_on_insufficient_permissions ... ok
+test launcher::tests::test_client_launcher_validate_no_install_path ... ok
+test installer::tests::test_install_log_creation ... ok
+test launcher::tests::test_client_launcher_with_config ... ok
+test launcher::tests::test_launch_client_function ... ok
+test launcher::tests::test_launch_config_chaining ... ok
+test launcher::tests::test_launch_config_default ... ok
+test installer::tests::test_detect_existing_installation_partial_data_files ... ok
+test launcher::tests::test_launch_config_deserialization_with_defaults ... ok
+test launcher::tests::test_launch_config_new ... ok
+test launcher::tests::test_launch_config_serialization ... ok
+test launcher::tests::test_launch_config_validate_empty_executable ... ok
+test launcher::tests::test_launch_config_validate_path_traversal ... ok
+test launcher::tests::test_launch_config_validate_valid ... ok
+test installer::tests::test_disk_space_check_existing_directory ... ok
+test launcher::tests::test_launch_config_wait_for_exit ... ok
+test launcher::tests::test_launch_config_with_args ... ok
+test launcher::tests::test_launch_config_with_env ... ok
+test installer::tests::test_disk_space_check_nonexistent_directory ... ok
+test launcher::tests::test_launch_error_from_executable_not_found ... ok
+test launcher::tests::test_launch_result_failed ... ok
+test launcher::tests::test_launch_result_serialization ... ok
+test launcher::tests::test_launch_result_success ... ok
+test launcher::tests::test_launch_result_success_with_exit ... ok
+test launcher::tests::test_launch_result_types ... ok
+test launcher::tests::test_multiple_env_vars ... ok
+test manifest::tests::cross_platform_path_tests::test_accepts_complex_valid_paths ... ok
+test manifest::tests::cross_platform_path_tests::test_accepts_deep_nesting ... ok
+test manifest::tests::cross_platform_path_tests::test_accepts_device_like_names_in_safe_context ... ok
+test manifest::tests::cross_platform_path_tests::test_accepts_dot_files ... ok
+test installer::tests::test_detect_existing_installation_high_confidence ... ok
+test manifest::tests::cross_platform_path_tests::test_accepts_dots_in_filenames ... ok
+test manifest::tests::cross_platform_path_tests::test_handles_unicode_paths ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_alternating_separators_with_traversal ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_backslash_parent_traversal ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_backslash_traversal_deep ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_backslash_traversal_from_subdir ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_complex_mixed_traversal ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_device_namespace_paths ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_dot_dot_variations ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_extended_length_paths ... ok
+test installer::tests::test_disk_space_returns_bytes ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_mixed_forward_back_traversal ... ok
+test installer::tests::test_disk_space_check_insufficient_space ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_trailing_dot_dot ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_unc_admin_shares ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_unc_server_share ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_unc_with_forward_slashes ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_unicode_with_traversal ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_unix_absolute_paths ... ok
+test installer::tests::test_disk_space_check_validates_path_with_sufficient_space ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_unix_root ... ok
+test launcher::tests::test_client_launcher_accessors ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_unix_tmp ... ok
+test installer::tests::test_disk_space_warning_surfaced_in_validation ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_windows_drive_c ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_windows_drive_lowercase ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_windows_drive_various_letters ... ok
+test manifest::tests::cross_platform_path_tests::test_rejects_windows_drive_with_forward_slash ... ok
+test manifest::tests::cross_platform_path_tests::test_spaces_in_paths_allowed ... ok
+test launcher::tests::test_client_launcher_validate_no_executable ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_accepts_current_dir_prefix ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_accepts_valid_nested_path ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_accepts_windows_relative_backslash ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_rejects_backslash_traversal ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_rejects_deep_traversal ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_rejects_hidden_traversal_in_subdir ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_rejects_mixed_separator_traversal ... ok
+test installer::tests::test_detect_existing_installation_valid_complete ... ok
+test launcher::tests::test_client_launcher_validate_install_path_is_file ... ok
+test launcher::tests::test_client_launcher_validate_directory_not_file ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_rejects_unc_path ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_rejects_unix_absolute ... ok
+test manifest::tests::manifest_path_integration_tests::test_manifest_rejects_windows_drive_path ... ok
+test manifest::tests::test_client_executable_entry ... ok
+test manifest::tests::test_file_entry_blob_url ... ok
+test launcher::tests::test_client_launcher_validate_valid ... ok
+test manifest::tests::test_file_entry_with_required ... ok
+test manifest::tests::test_format_size ... ok
+test manifest::tests::test_is_safe_relative_path_accepts_current_dir ... ok
+test manifest::tests::test_is_safe_relative_path_accepts_simple_filename ... ok
+test manifest::tests::test_is_safe_relative_path_accepts_subdirectory_paths ... ok
+test manifest::tests::test_is_safe_relative_path_accepts_windows_subdirectory_format ... ok
+test manifest::tests::test_is_safe_relative_path_rejects_absolute_unix ... ok
+test manifest::tests::test_is_safe_relative_path_rejects_absolute_windows ... ok
+test manifest::tests::test_is_safe_relative_path_rejects_backslash_root ... ok
+test manifest::tests::test_is_safe_relative_path_rejects_empty_path ... ok
+test manifest::tests::test_is_safe_relative_path_rejects_hidden_parent_traversal ... ok
+test manifest::tests::test_is_safe_relative_path_rejects_mixed_separator_traversal ... ok
+test installer::tests::test_install_log_write ... ok
+test manifest::tests::test_is_safe_relative_path_rejects_parent_traversal ... ok
+test manifest::tests::test_is_safe_relative_path_rejects_unc_paths ... ok
+test manifest::tests::test_manifest_builder ... ok
+test manifest::tests::test_manifest_builder_missing_version ... ok
+test manifest::tests::test_manifest_file_count ... ok
+test manifest::tests::test_manifest_files_to_update ... ok
+test manifest::tests::test_manifest_find_file ... ok
+test launcher::tests::test_validate_client_function ... ok
+test manifest::tests::test_manifest_find_file_by_hash ... ok
+test manifest::tests::test_manifest_iter_required_files ... ok
+test installer::tests::test_validate_install_path_empty_dir ... ok
+test manifest::tests::test_manifest_serialization_roundtrip ... ok
+test manifest::tests::test_manifest_update_size ... ok
+test hash::tests::test_hash_large_file ... ok
+test manifest::tests::test_parse_bytes ... ok
+test manifest::tests::test_parse_invalid_json ... ok
+test manifest::tests::test_parse_minimal_manifest ... ok
+test launcher::tests::test_subdirectory_executable ... ok
+test manifest::tests::test_parse_missing_field ... ok
+test launcher::tests::test_path_with_spaces ... ok
+test manifest::tests::test_parse_valid_manifest ... ok
+test installer::tests::test_validate_install_path_valid ... ok
+test manifest::tests::test_subdirectory_paths_allowed ... ok
+test manifest::tests::test_validate_absolute_path ... ok
+test manifest::tests::test_validate_empty_version ... ok
+test manifest::tests::test_validate_executable_not_in_files ... ok
+test manifest::tests::test_validate_invalid_hash_characters ... ok
+test manifest::tests::test_validate_invalid_hash_length ... ok
+test manifest::tests::test_validate_path_traversal ... ok
+test manifest::tests::test_validate_total_size_mismatch ... ok
+test manifest::tests::test_windows_path_separator ... ok
+test security_tests::tests::test_sec_002_missing_signature_rejected ... ok
+test security_tests::tests::test_sec_004b_invalid_public_key_format_rejected ... ok
+test security_tests::tests::test_sec_004c_invalid_signature_length_rejected ... ok
+test security_tests::tests::test_sec_004e_zero_signature_rejected ... ok
+test security_tests::tests::test_sec_004d_corrupted_signature_rejected ... ok
+test installer::tests::test_validate_install_path_non_empty_dir ... ok
+test installer::tests::test_validate_path_non_existent_parent ... ok
+test manifest::tests::test_path_containment_current_dir_prefix ... ok
+test security_tests::tests::test_sec_008_path_traversal_rejected ... ok
+test security_tests::tests::test_sec_008b_absolute_paths_rejected ... ok
+test manifest::tests::test_path_containment_rejects_nonexistent_base ... ok
+test security_tests::tests::test_sec_008c_embedded_traversal_rejected ... ok
+test security_tests::tests::test_sec_008d_valid_subdirectory_accepted ... ok
+test manifest::tests::test_path_containment_rejects_nonexistent_target ... ok
+test security_tests::tests::test_sec_009_invalid_hash_in_manifest_rejected ... ok
+test security_tests::tests::test_sec_009b_total_size_mismatch_detected ... ok
+test security_tests::tests::test_sec_009c_executable_not_in_files_rejected ... ok
+test security_tests::tests::test_sec_010_hex_parsing_security ... ok
+test security_tests::tests::test_sec_013_hash_determinism ... ok
+test security_tests::tests::test_security_verification_summary ... ok
+test manifest::tests::test_path_containment_error_messages ... ok
+test signature::tests::test_invalid_public_key_length ... ok
+test signature::tests::test_invalid_signature_length ... ok
+test manifest::tests::test_path_containment_valid_file_in_base ... ok
+test manifest::tests::test_path_containment_rejects_parent_traversal ... ok
+test signature::tests::test_parse_hex_public_key ... ok
+test manifest::tests::test_path_containment_rejects_hidden_traversal ... ok
+test signature::tests::test_parse_hex_public_key_wrong_length ... ok
+test signature::tests::test_parse_hex_signature ... ok
+test signature::tests::test_parse_hex_signature_invalid ... ok
+test security_tests::tests::test_sec_005_valid_hash_accepted ... ok
+test security_tests::tests::test_sec_006_corrupted_file_rejected ... ok
+test security_tests::tests::test_sec_006e_invalid_hash_format_rejected ... ok
+test security_tests::tests::test_sec_003b_single_byte_modification_detected ... ok
+test manifest::tests::test_path_containment_valid_nested_directory ... ok
+test state::tests::test_app_phase_default ... ok
+test state::tests::test_app_phase_display ... ok
+test security_tests::tests::test_sec_003c_added_whitespace_detected ... ok
+test security_tests::tests::test_sec_001_valid_signature_accepted ... ok
+test state::tests::test_app_state_begin_update_check ... ok
+test security_tests::tests::test_sec_003_tampered_manifest_rejected ... ok
+test security_tests::tests::test_sec_004_wrong_public_key_rejected ... ok
+test security_tests::tests::test_sec_006d_truncated_file_detected ... ok
+test security_tests::tests::test_sec_006c_appended_data_detected ... ok
+test state::tests::test_app_state_cached_manifest ... ok
+test state::tests::test_app_state_complete_installation ... ok
+test security_tests::tests::test_sec_006b_single_byte_corruption_detected ... ok
+test manifest::tests::test_path_containment_rejects_deep_traversal ... ok
+test state::tests::test_app_state_complete_update ... ok
+test security_tests::tests::test_sec_006f_empty_file_hash ... ok
+test state::tests::test_app_state_current_operation ... ok
+test state::tests::test_app_state_current_version ... ok
+test state::tests::test_app_state_debug ... ok
+test state::tests::test_app_state_default ... ok
+test state::tests::test_app_state_end_update_check_no_update ... ok
+test state::tests::test_app_state_end_update_check_with_update ... ok
+test state::tests::test_app_state_error ... ok
+test state::tests::test_app_state_error_clears_to_ready ... ok
+test state::tests::test_app_state_game_running ... ok
+test state::tests::test_app_state_get_status ... ok
+test state::tests::test_app_state_initialize ... ok
+test state::tests::test_app_state_initialize_existing_install ... ok
+test state::tests::test_app_state_install_path ... ok
+test state::tests::test_app_state_install_progress ... ok
+test state::tests::test_app_state_installing ... ok
+test state::tests::test_app_state_is_operational ... ok
+test state::tests::test_app_state_launcher_config ... ok
+test state::tests::test_app_state_new ... ok
+test state::tests::test_app_state_set_phase ... ok
+test state::tests::test_app_state_update_available ... ok
+test state::tests::test_app_state_update_progress ... ok
+test state::tests::test_app_state_updating ... ok
+test state::tests::test_app_state_with_brand_config ... ok
+test state::tests::test_app_status_can_launch ... ok
+test state::tests::test_app_status_download_size_formatted ... ok
+test state::tests::test_app_status_is_busy ... ok
+test state::tests::test_format_size ... ok
+test tests::test_config_loading_brand_function ... ok
+test tests::test_config_loading ... ok
+test updater::tests::test_manifest_reused_staleness_check ... ok
+test updater::tests::test_manifest_reused_through_verified_path ... ok
+test state::tests::test_thread_safety ... ok
+test updater::tests::test_no_manifest_refetch ... ok
+test updater::tests::test_no_update_version_only ... ok
+test updater::tests::test_path_containment_accepts_dot_prefixed ... ok
+test updater::tests::test_path_containment_accepts_hidden_files ... ok
+test updater::tests::test_path_containment_accepts_windows_relative_subdirs ... ok
+test updater::tests::test_path_containment_integration_with_updater ... ok
+test updater::tests::test_path_containment_rejects_absolute_paths ... ok
+test updater::tests::test_compute_local_hashes_empty_install ... ok
+test updater::tests::test_path_containment_rejects_empty_path ... ok
+test updater::tests::test_path_containment_rejects_mixed_separator_traversal ... ok
+test updater::tests::test_path_containment_rejects_traversal ... ok
+test updater::tests::test_path_containment_rejects_windows_absolute ... ok
+test updater::tests::test_path_containment_safe_paths_in_updater ... ok
+test updater::tests::test_progress_callback ... ok
+test updater::tests::test_transaction_log_entry_format ... ok
+test security_tests::tests::test_sec_011_signature_malleability_prevented ... ok
+test updater::tests::test_transaction_log_entry_without_details ... ok
+test security_tests::tests::test_sec_012_signature_uniqueness ... ok
+test updater::tests::test_update_available_based_on_file_deltas ... ok
+test tests::test_config_loading_save_load_roundtrip ... ok
+test signature::tests::test_empty_message_verification ... ok
+test updater::tests::test_update_available_ignores_version_difference ... ok
+test updater::tests::test_update_available_result_scenarios ... ok
+test updater::tests::test_update_check_result_download_size_formatted ... ok
+test updater::tests::test_update_progress_default ... ok
+test updater::tests::test_compute_local_hashes_with_existing_files ... ok
+test updater::tests::test_update_progress_file_percentage ... ok
+test updater::tests::test_update_progress_is_complete ... ok
+test updater::tests::test_update_progress_new ... ok
+test updater::tests::test_update_progress_percentage ... ok
+test updater::tests::test_update_progress_set_failed ... ok
+test updater::tests::test_update_state_all_variants ... ok
+test updater::tests::test_update_state_display ... ok
+test updater::tests::test_verified_manifest_clone ... ok
+test updater::tests::test_verified_manifest_debug ... ok
+test signature::tests::test_signature_malleability_protection ... ok
+test signature::tests::test_verify_manifest_wrapper ... ok
+test signature::tests::test_verify_invalid_signature ... ok
+test signature::tests::test_verify_tampered_data ... ok
+test updater::tests::test_verified_manifest_struct ... ok
+test updater::tests::test_updater_paths ... ok
+test signature::tests::test_verify_wrong_public_key ... ok
+test signature::tests::test_verify_valid_signature ... ok
+test updater::tests::test_updater_verify_staged_hashes_missing_file ... ok
+test updater::tests::test_updater_cleanup ... ok
+test updater::tests::test_updater_cleanup_staging ... ok
+test updater::tests::test_updater_prepare_staging_directory ... ok
+test updater::tests::test_updater_verify_staged_hashes_wrong_hash ... ok
+test updater::tests::test_updater_apply_staged_files ... ok
+test updater::tests::test_updater_backup_and_rollback ... ok
+test signature::tests::test_large_message_verification ... ok
+test downloader::tests::test_download_bytes_connection_refused ... ok
+test downloader::tests::test_download_text_connection_refused ... ok
+test downloader::tests::test_download_file_creates_parent_dirs ... ok
+
+test result: ok. 424 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.50s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 21 tests
+test app\src-tauri\src\commands\mod.rs - commands (line 16) ... ignored
+test app\src-tauri\src\config.rs - config::LauncherConfig::set_from_detection (line 517) ... ignored
+test app\src-tauri\src\downloader.rs - downloader (line 18) ... ignored
+test app\src-tauri\src\error.rs - error (line 19) ... ignored
+test app\src-tauri\src\hash.rs - hash::get_blob_url (line 195) ... ignored
+test app\src-tauri\src\hash.rs - hash::hash_bytes (line 167) ... ignored
+test app\src-tauri\src\hash.rs - hash::hash_file (line 63) ... ignored
+test app\src-tauri\src\hash.rs - hash::verify_file_hash (line 103) ... ignored
+test app\src-tauri\src\installer.rs - installer (line 17) ... ignored
+test app\src-tauri\src\installer.rs - installer::detect_existing_installation (line 1195) ... ignored
+test app\src-tauri\src\launcher.rs - launcher (line 21) ... ignored
+test app\src-tauri\src\launcher.rs - launcher::ClientLauncher::launch (line 279) ... ignored
+test app\src-tauri\src\launcher.rs - launcher::ClientLauncher::new (line 176) ... ignored
+test app\src-tauri\src\launcher.rs - launcher::launch_client (line 403) ... ignored
+test app\src-tauri\src\manifest.rs - manifest::Manifest::parse (line 328) ... ignored
+test app\src-tauri\src\manifest.rs - manifest::validate_path_containment (line 160) ... ignored
+test app\src-tauri\src\signature.rs - signature::verify_signature (line 54) ... ignored
+test app\src-tauri\src\state.rs - state (line 14) ... ignored
+test app\src-tauri\src\state.rs - state::AppState (line 121) ... ignored
+test app\src-tauri\src\updater.rs - updater::Updater::fetch_verified_manifest (line 429) ... ignored
+test app\src-tauri\src\manifest.rs - manifest::is_safe_relative_path (line 84) ... FAILED
+
+failures:
+
+---- app\src-tauri\src\manifest.rs - manifest::is_safe_relative_path (line 84) stdout ----
+error[E0425]: cannot find function `is_safe_relative_path` in this scope
+ --> app\src-tauri\src\manifest.rs:88:9
+  |
+6 | assert!(is_safe_relative_path(Path::new("client.exe")));
+  |         ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+  |
+help: consider importing this function
+  |
+2 + use ultimaforge_lib::manifest::is_safe_relative_path;
+  |
+
+error[E0425]: cannot find function `is_safe_relative_path` in this scope
+ --> app\src-tauri\src\manifest.rs:89:9
+  |
+7 | assert!(is_safe_relative_path(Path::new("data/maps/map0.mul")));
+  |         ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+  |
+help: consider importing this function
+  |
+2 + use ultimaforge_lib::manifest::is_safe_relative_path;
+  |
+
+error[E0425]: cannot find function `is_safe_relative_path` in this scope
+ --> app\src-tauri\src\manifest.rs:90:9
+  |
+8 | assert!(is_safe_relative_path(Path::new("./config.ini")));
+  |         ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+  |
+help: consider importing this function
+  |
+2 + use ultimaforge_lib::manifest::is_safe_relative_path;
+  |
+
+error[E0425]: cannot find function `is_safe_relative_path` in this scope
+  --> app\src-tauri\src\manifest.rs:93:10
+   |
+11 | assert!(!is_safe_relative_path(Path::new("../../../etc/passwd")));
+   |          ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+ 2 + use ultimaforge_lib::manifest::is_safe_relative_path;
+   |
+
+error[E0425]: cannot find function `is_safe_relative_path` in this scope
+  --> app\src-tauri\src\manifest.rs:94:10
+   |
+12 | assert!(!is_safe_relative_path(Path::new("/etc/passwd")));
+   |          ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+ 2 + use ultimaforge_lib::manifest::is_safe_relative_path;
+   |
+
+error[E0425]: cannot find function `is_safe_relative_path` in this scope
+  --> app\src-tauri\src\manifest.rs:95:10
+   |
+13 | assert!(!is_safe_relative_path(Path::new("C:\\Windows\\System32")));
+   |          ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+ 2 + use ultimaforge_lib::manifest::is_safe_relative_path;
+   |
+
+error[E0425]: cannot find function `is_safe_relative_path` in this scope
+  --> app\src-tauri\src\manifest.rs:96:10
+   |
+14 | assert!(!is_safe_relative_path(Path::new("\\\\server\\share")));
+   |          ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+ 2 + use ultimaforge_lib::manifest::is_safe_relative_path;
+   |
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
+Couldn't compile the test.
+
+failures:
+    app\src-tauri\src\manifest.rs - manifest::is_safe_relative_path (line 84)
+
+test result: FAILED. 0 passed; 1 failed; 20 ignored; 0 measured; 0 filtered out; finished in 0.21s
+

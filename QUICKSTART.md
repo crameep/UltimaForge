@@ -34,6 +34,10 @@ What would you like to do?
  [7] Build Production
  [8] Clean Everything
  [9] Run All Tests
+ [C] Publish Launcher Update Metadata
+ [D] Server Owner Wizard (branding + keys)
+ [E] Publish All (game + launcher)
+ [F] Dev All-in-One (server + launcher)
  [0] Exit
 
 ========================================
@@ -96,6 +100,20 @@ This will:
 ### [9] Run All Tests
 - Runs Rust and npm tests
 - Use to verify everything works
+
+### [C] Publish Launcher Update Metadata
+- Generates launcher update metadata + copies launcher binary to `updates/launcher`
+- Use after building the launcher to enable self-updates
+
+### [D] Server Owner Wizard
+- Guided setup for `branding/brand.json` and key generation
+
+### [E] Publish All (Game + Launcher)
+- Publishes game files and launcher update metadata in one flow
+
+### [F] Dev All-in-One
+- Starts host server and launcher in a single terminal
+- Generates test updates automatically if missing
 
 ### [0] Exit
 - Closes the menu
@@ -171,6 +189,11 @@ src-tauri/target/release/
 2. Press 1
 3. Wait for windows to open
 4. Start coding!
+```
+
+### One-Terminal Dev
+```
+npm run dev:all
 ```
 
 ### Update Branding
