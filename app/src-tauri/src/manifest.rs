@@ -12,7 +12,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 
 /// Errors that can occur during manifest parsing and validation.
 #[derive(Debug, thiserror::Error)]
@@ -32,6 +32,14 @@ pub enum ManifestError {
     /// A file path in the manifest is invalid (e.g., path traversal attempt).
     #[error("Invalid file path: {0}")]
     InvalidPath(String),
+
+    /// A path escapes its intended containment directory.
+    #[error("Path containment violation: '{target}' escapes base directory '{base}'")]
+    PathContainment { base: String, target: String },
+
+    /// Failed to canonicalize a path (e.g., path doesn't exist).
+    #[error("Failed to canonicalize path '{path}': {reason}")]
+    CanonicalizationFailed { path: String, reason: String },
 
     /// A SHA-256 hash in the manifest is invalid.
     #[error("Invalid SHA-256 hash for file '{path}': {reason}")]
@@ -115,6 +123,87 @@ pub fn is_safe_relative_path(path: &Path) -> bool {
     }
 
     true
+}
+
+/// Validates that a target path, when joined to a base directory, stays within
+/// that base directory after canonicalization.
+///
+/// This function performs post-join validation to prevent path traversal attacks
+/// that might bypass simple string-based checks. It uses filesystem canonicalization
+/// to resolve symlinks and normalize paths before checking containment.
+///
+/// # Security
+///
+/// This function provides defense-in-depth against path traversal:
+/// - Resolves symlinks that might escape the base directory
+/// - Normalizes `..` components that survived initial validation
+/// - Handles platform-specific path quirks (Windows junctions, etc.)
+///
+/// # Arguments
+///
+/// * `base` - The base directory that should contain the target. Must exist.
+/// * `target` - The relative path to validate. When joined with base, must stay within base.
+///
+/// # Returns
+///
+/// * `Ok(PathBuf)` - The canonicalized target path if it stays within base
+/// * `Err(ManifestError)` - If the path escapes base or canonicalization fails
+///
+/// # Errors
+///
+/// * `ManifestError::CanonicalizationFailed` - If base or joined path cannot be canonicalized
+///   (e.g., the path doesn't exist on disk)
+/// * `ManifestError::PathContainment` - If the canonicalized target escapes the base directory
+///
+/// # Examples
+///
+/// ```ignore
+/// use std::path::Path;
+///
+/// let base = Path::new("/install/dir");
+/// let target = Path::new("data/file.txt");
+///
+/// // Valid: stays within base
+/// let result = validate_path_containment(base, target)?;
+/// assert!(result.starts_with("/install/dir"));
+///
+/// // Invalid: escapes base (would error)
+/// let malicious = Path::new("../../../etc/passwd");
+/// assert!(validate_path_containment(base, malicious).is_err());
+/// ```
+///
+/// # Note
+///
+/// This function requires the paths to exist on the filesystem for canonicalization.
+/// Use `is_safe_relative_path` for pre-validation before creating files, and this
+/// function for post-validation after files are written.
+pub fn validate_path_containment(base: &Path, target: &Path) -> Result<PathBuf, ManifestError> {
+    // Join the base and target paths
+    let joined = base.join(target);
+
+    // Canonicalize the base directory to get its absolute, normalized form
+    let canonical_base = base.canonicalize().map_err(|e| ManifestError::CanonicalizationFailed {
+        path: base.display().to_string(),
+        reason: e.to_string(),
+    })?;
+
+    // Canonicalize the joined path to resolve symlinks and normalize ..
+    let canonical_target = joined.canonicalize().map_err(|e| {
+        ManifestError::CanonicalizationFailed {
+            path: joined.display().to_string(),
+            reason: e.to_string(),
+        }
+    })?;
+
+    // Verify the canonical target is still within the canonical base
+    if !canonical_target.starts_with(&canonical_base) {
+        return Err(ManifestError::PathContainment {
+            base: canonical_base.display().to_string(),
+            target: canonical_target.display().to_string(),
+        });
+    }
+
+    Ok(canonical_target)
 }
 
 /// Represents a single file entry in the manifest.
@@ -1082,5 +1171,209 @@ mod tests {
 
         let manifest = Manifest::parse_str(json).expect("Subdirectory paths should be allowed");
         assert_eq!(manifest.files.len(), 2);
+    }
+
+    // ==================== validate_path_containment tests ====================
+
+    #[test]
+    fn test_path_containment_valid_file_in_base() {
+        // Create a temporary directory structure for testing
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path();
+
+        // Create a file inside the base directory
+        let file_path = base.join("test_file.txt");
+        std::fs::write(&file_path, "test content").unwrap();
+
+        // validate_path_containment should succeed for a file inside base
+        let result = validate_path_containment(base, Path::new("test_file.txt"));
+        assert!(result.is_ok());
+
+        let canonical = result.unwrap();
+        assert!(canonical.starts_with(base.canonicalize().unwrap()));
+    }
+
+    #[test]
+    fn test_path_containment_valid_nested_directory() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path();
+
+        // Create nested directory structure
+        let nested = base.join("data").join("maps");
+        std::fs::create_dir_all(&nested).unwrap();
+        let file_path = nested.join("map0.mul");
+        std::fs::write(&file_path, "map data").unwrap();
+
+        // validate_path_containment should succeed for nested paths
+        let result = validate_path_containment(base, Path::new("data/maps/map0.mul"));
+        assert!(result.is_ok());
+
+        let canonical = result.unwrap();
+        assert!(canonical.starts_with(base.canonicalize().unwrap()));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_nonexistent_target() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path();
+
+        // Attempting to validate a non-existent file should fail
+        let result = validate_path_containment(base, Path::new("nonexistent.txt"));
+        assert!(matches!(
+            result,
+            Err(ManifestError::CanonicalizationFailed { .. })
+        ));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_nonexistent_base() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path().join("nonexistent_base");
+
+        // Attempting to validate with non-existent base should fail
+        let result = validate_path_containment(&base, Path::new("file.txt"));
+        assert!(matches!(
+            result,
+            Err(ManifestError::CanonicalizationFailed { .. })
+        ));
+    }
+
+    #[test]
+    fn test_path_containment_rejects_parent_traversal() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path().join("install");
+        std::fs::create_dir_all(&base).unwrap();
+
+        // Create a file outside the base directory
+        let outside_file = temp_dir.path().join("secret.txt");
+        std::fs::write(&outside_file, "secret").unwrap();
+
+        // Attempting to access ../secret.txt should fail
+        let result = validate_path_containment(&base, Path::new("../secret.txt"));
+
+        // This should either fail to canonicalize (if .. is not resolved)
+        // or fail containment check (if it resolves to outside base)
+        assert!(result.is_err());
+
+        // Verify it's either a canonicalization error or containment error
+        match result {
+            Err(ManifestError::PathContainment { .. }) => {
+                // Expected: path resolved but escaped containment
+            }
+            Err(ManifestError::CanonicalizationFailed { .. }) => {
+                // Also acceptable: canonicalization failed
+            }
+            _ => panic!("Expected PathContainment or CanonicalizationFailed error"),
+        }
+    }
+
+    #[test]
+    fn test_path_containment_rejects_deep_traversal() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path().join("a").join("b").join("c");
+        std::fs::create_dir_all(&base).unwrap();
+
+        // Create a file at the temp root
+        let outside_file = temp_dir.path().join("outside.txt");
+        std::fs::write(&outside_file, "outside").unwrap();
+
+        // Attempting to access ../../../outside.txt should fail
+        let result = validate_path_containment(&base, Path::new("../../../outside.txt"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_path_containment_rejects_hidden_traversal() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path();
+
+        // Create directory structure: base/data and base/secret
+        let data_dir = base.join("data");
+        let secret_dir = base.join("secret");
+        std::fs::create_dir_all(&data_dir).unwrap();
+        std::fs::create_dir_all(&secret_dir).unwrap();
+
+        let secret_file = secret_dir.join("password.txt");
+        std::fs::write(&secret_file, "hunter2").unwrap();
+
+        // Even though data/../secret/password.txt stays "within" base by string,
+        // this test validates the canonicalization handles it correctly
+        let result = validate_path_containment(base, Path::new("data/../secret/password.txt"));
+
+        // This SHOULD succeed because data/../secret/password.txt resolves to
+        // base/secret/password.txt which is still within base. This is a valid path.
+        assert!(result.is_ok());
+
+        // But importantly, it should resolve to the correct canonical path
+        let canonical = result.unwrap();
+        assert!(canonical.ends_with("password.txt"));
+        assert!(canonical.starts_with(base.canonicalize().unwrap()));
+    }
+
+    #[test]
+    fn test_path_containment_current_dir_prefix() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path();
+
+        // Create a file
+        let file_path = base.join("file.txt");
+        std::fs::write(&file_path, "content").unwrap();
+
+        // ./file.txt should be valid
+        let result = validate_path_containment(base, Path::new("./file.txt"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_path_containment_error_messages() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path().join("install");
+        std::fs::create_dir_all(&base).unwrap();
+
+        // Create file outside base
+        let outside = temp_dir.path().join("outside.txt");
+        std::fs::write(&outside, "outside").unwrap();
+
+        // Try to escape
+        let result = validate_path_containment(&base, Path::new("../outside.txt"));
+
+        // Verify error contains useful information
+        match result {
+            Err(ManifestError::PathContainment { base: b, target: t }) => {
+                // Error should contain paths for debugging
+                assert!(!b.is_empty());
+                assert!(!t.is_empty());
+            }
+            Err(ManifestError::CanonicalizationFailed { path, reason }) => {
+                assert!(!path.is_empty());
+                assert!(!reason.is_empty());
+            }
+            _ => panic!("Expected PathContainment or CanonicalizationFailed"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_path_containment_symlink_escape_attempt() {
+        use std::os::unix::fs::symlink;
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base = temp_dir.path().join("install");
+        std::fs::create_dir_all(&base).unwrap();
+
+        // Create a sensitive file outside base
+        let outside = temp_dir.path().join("secret.txt");
+        std::fs::write(&outside, "secret data").unwrap();
+
+        // Create a symlink inside base that points outside
+        let symlink_path = base.join("link");
+        symlink(&outside, &symlink_path).unwrap();
+
+        // The symlink exists inside base, but resolves outside
+        // validate_path_containment should detect this via canonicalization
+        let result = validate_path_containment(&base, Path::new("link"));
+
+        // This should fail because the canonical path is outside base
+        assert!(matches!(result, Err(ManifestError::PathContainment { .. })));
     }
 }
