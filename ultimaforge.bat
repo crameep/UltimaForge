@@ -4,6 +4,41 @@ setlocal enabledelayedexpansion
 REM UltimaForge All-in-One Development Tool
 REM This batch file handles all development tasks
 
+REM Check for command-line argument (non-interactive mode)
+if not "%~1"=="" (
+    set "choice=%~1"
+    set "INTERACTIVE=0"
+    goto DISPATCH
+)
+
+set "INTERACTIVE=1"
+goto MENU
+
+REM ============================================================================
+REM DISPATCH - Non-interactive mode routing
+REM ============================================================================
+:DISPATCH
+if /i "%choice%"=="0" goto INSTALL_PREREQS
+if /i "%choice%"=="1" goto QUICK_START
+if /i "%choice%"=="2" goto SYNC_BRANDING
+if /i "%choice%"=="3" goto NPM_INSTALL
+if /i "%choice%"=="4" goto GEN_MANIFEST
+if /i "%choice%"=="5" goto START_SERVER
+if /i "%choice%"=="6" goto START_LAUNCHER
+if /i "%choice%"=="7" goto BUILD
+if /i "%choice%"=="8" goto CLEAN
+if /i "%choice%"=="9" goto TEST
+if /i "%choice%"=="A" goto PUBLISH_UPDATE
+if /i "%choice%"=="B" goto GENERATE_ICONS
+if /i "%choice%"=="C" goto PUBLISH_LAUNCHER_UPDATE
+if /i "%choice%"=="D" goto SERVER_OWNER_WIZARD
+if /i "%choice%"=="E" goto PUBLISH_ALL
+if /i "%choice%"=="F" goto DEV_ALL
+if /i "%choice%"=="X" goto END
+
+echo Invalid choice: %choice%
+exit /b 1
+
 :MENU
 cls
 echo.
@@ -25,11 +60,15 @@ echo  [8] Clean Everything
 echo  [9] Run All Tests
 echo  [A] Publish New Test Version (for update testing)
 echo  [B] Generate App Icons from Branding
+echo  [C] Publish Launcher Update Metadata
+echo  [D] Server Owner Wizard (branding + keys)
+echo  [E] Publish All (game + launcher)
+echo  [F] Dev All-in-One (server + launcher)
 echo  [X] Exit
 echo.
 echo ========================================
 echo.
-set /p choice="Enter your choice (0-9, A, B, X): "
+set /p choice="Enter your choice (0-9, A, B, C, D, E, F, X): "
 
 if /i "%choice%"=="0" goto INSTALL_PREREQS
 if /i "%choice%"=="1" goto QUICK_START
@@ -43,6 +82,10 @@ if /i "%choice%"=="8" goto CLEAN
 if /i "%choice%"=="9" goto TEST
 if /i "%choice%"=="A" goto PUBLISH_UPDATE
 if /i "%choice%"=="B" goto GENERATE_ICONS
+if /i "%choice%"=="C" goto PUBLISH_LAUNCHER_UPDATE
+if /i "%choice%"=="D" goto SERVER_OWNER_WIZARD
+if /i "%choice%"=="E" goto PUBLISH_ALL
+if /i "%choice%"=="F" goto DEV_ALL
 if /i "%choice%"=="X" goto END
 
 echo Invalid choice. Please try again.
@@ -537,6 +580,85 @@ pause >nul
 goto MENU
 
 REM ============================================================================
+REM PUBLISH LAUNCHER UPDATE METADATA
+REM ============================================================================
+:PUBLISH_LAUNCHER_UPDATE
+cls
+echo.
+echo ========================================
+echo    Publish Launcher Update Metadata
+echo ========================================
+echo.
+echo This will generate Tauri updater metadata and copy the launcher binary
+echo to app\test-updates\launcher for the built-in host server.
+echo.
+echo You will need a valid Tauri updater signature string.
+echo.
+powershell -ExecutionPolicy Bypass -File app\scripts\publish-launcher-update.ps1
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM SERVER OWNER WIZARD
+REM ============================================================================
+:SERVER_OWNER_WIZARD
+cls
+echo.
+echo ========================================
+echo    Server Owner Wizard
+echo ========================================
+echo.
+echo This will guide you through branding setup and key generation.
+echo.
+node app\scripts\server-owner-wizard.js
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM PUBLISH ALL (GAME + LAUNCHER)
+REM ============================================================================
+:PUBLISH_ALL
+cls
+echo.
+echo ========================================
+echo    Publish All (Game + Launcher)
+echo ========================================
+echo.
+echo This will publish game updates and launcher update metadata.
+echo.
+node app\scripts\publish-all.js
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM DEV ALL-IN-ONE
+REM ============================================================================
+:DEV_ALL
+cls
+echo.
+echo ========================================
+echo    Dev All-in-One
+echo ========================================
+echo.
+echo This will start the host server and launcher in a single terminal.
+echo.
+node app\scripts\dev-all-in-one.js
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
 REM GENERATE APP ICONS FROM BRANDING
 REM ============================================================================
 :GENERATE_ICONS
@@ -639,18 +761,61 @@ echo    Running Tests
 echo ========================================
 echo.
 
-echo Running Rust tests...
+set TEST_FAILURES=0
+
+echo [Step 1/2] Running Rust tests...
+echo.
 cargo test
+set RUST_RESULT=%errorlevel%
+
+if %RUST_RESULT% neq 0 (
+    echo.
+    echo [FAIL] Rust tests failed with exit code %RUST_RESULT%
+    set /a TEST_FAILURES+=1
+    goto TEST_SUMMARY
+)
 
 echo.
-echo Running npm tests...
+echo [PASS] Rust tests passed
+echo.
+
+echo [Step 2/2] Running npm tests...
+echo.
 cd app
-npm test
+call npm test
+set NPM_RESULT=%errorlevel%
 cd ..
 
+if %NPM_RESULT% neq 0 (
+    echo.
+    echo [FAIL] npm tests failed with exit code %NPM_RESULT%
+    set /a TEST_FAILURES+=1
+    goto TEST_SUMMARY
+)
+
 echo.
-echo Tests complete!
+echo [PASS] npm tests passed
+
+:TEST_SUMMARY
 echo.
+echo ========================================
+if %TEST_FAILURES% equ 0 (
+    echo    All Tests Passed!
+    echo    Tests complete
+) else (
+    echo    Tests Failed! (%TEST_FAILURES% failure^(s^)^)
+)
+echo ========================================
+echo.
+
+REM Non-interactive mode: exit with proper error code
+if "%INTERACTIVE%"=="0" (
+    if %TEST_FAILURES% neq 0 (
+        exit /b 1
+    )
+    exit /b 0
+)
+
 echo Press any key to return to menu...
 pause >nul
 goto MENU
