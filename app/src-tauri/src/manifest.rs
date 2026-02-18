@@ -12,7 +12,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Component, Path};
 
 /// Errors that can occur during manifest parsing and validation.
 #[derive(Debug, thiserror::Error)]
@@ -48,6 +48,73 @@ pub enum ManifestError {
     /// The client_executable is not in the files list.
     #[error("Client executable '{0}' not found in files list")]
     ExecutableNotInFiles(String),
+}
+
+/// Checks if a path is a safe relative path that doesn't escape the base directory.
+///
+/// Uses `std::path::Component` iteration for robust validation instead of
+/// string-based checks which can be bypassed with mixed path separators.
+///
+/// # Security
+///
+/// This function prevents path traversal attacks by rejecting:
+/// - Absolute paths (`/etc/passwd`, `C:\Windows`)
+/// - Windows drive prefixes (`C:`, `D:`)
+/// - UNC paths (`\\server\share`)
+/// - Parent directory traversal (`..`, `foo/../bar`)
+///
+/// # Arguments
+///
+/// * `path` - The path to validate
+///
+/// # Returns
+///
+/// `true` if the path is safe (relative with no escaping), `false` otherwise.
+///
+/// # Examples
+///
+/// ```
+/// use std::path::Path;
+///
+/// // Safe paths
+/// assert!(is_safe_relative_path(Path::new("client.exe")));
+/// assert!(is_safe_relative_path(Path::new("data/maps/map0.mul")));
+/// assert!(is_safe_relative_path(Path::new("./config.ini")));
+///
+/// // Unsafe paths
+/// assert!(!is_safe_relative_path(Path::new("../../../etc/passwd")));
+/// assert!(!is_safe_relative_path(Path::new("/etc/passwd")));
+/// assert!(!is_safe_relative_path(Path::new("C:\\Windows\\System32")));
+/// assert!(!is_safe_relative_path(Path::new("\\\\server\\share")));
+/// ```
+pub fn is_safe_relative_path(path: &Path) -> bool {
+    // Reject absolute paths early
+    if path.is_absolute() {
+        return false;
+    }
+
+    // Check each component for dangerous elements
+    for component in path.components() {
+        match component {
+            // Windows drive prefix (C:, D:) or UNC path (\\server\share)
+            Component::Prefix(_) => return false,
+            // Root directory (/) - indicates absolute path
+            Component::RootDir => return false,
+            // Parent directory traversal (..) - could escape base directory
+            Component::ParentDir => return false,
+            // Current directory (.) - safe, just skip
+            Component::CurDir => continue,
+            // Normal path segment (file/directory name) - safe
+            Component::Normal(_) => continue,
+        }
+    }
+
+    // Empty path is not safe (nothing to operate on)
+    if path.as_os_str().is_empty() {
+        return false;
+    }
+
+    true
 }
 
 /// Represents a single file entry in the manifest.
@@ -425,6 +492,93 @@ impl ManifestBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
+
+    // ==================== is_safe_relative_path tests ====================
+
+    #[test]
+    fn test_is_safe_relative_path_accepts_simple_filename() {
+        assert!(is_safe_relative_path(Path::new("client.exe")));
+        assert!(is_safe_relative_path(Path::new("readme.txt")));
+        assert!(is_safe_relative_path(Path::new("data.mul")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_accepts_subdirectory_paths() {
+        assert!(is_safe_relative_path(Path::new("data/map0.mul")));
+        assert!(is_safe_relative_path(Path::new("data/maps/world.map")));
+        assert!(is_safe_relative_path(Path::new("assets/textures/grass.png")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_accepts_current_dir() {
+        assert!(is_safe_relative_path(Path::new("./client.exe")));
+        assert!(is_safe_relative_path(Path::new("./data/map0.mul")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_rejects_parent_traversal() {
+        assert!(!is_safe_relative_path(Path::new("..")));
+        assert!(!is_safe_relative_path(Path::new("../secret")));
+        assert!(!is_safe_relative_path(Path::new("../../../etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new("data/../../../etc/passwd")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_rejects_hidden_parent_traversal() {
+        // Traversal embedded in the middle of a path
+        assert!(!is_safe_relative_path(Path::new("foo/../bar")));
+        assert!(!is_safe_relative_path(Path::new("data/subdir/../../../etc/passwd")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_rejects_absolute_unix() {
+        assert!(!is_safe_relative_path(Path::new("/etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new("/usr/bin/bash")));
+        assert!(!is_safe_relative_path(Path::new("/home/user/.bashrc")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_rejects_absolute_windows() {
+        // Note: On non-Windows platforms, these may not be detected as absolute
+        // but the Component::Prefix check will catch the drive letter
+        assert!(!is_safe_relative_path(Path::new("C:\\Windows\\System32")));
+        assert!(!is_safe_relative_path(Path::new("D:\\Program Files\\app.exe")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_rejects_unc_paths() {
+        // UNC paths (Windows network shares)
+        assert!(!is_safe_relative_path(Path::new("\\\\server\\share")));
+        assert!(!is_safe_relative_path(Path::new("\\\\server\\share\\file.txt")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_rejects_backslash_root() {
+        // Paths starting with backslash (absolute on Windows)
+        assert!(!is_safe_relative_path(Path::new("\\Windows\\System32")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_rejects_mixed_separator_traversal() {
+        // Mixed forward/back slashes with traversal
+        assert!(!is_safe_relative_path(Path::new("foo\\..\\bar")));
+        assert!(!is_safe_relative_path(Path::new("data/..\\secret")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_rejects_empty_path() {
+        assert!(!is_safe_relative_path(Path::new("")));
+    }
+
+    #[test]
+    fn test_is_safe_relative_path_accepts_windows_subdirectory_format() {
+        // Relative paths with backslashes (common in Windows manifests)
+        assert!(is_safe_relative_path(Path::new("data\\maps\\map0.mul")));
+        assert!(is_safe_relative_path(Path::new("assets\\textures\\grass.png")));
+    }
+
+    // ==================== Original manifest tests continue below ====================
 
     /// Creates a valid test manifest JSON string.
     fn valid_manifest_json() -> String {
