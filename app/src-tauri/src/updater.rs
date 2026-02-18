@@ -33,6 +33,7 @@ use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 use tauri::Emitter;
 use tracing::{debug, error, info, warn};
 
@@ -215,6 +216,38 @@ impl UpdateCheckResult {
     }
 }
 
+/// A manifest that has been cryptographically verified.
+///
+/// This struct holds a manifest that has passed signature verification,
+/// along with metadata about when the verification occurred. By using this
+/// struct, we ensure that manifest data has been verified before use,
+/// eliminating TOCTOU (time-of-check-time-of-use) vulnerabilities.
+///
+/// # Security
+///
+/// - The manifest signature is verified BEFORE parsing the JSON
+/// - Once verified, the manifest should be reused rather than re-fetched
+/// - The `signature_verified_at` timestamp can be used for cache invalidation
+#[derive(Debug, Clone)]
+pub struct VerifiedManifest {
+    /// The verified manifest contents.
+    pub manifest: Manifest,
+    /// When the signature was verified (for cache/freshness checks).
+    pub signature_verified_at: Instant,
+}
+
+impl VerifiedManifest {
+    /// Returns how long ago the signature was verified.
+    pub fn age(&self) -> std::time::Duration {
+        self.signature_verified_at.elapsed()
+    }
+
+    /// Returns true if the verification is older than the specified duration.
+    pub fn is_stale(&self, max_age: std::time::Duration) -> bool {
+        self.age() > max_age
+    }
+}
+
 /// Transaction log entry for update operations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TransactionLogEntry {
@@ -373,6 +406,90 @@ impl Updater {
     /// Returns the installation path.
     pub fn install_path(&self) -> &Path {
         &self.install_path
+    }
+
+    /// Fetches and verifies the manifest from the update server.
+    ///
+    /// This is the single, canonical way to obtain a trusted manifest. It:
+    /// 1. Downloads the manifest bytes
+    /// 2. Downloads the signature bytes
+    /// 3. Verifies the signature BEFORE parsing the JSON
+    /// 4. Returns a `VerifiedManifest` that can be safely used
+    ///
+    /// # Security
+    ///
+    /// This method eliminates TOCTOU vulnerabilities by ensuring signature
+    /// verification happens atomically with the fetch. The returned
+    /// `VerifiedManifest` should be stored and reused rather than calling
+    /// this method again (which would create a new TOCTOU window).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let verified = updater.fetch_verified_manifest().await?;
+    /// // Safe to use manifest.files, manifest.version, etc.
+    /// let files_to_update = verified.manifest.files_to_update(&local_hashes);
+    /// ```
+    pub async fn fetch_verified_manifest(&self) -> Result<VerifiedManifest, UpdateError> {
+        info!(
+            "Fetching verified manifest from {}",
+            self.brand_config.update_url
+        );
+
+        // Step 1: Download manifest bytes
+        let manifest_url = format!("{}/manifest.json", self.brand_config.update_url);
+        let manifest_bytes = self
+            .downloader
+            .download_bytes(&manifest_url)
+            .await
+            .map_err(|e| UpdateError::ManifestFetchFailed(e.to_string()))?;
+
+        // Step 2: Download signature bytes
+        let signature_url = format!("{}/manifest.sig", self.brand_config.update_url);
+        let signature_hex = self
+            .downloader
+            .download_bytes(&signature_url)
+            .await
+            .map_err(|_| UpdateError::MissingSignature)?;
+
+        // Step 3: Decode hex signature
+        let signature_str = std::str::from_utf8(&signature_hex)
+            .map_err(|_| UpdateError::StagingError("Invalid signature encoding".to_string()))?
+            .trim();
+        let signature_bytes = signature::parse_hex_signature(signature_str)
+            .map_err(|e| UpdateError::StagingError(format!("Invalid signature format: {}", e)))?;
+
+        // Step 4: Get public key from brand config
+        let public_key_bytes: [u8; 32] = self
+            .brand_config
+            .public_key_bytes()
+            .map_err(|e| UpdateError::StagingError(format!("Invalid public key: {}", e)))?
+            .try_into()
+            .map_err(|_| UpdateError::StagingError("Invalid public key length".to_string()))?;
+
+        // Step 5: VERIFY SIGNATURE BEFORE PARSING
+        // This is critical - never parse untrusted data
+        signature::verify_manifest(&manifest_bytes, &signature_bytes, &public_key_bytes)
+            .map_err(|e| {
+                UpdateError::StagingError(format!("Signature verification failed: {}", e))
+            })?;
+
+        let signature_verified_at = Instant::now();
+
+        // Step 6: Parse manifest (now safe since signature is verified)
+        let manifest = Manifest::parse(&manifest_bytes)
+            .map_err(|e| UpdateError::StagingError(format!("Invalid manifest: {}", e)))?;
+
+        info!(
+            "Manifest verified successfully: version={}, {} files",
+            manifest.version,
+            manifest.files.len()
+        );
+
+        Ok(VerifiedManifest {
+            manifest,
+            signature_verified_at,
+        })
     }
 
     /// Returns the staging directory path.
@@ -1402,5 +1519,105 @@ mod tests {
     fn test_update_progress_default() {
         let progress = UpdateProgress::default();
         assert_eq!(progress.state, UpdateState::Idle);
+    }
+
+    #[test]
+    fn test_verified_manifest_struct() {
+        use crate::manifest::ManifestBuilder;
+        use std::time::{Duration, Instant};
+
+        // Create a test manifest
+        let manifest = ManifestBuilder::new()
+            .version("1.0.0")
+            .timestamp("2026-02-15T00:00:00Z")
+            .client_executable("client.exe")
+            .add_file(FileEntry::new(
+                "client.exe",
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                1000,
+            ))
+            .build()
+            .unwrap();
+
+        // Create verified manifest
+        let verified = VerifiedManifest {
+            manifest,
+            signature_verified_at: Instant::now(),
+        };
+
+        // Test that the manifest is accessible
+        assert_eq!(verified.manifest.version, "1.0.0");
+        assert_eq!(verified.manifest.files.len(), 1);
+
+        // Test age tracking
+        let age = verified.age();
+        assert!(age < Duration::from_secs(1), "Age should be very small");
+
+        // Test is_stale with a long max_age (should not be stale)
+        assert!(!verified.is_stale(Duration::from_secs(60)));
+
+        // Test is_stale with a zero max_age (should be stale)
+        std::thread::sleep(Duration::from_millis(1));
+        assert!(verified.is_stale(Duration::from_nanos(1)));
+    }
+
+    #[test]
+    fn test_verified_manifest_clone() {
+        use crate::manifest::ManifestBuilder;
+        use std::time::Instant;
+
+        let manifest = ManifestBuilder::new()
+            .version("2.0.0")
+            .timestamp("2026-02-15T00:00:00Z")
+            .client_executable("client.exe")
+            .add_file(FileEntry::new(
+                "client.exe",
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                1000,
+            ))
+            .build()
+            .unwrap();
+
+        let verified = VerifiedManifest {
+            manifest,
+            signature_verified_at: Instant::now(),
+        };
+
+        // Test Clone trait
+        let cloned = verified.clone();
+        assert_eq!(cloned.manifest.version, "2.0.0");
+        assert_eq!(
+            cloned.signature_verified_at,
+            verified.signature_verified_at
+        );
+    }
+
+    #[test]
+    fn test_verified_manifest_debug() {
+        use crate::manifest::ManifestBuilder;
+        use std::time::Instant;
+
+        let manifest = ManifestBuilder::new()
+            .version("1.0.0")
+            .timestamp("2026-02-15T00:00:00Z")
+            .client_executable("client.exe")
+            .add_file(FileEntry::new(
+                "client.exe",
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                1000,
+            ))
+            .build()
+            .unwrap();
+
+        let verified = VerifiedManifest {
+            manifest,
+            signature_verified_at: Instant::now(),
+        };
+
+        // Test Debug trait
+        let debug_str = format!("{:?}", verified);
+        assert!(debug_str.contains("VerifiedManifest"));
+        assert!(debug_str.contains("manifest"));
+        assert!(debug_str.contains("signature_verified_at"));
     }
 }
