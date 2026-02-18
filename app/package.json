@@ -11,11 +11,13 @@
     "prebuild": "node sync-branding-config.js",
     "validate-env": "node scripts/validate-env.js",
     "setup:windows": "powershell -ExecutionPolicy Bypass -File scripts/setup.ps1",
-    "setup:unix": "bash scripts/setup.sh"
+    "setup:unix": "bash scripts/setup.sh",
+    "test": "echo \"No frontend tests configured\" && exit 0"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0"
