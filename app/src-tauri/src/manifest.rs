@@ -83,6 +83,7 @@ pub enum ManifestError {
 ///
 /// ```
 /// use std::path::Path;
+/// use ultimaforge_lib::manifest::is_safe_relative_path;
 ///
 /// // Safe paths
 /// assert!(is_safe_relative_path(Path::new("client.exe")));
