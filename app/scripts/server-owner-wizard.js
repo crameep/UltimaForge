@@ -124,9 +124,40 @@ async function main() {
     : "";
 
   let publicKey = existing?.publicKey ?? "";
-  const wantKeygen = await confirm(rl, "Generate a new Ed25519 keypair now?", true);
-  if (wantKeygen) {
+  const gameKeysExist = fs.existsSync(publicKeyPath);
+  const keygenPrompt = gameKeysExist
+    ? "A keypair already exists. Regenerate? (overwrites existing keys — breaks launchers already distributed)"
+    : "Generate a new Ed25519 keypair now?";
+  const wantKeygen = await confirm(rl, keygenPrompt, !gameKeysExist);
+
+  let confirmedKeygen = wantKeygen;
+  if (wantKeygen && gameKeysExist) {
+    console.log("\n  WARNING: Overwriting keys is IRREVERSIBLE.");
+    console.log("  Any launcher already distributed to players will stop verifying updates.");
+    console.log("  Only proceed if this is a brand new setup.\n");
+    const typed = (await rl.question('  Type "REGENERATE" to confirm, or press Enter to cancel: ')).trim();
+    if (typed !== "REGENERATE") {
+      console.log("  Aborted. Existing keys preserved.");
+      confirmedKeygen = false;
+    }
+  }
+
+  if (confirmedKeygen) {
     try {
+      // Back up existing keys first
+      if (gameKeysExist) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const backupDir = path.join(keysDir, `backup-${timestamp}`);
+        fs.mkdirSync(backupDir, { recursive: true });
+        for (const filename of ["public.key", "private.key"]) {
+          const src = path.join(keysDir, filename);
+          if (fs.existsSync(src)) {
+            fs.copyFileSync(src, path.join(backupDir, filename));
+          }
+        }
+        console.log(`\nExisting keys backed up to: ${backupDir}`);
+      }
+
       execSync(`cargo run -p publish-cli -- keygen --output "${keysDir}" --force`, {
         cwd: repoRoot,
         stdio: "inherit",
