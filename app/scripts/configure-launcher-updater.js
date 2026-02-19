@@ -126,7 +126,7 @@ async function runSignerGenerate() {
   const keyBase = path.join(updaterDir, "tauri");
   const tauriJs = path.join(appDir, "node_modules", "@tauri-apps", "cli", "tauri.js");
 
-  console.log("\nGenerating Tauri updater keys with no password...");
+  console.log("\nGenerating Tauri updater keys with no password (CI mode)...");
 
   const signerArgs = ["signer", "generate", "--force", "--write-keys", keyBase];
   const attempts = fs.existsSync(tauriJs)
@@ -140,22 +140,18 @@ async function runSignerGenerate() {
         [npmCommand, ["exec", "--", "tauri", ...signerArgs]],
       ];
 
-  // Send two empty lines via stdin for the two password prompts so the key is
-  // always generated with no password, regardless of whether Tauri CLI reads
-  // from the pipe or from the Windows console handle. We also set
-  // TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" in the env; Tauri v2 checks that var
-  // during generation and skips the interactive prompt if it is present.
-  const childEnv = { ...process.env, TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "" };
+  // CI=1 causes Tauri CLI v2 to skip the interactive password prompt and
+  // generate the key with an empty password. The signer generate command
+  // reads the CI env var (#[clap(long, env = "CI")]) and uses "" instead
+  // of calling dialoguer::Password.
+  const childEnv = { ...process.env, CI: "1" };
 
   let generated = null;
   for (const [cmd, fullArgs] of attempts) {
     try {
       const result = spawnSync(cmd, fullArgs, {
         cwd: appDir,
-        // Pipe stdin so we can send "\n\n" for the two password prompts.
-        // Inherit stdout/stderr so the user can see Tauri CLI output.
-        stdio: ["pipe", "inherit", "inherit"],
-        input: "\n\n",
+        stdio: "inherit",
         env: childEnv,
         shell: cmd !== process.execPath && process.platform === "win32",
       });
@@ -172,9 +168,9 @@ async function runSignerGenerate() {
     return { privateKey: "", publicKey: "" };
   }
 
-  // Store empty password.txt — the key was generated with no password.
+  // Store empty password.txt — the key was generated with no password (CI mode).
   writeKeyFile(privateKeyPasswordPath, "");
-  console.log("\nKey generation complete. No password set (recommended).");
+  console.log("\nKey generation complete. No password set (CI mode).");
 
   return generated;
 }
