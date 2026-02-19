@@ -144,7 +144,7 @@ async function runSignerGenerate() {
   // generate the key with an empty password. The signer generate command
   // reads the CI env var (#[clap(long, env = "CI")]) and uses "" instead
   // of calling dialoguer::Password.
-  const childEnv = { ...process.env, CI: "1" };
+  const childEnv = { ...process.env, CI: "true" };
 
   let generated = null;
   for (const [cmd, fullArgs] of attempts) {
