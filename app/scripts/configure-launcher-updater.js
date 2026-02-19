@@ -219,6 +219,26 @@ async function confirm(rl, label, fallback = true) {
   return value === "y" || value === "yes";
 }
 
+function validateFinalKeyState(privateKeyPath, passwordPath) {
+  if (!fs.existsSync(privateKeyPath)) {
+    console.log("\nWARNING: Private key file was not created. Re-run and generate keys.");
+    return false;
+  }
+  const keyText = fs.readFileSync(privateKeyPath, "utf8");
+  const encrypted = isEncryptedKey(keyText);
+  const hasPassword = fs.existsSync(passwordPath) &&
+    fs.readFileSync(passwordPath, "utf8").trim().length > 0;
+
+  if (encrypted && !hasPassword) {
+    console.log("\nERROR: The Tauri updater key is encrypted but no password was saved.");
+    console.log("Fix option 1: Re-run this wizard and regenerate keys — press Enter at both");
+    console.log("             password prompts to create an unencrypted key (recommended).");
+    console.log("Fix option 2: Create keys/tauri-updater/password.txt containing your password.");
+    return false;
+  }
+  return true;
+}
+
 async function main() {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -358,6 +378,12 @@ async function main() {
 
   tauriConfig.plugins.updater.pubkey = publicKey;
   writeJson(tauriConfigPath, tauriConfig);
+
+  const valid = validateFinalKeyState(privateKeyPath, privateKeyPasswordPath);
+  if (!valid) {
+    rl.close();
+    process.exit(1);
+  }
 
   console.log("\nUpdated Tauri updater public key:");
   console.log(`- ${tauriConfigPath}`);

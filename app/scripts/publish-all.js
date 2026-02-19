@@ -119,8 +119,10 @@ function validateUpdaterKeyPassword(keyPath, passwordPath) {
 
   if (isEncrypted && !hasPassword) {
     throw new Error(
-      "Updater key is encrypted but no password.txt was found. " +
-        "Re-run the wizard and enter the password, or regenerate keys with no password."
+      `Updater key is encrypted but no password file found at: ${passwordPath}\n` +
+      `Fix option 1 (recommended): Re-run option D and regenerate keys,\n` +
+      `  pressing Enter at BOTH password prompts to create an unencrypted key.\n` +
+      `Fix option 2: Create ${passwordPath} containing the password you used.`
     );
   }
 
