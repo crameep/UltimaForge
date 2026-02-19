@@ -139,7 +139,15 @@ async function runSignerGenerate(rl) {
       const result = spawnSync(
         cmd,
         [...baseArgs, "--password", "", "--write-keys", keyBase],
-        { cwd: appDir, stdio: "ignore", shell: true }
+        {
+          cwd: appDir,
+          stdio: "ignore",
+          // On Windows the .cmd shim requires a shell; on Linux/WSL the shell
+          // collapses consecutive whitespace and silently drops the empty-string
+          // password argument, causing the key to be encrypted with "--write-keys"
+          // as the password. Use shell only on Windows.
+          shell: process.platform === "win32",
+        }
       );
       if (result.status === 0) {
         const keys = tryReadWrittenKeys(keyBase);

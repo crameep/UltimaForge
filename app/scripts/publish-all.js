@@ -376,10 +376,12 @@ async function main() {
       }
     }
     const env = { ...process.env };
-    // Always remove any inherited TAURI_SIGNING_PRIVATE_KEY_PATH. If it was
-    // set in the Windows environment from a previous attempt it would take
-    // precedence over our inline key and cause "Wrong password" errors.
+    // Purge all inherited Tauri signing vars. If any were set in the Windows
+    // environment from a previous manual attempt, they would override our key
+    // files and cause "Wrong password" errors. We set them explicitly below.
     delete env.TAURI_SIGNING_PRIVATE_KEY_PATH;
+    delete env.TAURI_SIGNING_PRIVATE_KEY;
+    delete env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD;
 
     if (fs.existsSync(updaterKeyPath)) {
       // Normalise to the base64 blob format Tauri expects for the inline env var.
