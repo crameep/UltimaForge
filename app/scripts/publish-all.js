@@ -149,8 +149,11 @@ function toTauriSigningEnvVar(fileContent) {
  * Returns { ok: true } on success, { ok: false } on wrong password,
  * or { ok: true, skipped: true } if the signer command is unavailable.
  *
- * We pass -k/-p explicitly so the signer reads the key from our argument
- * rather than from environment variables (which Tauri signer sign ignores).
+ * We set TAURI_SIGNING_PRIVATE_KEY / _PASSWORD as env vars and call
+ * `tauri signer sign <file>` without -k/-p. Tauri's env-var code path calls
+ * decode_key() which correctly base64-decodes the blob we store in keyEnvVar.
+ * Passing the blob via -k would bypass decode_key() and cause a false "wrong
+ * password" error because -k expects raw key text, not the base64 blob.
  */
 function validateKeyCanSign(keyEnvVar, password, cwd) {
   const tmpFile = path.join(cwd, ".tauri-key-validate.tmp");
@@ -158,24 +161,14 @@ function validateKeyCanSign(keyEnvVar, password, cwd) {
     fs.writeFileSync(tmpFile, "key-validation-test", "utf8");
     const tauriJs = path.join(cwd, "node_modules", "@tauri-apps", "cli", "tauri.js");
     const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
-    // Prefer invoking tauri.js via node directly (avoids shell/batch quoting).
-    // The password is passed as a shell argument here; on Linux/WSL the shell
-    // correctly handles an empty-string arg within a double-quoted string.
-    let cmd, args;
-    if (fs.existsSync(tauriJs)) {
-      // Direct node invocation — safest arg passing (no shell).
-      cmd = process.execPath;
-      args = [tauriJs, "signer", "sign", "-k", keyEnvVar, "-p", password, tmpFile];
-    } else {
-      // Fallback: npx with shell quoting
-      cmd = npxCmd;
-      args = ["tauri", "signer", "sign", "-k", keyEnvVar, "-p", password, tmpFile];
-    }
+    const cmd = fs.existsSync(tauriJs) ? process.execPath : npxCmd;
+    const baseArgs = fs.existsSync(tauriJs) ? [tauriJs, "signer", "sign"] : ["tauri", "signer", "sign"];
     const env = { ...process.env };
-    delete env.TAURI_SIGNING_PRIVATE_KEY;
+    // Remove any inherited key vars and set only ours so Tauri reads our key.
     delete env.TAURI_SIGNING_PRIVATE_KEY_PATH;
-    delete env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD;
-    const result = spawnSync(cmd, args, { cwd, stdio: "pipe", env, shell: false });
+    env.TAURI_SIGNING_PRIVATE_KEY = keyEnvVar;
+    env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = password;
+    const result = spawnSync(cmd, [...baseArgs, tmpFile], { cwd, stdio: "pipe", env, shell: false });
     if (result.status === 0) {
       return { ok: true };
     }
