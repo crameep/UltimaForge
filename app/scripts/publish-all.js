@@ -125,20 +125,42 @@ function validateUpdaterKeyPassword(keyPath, passwordPath) {
 }
 
 /**
+ * Normalise the stored key file content to the value Tauri expects for
+ * TAURI_SIGNING_PRIVATE_KEY (a base64-encoded blob of the full key text).
+ *
+ * Two storage formats can exist:
+ *  - Raw text (written by `tauri signer generate --write-keys`):
+ *      "untrusted comment: rsign ...\n<base64 key material>\n"
+ *  - Base64 blob (pasted from the "Private:" line of `tauri signer generate`):
+ *      "dW50cnVzdGVkIGNvb..."
+ *
+ * Tauri always wants the base64 blob. If we detect raw text, we encode it.
+ */
+function toTauriSigningEnvVar(fileContent) {
+  const trimmed = fileContent.trim();
+  if (trimmed.startsWith("untrusted comment:")) {
+    return Buffer.from(trimmed + "\n").toString("base64");
+  }
+  return trimmed;
+}
+
+/**
  * Validate the updater key + password before running the expensive tauri build.
- * Returns { ok: true } on success, { ok: false, reason } on wrong password,
+ * Returns { ok: true } on success, { ok: false } on wrong password,
  * or { ok: true, skipped: true } if the signer command is unavailable.
  */
-function validateKeyCanSign(keyContent, password, cwd) {
+function validateKeyCanSign(keyEnvVar, password, cwd) {
   const tmpFile = path.join(cwd, ".tauri-key-validate.tmp");
   try {
     fs.writeFileSync(tmpFile, "key-validation-test", "utf8");
     const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
     const env = {
       ...process.env,
-      TAURI_SIGNING_PRIVATE_KEY: keyContent,
+      TAURI_SIGNING_PRIVATE_KEY: keyEnvVar,
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: password,
     };
+    // Ensure a stale PATH-based key in the inherited env never wins.
+    delete env.TAURI_SIGNING_PRIVATE_KEY_PATH;
     execSync(`"${npxCmd}" tauri signer sign "${tmpFile}"`, {
       cwd,
       stdio: "pipe",
@@ -354,15 +376,18 @@ async function main() {
       }
     }
     const env = { ...process.env };
+    // Always remove any inherited TAURI_SIGNING_PRIVATE_KEY_PATH. If it was
+    // set in the Windows environment from a previous attempt it would take
+    // precedence over our inline key and cause "Wrong password" errors.
+    delete env.TAURI_SIGNING_PRIVATE_KEY_PATH;
+
     if (fs.existsSync(updaterKeyPath)) {
-      // Use the inline env var, NOT TAURI_SIGNING_PRIVATE_KEY_PATH.
-      // Our key file stores the base64-encoded key string (the "Private:" value
-      // from `tauri signer generate`). This is exactly what TAURI_SIGNING_PRIVATE_KEY
-      // expects. TAURI_SIGNING_PRIVATE_KEY_PATH expects the raw multi-line text
-      // format, so setting both causes Tauri to read the wrong format and fail.
-      env.TAURI_SIGNING_PRIVATE_KEY = fs
-        .readFileSync(updaterKeyPath, "utf8")
-        .trim();
+      // Normalise to the base64 blob format Tauri expects for the inline env var.
+      // The key file may be raw text (from --write-keys) or already base64
+      // (from pasting the "Private:" line). toTauriSigningEnvVar handles both.
+      env.TAURI_SIGNING_PRIVATE_KEY = toTauriSigningEnvVar(
+        fs.readFileSync(updaterKeyPath, "utf8")
+      );
       // Always set the password env var — empty string for no-password keys.
       // Without this, Tauri falls back to an interactive prompt even for keys
       // generated with no password (Tauri v2 always uses the "encrypted" format).
