@@ -248,7 +248,7 @@ function validateFinalKeyState(privateKeyPath, passwordPath) {
     console.log("\nERROR: The Tauri updater key is encrypted but no password was saved.");
     console.log("Fix option 1: Re-run this wizard and regenerate keys — press Enter at both");
     console.log("             password prompts to create an unencrypted key (recommended).");
-    console.log("Fix option 2: Create keys/tauri-updater/password.txt containing your password.");
+    console.log(`Fix option 2: Create ${passwordPath} containing your password.`);
     return false;
   }
   return true;
