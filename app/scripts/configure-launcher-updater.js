@@ -99,12 +99,14 @@ function isValidTauriPublicKey(keyText) {
   return true;
 }
 
-function runSignerGenerateCommand(command, args) {
+function runSignerGenerateCommand(command, args, interactive) {
   return new Promise((resolve) => {
     try {
       const child = spawn(command, args, {
         cwd: appDir,
-        stdio: ["inherit", "pipe", "pipe"],
+        // Non-interactive: ignore stdin so the process gets EOF immediately.
+        // Interactive: inherit so the user can type at the password prompts.
+        stdio: [interactive ? "inherit" : "ignore", "pipe", "pipe"],
       });
 
       let stdout = "";
@@ -136,43 +138,31 @@ function runSignerGenerateCommand(command, args) {
 
 async function runSignerGenerate() {
   const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
-  let generated = await runSignerGenerateCommand(npxCommand, [
-    "tauri",
-    "signer",
-    "generate",
-  ]);
-  if (generated.privateKey || generated.publicKey) {
-    return generated;
-  }
-
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  generated = await runSignerGenerateCommand(npmCommand, [
-    "exec",
-    "--",
-    "tauri",
-    "signer",
-    "generate",
-  ]);
-  if (generated.privateKey || generated.publicKey) {
-    return generated;
+
+  // Try non-interactive first: pass --password "" so the CLI skips prompts.
+  // Tauri v2 always uses the "encrypted" key format even with an empty password.
+  console.log("Generating Tauri updater keys (no password)...");
+  for (const [cmd, args] of [
+    [npxCommand, ["tauri", "signer", "generate", "--password", ""]],
+    [npmCommand, ["exec", "--", "tauri", "signer", "generate", "--password", ""]],
+  ]) {
+    const generated = await runSignerGenerateCommand(cmd, args, false);
+    if (generated.privateKey || generated.publicKey) {
+      return generated;
+    }
   }
 
-  const outputFile = path.join(updaterDir, "tauri-signer-output.txt");
-  try {
-    const command = `${npmCommand} exec -- tauri signer generate > "${outputFile}" 2>&1`;
-    execSync(command, {
-      cwd: appDir,
-      stdio: "ignore",
-      shell: true,
-    });
-    if (fs.existsSync(outputFile)) {
-      const output = fs.readFileSync(outputFile, "utf8");
-      fs.unlinkSync(outputFile);
-      return parseGeneratedKeys(output);
-    }
-  } catch (error) {
-    if (fs.existsSync(outputFile)) {
-      fs.unlinkSync(outputFile);
+  // Fall back to interactive if the CLI does not support --password.
+  console.log("\nNon-interactive generation failed. Falling back to interactive.");
+  console.log("Press Enter at BOTH password prompts to create a no-password key.");
+  for (const [cmd, args] of [
+    [npxCommand, ["tauri", "signer", "generate"]],
+    [npmCommand, ["exec", "--", "tauri", "signer", "generate"]],
+  ]) {
+    const generated = await runSignerGenerateCommand(cmd, args, true);
+    if (generated.privateKey || generated.publicKey) {
+      return generated;
     }
   }
 
@@ -239,16 +229,11 @@ function validateFinalKeyState(privateKeyPath, passwordPath) {
     console.log("\nWARNING: Private key file was not created. Re-run and generate keys.");
     return false;
   }
-  const keyText = fs.readFileSync(privateKeyPath, "utf8");
-  const encrypted = isEncryptedKey(keyText);
-  const hasPassword = fs.existsSync(passwordPath) &&
-    fs.readFileSync(passwordPath, "utf8").trim().length > 0;
-
-  if (encrypted && !hasPassword) {
-    console.log("\nERROR: The Tauri updater key is encrypted but no password was saved.");
-    console.log("Fix option 1: Re-run this wizard and regenerate keys — press Enter at both");
-    console.log("             password prompts to create an unencrypted key (recommended).");
-    console.log(`Fix option 2: Create ${passwordPath} containing your password.`);
+  // password.txt must exist (even if empty) so publish-all can pass
+  // TAURI_SIGNING_PRIVATE_KEY_PASSWORD without triggering an interactive prompt.
+  if (!fs.existsSync(passwordPath)) {
+    console.log(`\nERROR: ${passwordPath} is missing.`);
+    console.log("Re-run this wizard to create it.");
     return false;
   }
   return true;
@@ -297,6 +282,10 @@ async function main() {
 
     writeKeyFile(privateKeyPath, generated.privateKey);
     writeKeyFile(path.join(updaterDir, "tauri.pub"), generated.publicKey);
+    // Write empty password.txt — generated keys have no password.
+    // publish-all.js always passes TAURI_SIGNING_PRIVATE_KEY_PASSWORD from this
+    // file (empty string = no password), preventing an interactive prompt.
+    writeKeyFile(privateKeyPasswordPath, "");
     console.log("Tauri updater keys captured and saved.");
   }
 
@@ -366,29 +355,27 @@ async function main() {
     return;
   }
 
-  const encryptedKey = isEncryptedKey(privateKey);
-  const hasPasswordFile =
-    fs.existsSync(privateKeyPasswordPath) &&
-    fs.readFileSync(privateKeyPasswordPath, "utf8").trim().length > 0;
-
-  if (encryptedKey && !hasPasswordFile) {
+  // Tauri v2 always emits the "encrypted" key format even for empty-password
+  // keys, so we cannot detect encryption from the key text. Instead, we ensure
+  // password.txt always exists so publish-all can set
+  // TAURI_SIGNING_PRIVATE_KEY_PASSWORD without falling back to an interactive
+  // prompt. For generated keys this file was already written above. For
+  // manually pasted keys we ask once; blank = no password.
+  if (!fs.existsSync(privateKeyPasswordPath)) {
     const password = await promptForValue(
       rl,
-      "Updater key is encrypted. Enter the same password (required)",
+      "Key password (press Enter if this key has no password)",
       "",
-      true
+      false
     );
     writeKeyFile(privateKeyPasswordPath, password);
   }
 
-  if (!encryptedKey && fs.existsSync(privateKeyPasswordPath)) {
-    fs.unlinkSync(privateKeyPasswordPath);
-  }
-
-  if (encryptedKey) {
-    console.log("\nPassword stored for encrypted updater key.");
+  const savedPassword = fs.readFileSync(privateKeyPasswordPath, "utf8").trim();
+  if (savedPassword) {
+    console.log("\nPassword stored for updater key.");
   } else {
-    console.log("\nNo password stored. Key is unencrypted (recommended).");
+    console.log("\nNo password stored (key has no password — recommended).");
   }
 
   rl.close();
