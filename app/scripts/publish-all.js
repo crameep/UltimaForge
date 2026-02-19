@@ -13,6 +13,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const appDir = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(appDir, "..");
+const legacyKeysDir = path.join(repoRoot, "keys");
+const defaultKeysDir = path.join(repoRoot, "server-data", "keys");
+const resolvedKeysDir = fs.existsSync(legacyKeysDir) ? legacyKeysDir : defaultKeysDir;
 const require = createRequire(import.meta.url);
 
 function readJson(filePath) {
@@ -296,7 +299,7 @@ async function main() {
   const altBundleDir = path.join(repoRoot, "target", "release", "bundle");
   const shouldBuildLauncher = (args["launcher-build"] || "").trim() !== "false";
   if (shouldBuildLauncher) {
-    const updaterKeysDir = path.join(repoRoot, "keys", "tauri-updater");
+    const updaterKeysDir = path.join(resolvedKeysDir, "tauri-updater");
     const updaterKeyPath = path.join(updaterKeysDir, "tauri.key");
     const updaterPassPath = path.join(updaterKeysDir, "password.txt");
     try {
