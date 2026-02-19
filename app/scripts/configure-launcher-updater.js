@@ -84,6 +84,21 @@ function parseGeneratedKeys(output) {
   return { privateKey, publicKey };
 }
 
+function isValidTauriPrivateKey(keyText) {
+  if (!keyText || keyText.trim().length === 0) return false;
+  // Tauri minisign keys are base64-encoded blocks, always multi-line
+  // Minimum length check (unencrypted ~110 chars, encrypted ~340 chars)
+  if (keyText.trim().length < 80) return false;
+  return true;
+}
+
+function isValidTauriPublicKey(keyText) {
+  if (!keyText || keyText.trim().length === 0) return false;
+  // Public key is a single base64 line, typically 100-160 chars
+  if (keyText.trim().length < 40) return false;
+  return true;
+}
+
 function runSignerGenerateCommand(command, args) {
   return new Promise((resolve) => {
     try {
@@ -264,15 +279,25 @@ async function main() {
   if (wantGenerate) {
     fs.mkdirSync(updaterDir, { recursive: true });
     const generated = await runSignerGenerate();
-    if (generated.privateKey) {
-      writeKeyFile(privateKeyPath, generated.privateKey);
+
+    const privateValid = isValidTauriPrivateKey(generated.privateKey);
+    const publicValid = isValidTauriPublicKey(generated.publicKey);
+
+    if (!privateValid || !publicValid) {
+      console.log("\nERROR: Failed to capture Tauri updater keys from CLI output.");
+      console.log("The tauri signer generate command ran but the key output could not be parsed.");
+      console.log("\nTroubleshooting:");
+      console.log("  1. Run manually: npx tauri signer generate");
+      console.log("  2. Copy the output into keys/tauri-updater/tauri.key (private) and tauri.pub (public)");
+      console.log("  3. Re-run this wizard — it will detect the existing keys");
+      console.log("\nNo key files were written.");
+      rl.close();
+      process.exit(1);
     }
-    if (generated.publicKey) {
-      writeKeyFile(path.join(updaterDir, "tauri.pub"), generated.publicKey);
-    }
-    if (!generated.privateKey || !generated.publicKey) {
-      console.log("Failed to capture Tauri updater keys from CLI output.");
-    }
+
+    writeKeyFile(privateKeyPath, generated.privateKey);
+    writeKeyFile(path.join(updaterDir, "tauri.pub"), generated.publicKey);
+    console.log("Tauri updater keys captured and saved.");
   }
 
   publicKey = findPublicKey(updaterDir);
