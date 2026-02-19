@@ -56,13 +56,13 @@ async function validateTestKeyAlignment() {
 
   if (brandPubKey && testPubKey && brandPubKey !== testPubKey) {
     console.log("\nWARNING: Key mismatch detected!");
-    console.log("   app/test-keys/public.key does not match the publicKey in branding/brand.json.");
+    console.log("   app/test-keys/public.key does not match the publicKey in app/public/branding/brand.json.");
     console.log("   The launcher will REJECT the test manifest signatures.");
     console.log("");
     console.log("   Fix: copy the test public key into brand.json for local dev:");
     console.log(`     Test public key: ${testPubKey}`);
     console.log("");
-    console.log("   Or update branding/brand.json publicKey to match your test-keys.");
+    console.log("   Or update app/public/branding/brand.json publicKey to match your test-keys.");
     console.log("   Press Ctrl+C to abort, or continuing in 5 seconds...\n");
     // 5-second pause so the warning is visible
     await new Promise((resolve) => setTimeout(resolve, 5000));
