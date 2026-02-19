@@ -119,18 +119,14 @@ function tryReadWrittenKeys(keyBase) {
   return null;
 }
 
-async function runSignerGenerate(rl) {
+async function runSignerGenerate() {
   const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
   // Base path passed to --write-keys; Tauri v2 writes <base> (no ext) and <base>.pub
   const keyBase = path.join(updaterDir, "tauri");
   const tauriJs = path.join(appDir, "node_modules", "@tauri-apps", "cli", "tauri.js");
 
-  // Use "inherit" so any password prompts from Tauri CLI are visible to the user.
-  // Tauri CLI may ignore --password "" and prompt interactively; with inherited
-  // stdio the user can see and respond to those prompts directly.
-  console.log("\nGenerating Tauri updater keys...");
-  console.log(">>> If a 'Password:' prompt appears, press Enter twice for no password. <<<\n");
+  console.log("\nGenerating Tauri updater keys with no password...");
 
   const signerArgs = ["signer", "generate", "--force", "--write-keys", keyBase];
   const attempts = fs.existsSync(tauriJs)
@@ -144,13 +140,23 @@ async function runSignerGenerate(rl) {
         [npmCommand, ["exec", "--", "tauri", ...signerArgs]],
       ];
 
+  // Send two empty lines via stdin for the two password prompts so the key is
+  // always generated with no password, regardless of whether Tauri CLI reads
+  // from the pipe or from the Windows console handle. We also set
+  // TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" in the env; Tauri v2 checks that var
+  // during generation and skips the interactive prompt if it is present.
+  const childEnv = { ...process.env, TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "" };
+
   let generated = null;
   for (const [cmd, fullArgs] of attempts) {
     try {
       const result = spawnSync(cmd, fullArgs, {
         cwd: appDir,
-        // Inherit stdio so the user sees and can respond to any password prompts.
-        stdio: "inherit",
+        // Pipe stdin so we can send "\n\n" for the two password prompts.
+        // Inherit stdout/stderr so the user can see Tauri CLI output.
+        stdio: ["pipe", "inherit", "inherit"],
+        input: "\n\n",
+        env: childEnv,
         shell: cmd !== process.execPath && process.platform === "win32",
       });
       if (result.status === 0) {
@@ -166,16 +172,9 @@ async function runSignerGenerate(rl) {
     return { privateKey: "", publicKey: "" };
   }
 
-  // Ask the user what password they used so we can store it exactly.
-  // Tauri CLI may have ignored --password "" and prompted; whatever they entered
-  // here must match what they typed at the Tauri prompt.
-  console.log("\nKey generation complete.");
-  const password = (
-    await rl.question(
-      "What password did you use? Press Enter if you pressed Enter at the prompts (recommended): "
-    )
-  ).trim();
-  writeKeyFile(privateKeyPasswordPath, password);
+  // Store empty password.txt — the key was generated with no password.
+  writeKeyFile(privateKeyPasswordPath, "");
+  console.log("\nKey generation complete. No password set (recommended).");
 
   return generated;
 }
@@ -274,7 +273,7 @@ async function main() {
 
   if (wantGenerate) {
     fs.mkdirSync(updaterDir, { recursive: true });
-    const generated = await runSignerGenerate(rl);
+    const generated = await runSignerGenerate();
 
     const privateValid = isValidTauriPrivateKey(generated.privateKey);
     const publicValid = isValidTauriPublicKey(generated.publicKey);

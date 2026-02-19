@@ -168,7 +168,15 @@ function validateKeyCanSign(keyEnvVar, password, cwd) {
     delete env.TAURI_SIGNING_PRIVATE_KEY_PATH;
     env.TAURI_SIGNING_PRIVATE_KEY = keyEnvVar;
     env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = password;
-    const result = spawnSync(cmd, [...baseArgs, tmpFile], { cwd, stdio: "pipe", env, shell: false });
+    // Provide the password via stdin too, in case signer sign prompts interactively
+    // rather than reading TAURI_SIGNING_PRIVATE_KEY_PASSWORD from the environment.
+    const result = spawnSync(cmd, [...baseArgs, tmpFile], {
+      cwd,
+      stdio: "pipe",
+      input: (password || "") + "\n",
+      env,
+      shell: false,
+    });
     if (result.status === 0) {
       return { ok: true };
     }
@@ -182,7 +190,7 @@ function validateKeyCanSign(keyEnvVar, password, cwd) {
       combined.includes("incorrect") ||
       combined.includes("decode secret key")
     ) {
-      return { ok: false };
+      return { ok: false, errorOutput: combined };
     }
     // Signer command not found or unrelated error — don't block the build.
     return { ok: true, skipped: true };
@@ -412,6 +420,10 @@ async function main() {
       );
       if (!keyCheck.ok) {
         console.log("\nERROR: Tauri updater key cannot be decrypted with the stored password.");
+        if (keyCheck.errorOutput) {
+          console.log("Tauri CLI output:");
+          console.log(keyCheck.errorOutput.trim());
+        }
         console.log("Fix options:");
         console.log("  1. Re-run Option D to regenerate keys (press Enter for no password).");
         console.log(`  2. Edit ${updaterPassPath} with the correct password.`);
