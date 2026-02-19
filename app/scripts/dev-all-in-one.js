@@ -30,8 +30,56 @@ function ensureTestUpdates() {
   );
 }
 
-function run() {
+async function validateTestKeyAlignment() {
+  const testPublicKeyPath = path.join(appDir, "test-keys", "public.key");
+  const brandJsonPath = path.join(appDir, "public", "branding", "brand.json");
+
+  if (!fs.existsSync(testPublicKeyPath)) {
+    console.log("WARNING: app/test-keys/public.key not found.");
+    console.log("  Run option [4] to generate test manifests first, or ensure test keys exist.");
+    return;
+  }
+
+  if (!fs.existsSync(brandJsonPath)) {
+    // brand.json in public/ may not exist yet; skip check
+    return;
+  }
+
+  const testPubKey = fs.readFileSync(testPublicKeyPath, "utf8").trim();
+  let brandPubKey = "";
+  try {
+    const brand = JSON.parse(fs.readFileSync(brandJsonPath, "utf8"));
+    brandPubKey = (brand.publicKey ?? "").trim();
+  } catch {
+    return;
+  }
+
+  if (brandPubKey && testPubKey && brandPubKey !== testPubKey) {
+    console.log("\nWARNING: Key mismatch detected!");
+    console.log("   app/test-keys/public.key does not match the publicKey in branding/brand.json.");
+    console.log("   The launcher will REJECT the test manifest signatures.");
+    console.log("");
+    console.log("   Fix: copy the test public key into brand.json for local dev:");
+    console.log(`     Test public key: ${testPubKey}`);
+    console.log("");
+    console.log("   Or update branding/brand.json publicKey to match your test-keys.");
+    console.log("   Press Ctrl+C to abort, or continuing in 5 seconds...\n");
+    // 5-second pause so the warning is visible
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
+}
+
+async function run() {
+  await validateTestKeyAlignment();
   ensureTestUpdates();
+
+  const testPubKeyPath = path.join(appDir, "test-keys", "public.key");
+  if (fs.existsSync(testPubKeyPath)) {
+    const key = fs.readFileSync(testPubKeyPath, "utf8").trim();
+    console.log(`\nDev mode: signing test manifests with test key.`);
+    console.log(`Test public key: ${key.substring(0, 16)}...`);
+    console.log(`Brand public key must match for launcher to verify updates.\n`);
+  }
 
   const server = spawn(
     "cargo",
