@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync, spawn } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import readline from "node:readline/promises";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -133,12 +133,18 @@ async function runSignerGenerate(rl) {
     [npmCommand, ["exec", "--", "tauri", "signer", "generate"]],
   ]) {
     try {
-      execSync(
-        [cmd, ...baseArgs, "--password", "", "--write-keys", keyBase].join(" "),
-        { cwd: appDir, stdio: "ignore" }
+      // Use spawnSync with an args array so the empty string is passed as a
+      // genuine empty argument ("") — execSync with .join(" ") would drop it,
+      // causing Tauri to treat "--write-keys" as the password value.
+      const result = spawnSync(
+        cmd,
+        [...baseArgs, "--password", "", "--write-keys", keyBase],
+        { cwd: appDir, stdio: "ignore", shell: true }
       );
-      const keys = tryReadWrittenKeys(keyBase);
-      if (keys) return keys;
+      if (result.status === 0) {
+        const keys = tryReadWrittenKeys(keyBase);
+        if (keys) return keys;
+      }
     } catch (e) {
       // flag not supported or command failed — try next
     }
