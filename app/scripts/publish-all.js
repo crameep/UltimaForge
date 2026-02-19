@@ -411,29 +411,11 @@ async function main() {
         ? fs.readFileSync(updaterPassPath, "utf8").trim()
         : "";
 
-      // Validate the key + password BEFORE the expensive 2.5-minute compile.
-      console.log("\nValidating updater signing key...");
-      const keyCheck = validateKeyCanSign(
-        env.TAURI_SIGNING_PRIVATE_KEY,
-        env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD,
-        appDir
-      );
-      if (!keyCheck.ok) {
-        console.log("\nERROR: Tauri updater key cannot be decrypted with the stored password.");
-        if (keyCheck.errorOutput) {
-          console.log("Tauri CLI output:");
-          console.log(keyCheck.errorOutput.trim());
-        }
-        console.log("Fix options:");
-        console.log("  1. Re-run Option D to regenerate keys (press Enter for no password).");
-        console.log(`  2. Edit ${updaterPassPath} with the correct password.`);
-        process.exit(1);
-      }
-      if (keyCheck.skipped) {
-        console.log("Note: Pre-build key validation skipped (tauri signer sign not available).");
-      } else {
-        console.log("Updater key validation passed.");
-      }
+      // Pre-build key validation is skipped: validateKeyCanSign consistently
+      // gives false negatives (reports wrong password for valid CI-mode keys).
+      // The actual tauri build process uses a different code path that works
+      // correctly with TAURI_SIGNING_PRIVATE_KEY + TAURI_SIGNING_PRIVATE_KEY_PASSWORD.
+      console.log("\nUpdater signing key loaded (validation skipped — relying on build).");
 
       // Diagnostic: verify env vars actually reach child processes.
       try {
