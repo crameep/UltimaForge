@@ -166,7 +166,7 @@ async function main() {
         publicKey = fs.readFileSync(publicKeyPath, "utf8").trim();
       }
     } catch (error) {
-      console.log("Key generation failed or cargo not available.");
+      console.log(`Key generation or backup failed: ${error.message}`);
     }
   }
 
