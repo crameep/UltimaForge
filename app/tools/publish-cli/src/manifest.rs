@@ -56,6 +56,7 @@ pub enum ManifestError {
 
     /// Failed to walk the directory tree.
     #[error("Failed to walk directory: {0}")]
+    #[allow(dead_code)]
     WalkDirFailed(#[source] walkdir::Error),
 
     /// Failed to create output directory.
@@ -96,6 +97,7 @@ impl FileEntry {
     }
 
     /// Sets whether this file is required.
+    #[allow(dead_code)]
     pub fn with_required(mut self, required: bool) -> Self {
         self.required = required;
         self

@@ -5,6 +5,9 @@
 /app/src-tauri/target/
 /app/src-tauri/gen/
 /app/tools/*/target/
+/server-data/
+/keys/
+/updates/
 
 # Dependencies
 /app/node_modules/
@@ -56,6 +59,7 @@ lerna-debug.log*
 /app/test-updates/*.json
 /app/test-updates/*.sig
 /app/test-updates/blobs/
+/app/test-updates/files/
 !/app/test-updates/.gitkeep
 
 # Auto Claude (development artifacts)

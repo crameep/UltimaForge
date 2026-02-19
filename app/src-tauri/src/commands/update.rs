@@ -5,11 +5,10 @@
 //! - Starting update process
 //! - Getting update progress
 
-use crate::config::{default_config_path, LauncherConfig};
+use crate::config::default_config_path;
 use crate::state::AppState;
-use crate::updater::{UpdateCheckResult, UpdateProgress, Updater};
+use crate::updater::{UpdateProgress, Updater};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tauri::{Emitter, Manager, State};
 use tracing::{error, info, warn};
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Unchained Patcher",
+  "productName": "Unchained File Server",
   "version": "0.0.1",
   "identifier": "com.ultimaforge.launcher",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Unchained Patcher",
+        "title": "Unchained File Server",
         "width": 900,
         "height": 600,
         "resizable": true,
@@ -29,11 +29,12 @@
       "endpoints": [
         "http://localhost:8080/launcher/{{target}}/{{arch}}/{{current_version}}"
       ],
-      "pubkey": "<REPLACE_WITH_TAURI_UPDATER_PUBLIC_KEY>"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNEMjE0M0YzMjE5NjM5M0IKUldRN09aWWg4ME1oUFU3RWJnZWtCcG93NzRXWWRqckdiMXlOb0N0eDg2cFY0aTBDWGdGa1BNcHQK"
     }
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",

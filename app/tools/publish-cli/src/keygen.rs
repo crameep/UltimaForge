@@ -29,6 +29,14 @@ pub enum KeygenError {
     #[error("Failed to create output directory: {0}")]
     CreateDirFailed(#[source] std::io::Error),
 
+    /// Failed to read private key file.
+    #[error("Failed to read private key: {0}")]
+    ReadPrivateKeyFailed(#[source] std::io::Error),
+
+    /// Failed to read public key file.
+    #[error("Failed to read public key: {0}")]
+    ReadPublicKeyFailed(#[source] std::io::Error),
+
     /// Failed to write private key file.
     #[error("Failed to write private key: {0}")]
     WritePrivateKeyFailed(#[source] std::io::Error),
@@ -126,16 +134,16 @@ pub fn generate_keypair(output_dir: &str, force: bool) -> Result<KeygenResult, K
 /// Returns the SigningKey on success.
 pub fn read_private_key(path: &str) -> Result<SigningKey, KeygenError> {
     let hex_content = fs::read_to_string(path)
-        .map_err(|e| KeygenError::WritePrivateKeyFailed(e))?;
+        .map_err(KeygenError::ReadPrivateKeyFailed)?;
 
     let bytes = hex::decode(hex_content.trim())
-        .map_err(|_| KeygenError::WritePrivateKeyFailed(std::io::Error::new(
+        .map_err(|_| KeygenError::ReadPrivateKeyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "Invalid hex encoding in private key file"
         )))?;
 
     if bytes.len() != 32 {
-        return Err(KeygenError::WritePrivateKeyFailed(std::io::Error::new(
+        return Err(KeygenError::ReadPrivateKeyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             format!("Invalid private key length: expected 32 bytes, got {}", bytes.len())
         )));
@@ -158,16 +166,16 @@ pub fn read_private_key(path: &str) -> Result<SigningKey, KeygenError> {
 /// Returns the public key bytes on success.
 pub fn read_public_key(path: &str) -> Result<[u8; 32], KeygenError> {
     let hex_content = fs::read_to_string(path)
-        .map_err(|e| KeygenError::WritePublicKeyFailed(e))?;
+        .map_err(KeygenError::ReadPublicKeyFailed)?;
 
     let bytes = hex::decode(hex_content.trim())
-        .map_err(|_| KeygenError::WritePublicKeyFailed(std::io::Error::new(
+        .map_err(|_| KeygenError::ReadPublicKeyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "Invalid hex encoding in public key file"
         )))?;
 
     if bytes.len() != 32 {
-        return Err(KeygenError::WritePublicKeyFailed(std::io::Error::new(
+        return Err(KeygenError::ReadPublicKeyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             format!("Invalid public key length: expected 32 bytes, got {}", bytes.len())
         )));

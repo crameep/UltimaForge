@@ -34,6 +34,7 @@ if /i "%choice%"=="C" goto PUBLISH_LAUNCHER_UPDATE
 if /i "%choice%"=="D" goto SERVER_OWNER_WIZARD
 if /i "%choice%"=="E" goto PUBLISH_ALL
 if /i "%choice%"=="F" goto DEV_ALL
+if /i "%choice%"=="G" goto PUBLISH_LAUNCHER_ONLY
 if /i "%choice%"=="X" goto END
 
 echo Invalid choice: %choice%
@@ -64,11 +65,12 @@ echo  [C] Publish Launcher Update Metadata
 echo  [D] Server Owner Wizard (branding + keys)
 echo  [E] Publish All (game + launcher)
 echo  [F] Dev All-in-One (server + launcher)
+echo  [G] Publish Launcher Only (fast)
 echo  [X] Exit
 echo.
 echo ========================================
 echo.
-set /p choice="Enter your choice (0-9, A, B, C, D, E, F, X): "
+set /p choice="Enter your choice (0-9, A, B, C, D, E, F, G, X): "
 
 if /i "%choice%"=="0" goto INSTALL_PREREQS
 if /i "%choice%"=="1" goto QUICK_START
@@ -86,6 +88,7 @@ if /i "%choice%"=="C" goto PUBLISH_LAUNCHER_UPDATE
 if /i "%choice%"=="D" goto SERVER_OWNER_WIZARD
 if /i "%choice%"=="E" goto PUBLISH_ALL
 if /i "%choice%"=="F" goto DEV_ALL
+if /i "%choice%"=="G" goto PUBLISH_LAUNCHER_ONLY
 if /i "%choice%"=="X" goto END
 
 echo Invalid choice. Please try again.
@@ -281,6 +284,38 @@ echo Dependencies installed successfully!
 exit /b 0
 
 REM ============================================================================
+REM NPM CLEAN INSTALL (optional-deps fix)
+REM ============================================================================
+:NPM_CLEAN_INSTALL_FUNCTION
+echo.
+echo ========================================
+echo    Repairing npm Dependencies
+echo ========================================
+echo.
+
+if exist "app\node_modules" (
+    rmdir /s /q "app\node_modules"
+)
+if exist "app\package-lock.json" (
+    del /f /q "app\package-lock.json"
+)
+
+cd app
+call npm install
+set RESULT=%errorlevel%
+cd ..
+
+if %RESULT% neq 0 (
+    echo.
+    echo ERROR: npm install failed
+    exit /b 1
+)
+
+echo.
+echo Dependencies repaired successfully!
+exit /b 0
+
+REM ============================================================================
 REM GENERATE TEST MANIFEST
 REM ============================================================================
 :GEN_MANIFEST
@@ -418,6 +453,27 @@ if not exist "app\node_modules" (
     echo Dependencies OK
 )
 
+REM Auto-fix optional dependency issues (Rollup/Tauri native bindings)
+cd app
+node -e "require('@rollup/rollup-win32-x64-msvc')" >nul 2>nul
+set ROLLUP_OK=%errorlevel%
+node -e "require('@tauri-apps/cli-win32-x64-msvc')" >nul 2>nul
+set TAURI_OK=%errorlevel%
+cd ..
+
+if not "%ROLLUP_OK%"=="0" (
+    echo.
+    echo Detected missing Rollup native binding. Repairing dependencies...
+    call :NPM_CLEAN_INSTALL_FUNCTION
+    if errorlevel 1 goto ERROR_EXIT
+)
+if not "%TAURI_OK%"=="0" (
+    echo.
+    echo Detected missing Tauri native binding. Repairing dependencies...
+    call :NPM_CLEAN_INSTALL_FUNCTION
+    if errorlevel 1 goto ERROR_EXIT
+)
+
 echo.
 echo [4/5] Building frontend...
 cd app
@@ -434,6 +490,13 @@ echo.
 echo [5/5] Building Tauri application...
 echo This will take several minutes...
 cd app
+if exist "..\\keys\\tauri-updater\\tauri.key" (
+    echo Using Tauri updater signing key from keys\\tauri-updater\\tauri.key
+    set "TAURI_SIGNING_PRIVATE_KEY_PATH=..\\keys\\tauri-updater\\tauri.key"
+    if exist "..\\keys\\tauri-updater\\password.txt" (
+        for /f "usebackq delims=" %%p in ("..\\keys\\tauri-updater\\password.txt") do set "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=%%p"
+    )
+)
 call npm run tauri build
 set RESULT=%errorlevel%
 cd ..
@@ -594,7 +657,7 @@ echo to app\test-updates\launcher for the built-in host server.
 echo.
 echo You will need a valid Tauri updater signature string.
 echo.
-powershell -ExecutionPolicy Bypass -File app\scripts\publish-launcher-update.ps1
+powershell -ExecutionPolicy Bypass -File app\scripts\publish-launcher-update.ps1 -OutputDir app\test-updates\launcher -BaseUrl http://localhost:8080
 
 echo.
 echo Press any key to return to menu...
@@ -614,6 +677,15 @@ echo.
 echo This will guide you through branding setup and key generation.
 echo.
 node app\scripts\server-owner-wizard.js
+echo.
+echo ========================================
+echo    Launcher Updater Key Setup
+echo ========================================
+echo.
+echo This will generate or configure the Tauri updater keypair
+echo and embed the public key into the launcher config.
+echo.
+node app\scripts\configure-launcher-updater.js
 
 echo.
 echo Press any key to return to menu...
@@ -632,7 +704,27 @@ echo ========================================
 echo.
 echo This will publish game updates and launcher update metadata.
 echo.
-node app\scripts\publish-all.js
+node app\scripts\publish-all.js --updates-dir app\test-updates --launcher-base-url http://localhost:8080
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM PUBLISH LAUNCHER ONLY (FAST)
+REM ============================================================================
+:PUBLISH_LAUNCHER_ONLY
+cls
+echo.
+echo ========================================
+echo    Publish Launcher Only (Fast)
+echo ========================================
+echo.
+echo This will build and publish launcher updates only.
+echo (Skips game update manifest/blob generation.)
+echo.
+node app\scripts\publish-all.js --launcher-only true --updates-dir app\test-updates --launcher-base-url http://localhost:8080
 
 echo.
 echo Press any key to return to menu...

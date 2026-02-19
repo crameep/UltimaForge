@@ -21,13 +21,13 @@
 //! - Manifest signature must be verified before using this module
 //! - File hashes are verified after download and before application
 
-use crate::config::{BrandConfig, LauncherConfig};
+use crate::config::BrandConfig;
 use crate::downloader::{DownloadProgress, Downloader, DownloaderConfig};
-use crate::error::{DownloadError, UpdateError};
+use crate::error::UpdateError;
 use crate::hash::{hash_file, verify_file_hash};
 use crate::manifest::{is_safe_relative_path, FileEntry, Manifest};
 use crate::signature;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
@@ -300,6 +300,7 @@ impl TransactionLogEntry {
 
 /// Transaction logger for update operations.
 struct TransactionLog {
+    #[allow(dead_code)]
     log_path: PathBuf,
     file: Option<File>,
 }

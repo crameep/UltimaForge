@@ -72,11 +72,13 @@ pub enum BlobError {
 
     /// Failed to walk the directory tree.
     #[error("Failed to walk directory: {0}")]
+    #[allow(dead_code)]
     WalkDirFailed(#[source] walkdir::Error),
 }
 
 /// Information about a single blob created.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct BlobInfo {
     /// Original relative path of the file.
     pub original_path: String,

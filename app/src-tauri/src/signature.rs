@@ -10,7 +10,7 @@
 //! - ALWAYS verify signature BEFORE parsing manifest contents
 //! - Public key is embedded at build time, never downloaded
 
-use ed25519_dalek::{Signature, Verifier, VerifyingKey, SignatureError};
+use ed25519_dalek::{Signature, VerifyingKey, SignatureError};
 
 /// Errors that can occur during signature verification.
 #[derive(Debug, thiserror::Error)]

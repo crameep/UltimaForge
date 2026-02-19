@@ -103,7 +103,7 @@ impl UltimaForgeError {
         match self {
             Self::Config(e) => format!("Configuration problem: {}", e),
             Self::Manifest(e) => format!("Invalid update manifest: {}", e),
-            Self::Signature(e) => "Update verification failed. The update server may be unavailable or compromised.".to_string(),
+            Self::Signature(_e) => "Update verification failed. The update server may be unavailable or compromised.".to_string(),
             Self::Hash(e) => format!("File integrity check failed: {}", e),
             Self::Download(e) => e.user_message(),
             Self::Update(e) => e.user_message(),

@@ -25,7 +25,7 @@
 //! println!("Validation passed: {} files verified", result.files_verified);
 //! ```
 
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, VerifyingKey};
 use std::fs;
 use std::path::Path;
 use thiserror::Error;
@@ -80,6 +80,7 @@ pub enum ValidateError {
 
     /// Invalid signature format.
     #[error("Invalid signature format: {0}")]
+    #[allow(dead_code)]
     InvalidSignature(String),
 
     /// Signature verification failed.
@@ -88,11 +89,13 @@ pub enum ValidateError {
 
     /// A file blob is missing.
     #[error("Missing blob for file '{path}': expected {hash}")]
+    #[allow(dead_code)]
     MissingBlob { path: String, hash: String },
 }
 
 /// Information about a validated file.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ValidatedFile {
     /// Relative path of the file.
     pub path: String,
@@ -105,6 +108,7 @@ pub struct ValidatedFile {
 }
 
 /// Result of validation.
+#[allow(dead_code)]
 pub struct ValidateResult {
     /// Path to the update directory.
     pub dir_path: String,

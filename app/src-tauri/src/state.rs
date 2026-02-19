@@ -31,7 +31,7 @@ use crate::manifest::Manifest;
 use crate::updater::UpdateProgress;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Mutex, RwLock};
 
 /// Current phase of the application lifecycle.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

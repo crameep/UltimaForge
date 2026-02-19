@@ -15,7 +15,9 @@ const repoRoot = path.resolve(appDir, "..");
 
 const brandingDir = path.join(repoRoot, "branding");
 const brandPath = path.join(brandingDir, "brand.json");
-const keysDir = path.join(repoRoot, "keys");
+const legacyKeysDir = path.join(repoRoot, "keys");
+const defaultKeysDir = path.join(repoRoot, "server-data", "keys");
+const keysDir = fs.existsSync(legacyKeysDir) ? legacyKeysDir : defaultKeysDir;
 const publicKeyPath = path.join(keysDir, "public.key");
 
 function sanitizeServerName(name) {
@@ -149,7 +151,9 @@ async function main() {
   rl.close();
 
   const brand = {
+    ...(existing ?? {}),
     product: {
+      ...(existing?.product ?? {}),
       displayName,
       serverName,
       ...(description ? { description } : {}),
@@ -160,9 +164,11 @@ async function main() {
     updateUrl,
     publicKey,
     ui: {
+      ...(existing?.ui ?? {}),
       ...(wantColors
         ? {
             colors: {
+              ...(existing?.ui?.colors ?? {}),
               ...(primary ? { primary } : {}),
               ...(secondary ? { secondary } : {}),
               ...(background ? { background } : {}),
@@ -171,11 +177,11 @@ async function main() {
           }
         : {}),
       windowTitle: displayName,
-      heroTitle: `Welcome to ${displayName}`,
-      heroSubtitle: "Your adventure begins here",
-      sidebarSubtitle: "Game Launcher",
+      heroTitle: existing?.ui?.heroTitle ?? `Welcome to ${displayName}`,
+      heroSubtitle: existing?.ui?.heroSubtitle ?? "Your adventure begins here",
+      sidebarSubtitle: existing?.ui?.sidebarSubtitle ?? "Game Launcher",
     },
-    brandVersion: "1.0",
+    brandVersion: existing?.brandVersion ?? "1.0",
   };
 
   fs.mkdirSync(brandingDir, { recursive: true });

@@ -6,14 +6,14 @@
 //! - Managing user preferences
 //! - Saving brand configuration for setup wizard
 
-use crate::config::{default_config_path, BrandConfig, LauncherConfig, ThemeColors, UiConfig};
+use crate::config::{default_config_path, BrandConfig, LauncherConfig, ThemeColors};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use tauri::Emitter;
 use tauri::State;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 /// User-editable settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -182,6 +182,22 @@ pub struct BrandInfo {
 
 impl From<&BrandConfig> for BrandInfo {
     fn from(config: &BrandConfig) -> Self {
+        let background_image = config
+            .ui
+            .background_image
+            .clone()
+            .or_else(|| Some("/branding/hero-bg.png".to_string()));
+        let logo_url = config
+            .ui
+            .logo_url
+            .clone()
+            .or_else(|| Some("/branding/sidebar-logo.png".to_string()));
+        let sidebar_background = config
+            .ui
+            .sidebar_background
+            .clone()
+            .or_else(|| Some("/branding/sidebar-texture.png".to_string()));
+
         Self {
             display_name: config.product.display_name.clone(),
             server_name: config.product.server_name.clone(),
@@ -190,9 +206,9 @@ impl From<&BrandConfig> for BrandInfo {
             website: config.product.website.clone(),
             discord: config.product.discord.clone(),
             colors: config.ui.colors.clone(),
-            background_image: config.ui.background_image.clone(),
-            logo_url: config.ui.logo_url.clone(),
-            sidebar_background: config.ui.sidebar_background.clone(),
+            background_image,
+            logo_url,
+            sidebar_background,
             show_patch_notes: config.ui.show_patch_notes,
             window_title: config.window_title().to_string(),
             hero_title: config.ui.hero_title.clone(),
@@ -486,7 +502,6 @@ pub fn is_running_as_admin() -> Result<bool, String> {
     #[cfg(target_os = "windows")]
     {
         use std::mem;
-        use windows::Win32::Foundation::BOOL;
         use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
         use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 

@@ -5,10 +5,9 @@
 //! - Launching the game
 //! - Handling launch options
 
-use crate::launcher::{ClientLauncher, LaunchConfig, LaunchResult};
+use crate::launcher::{ClientLauncher, LaunchConfig};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tauri::State;
 use tracing::{error, info, warn};
 
@@ -82,7 +81,7 @@ pub async fn launch_game(
     }
 
     // Get required configuration
-    let brand_config = state
+    let _brand_config = state
         .brand_config()
         .ok_or("Brand configuration not available")?;
 

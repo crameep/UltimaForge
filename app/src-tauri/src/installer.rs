@@ -28,10 +28,10 @@
 //! }).await?;
 //! ```
 
-use crate::config::{BrandConfig, LauncherConfig};
-use crate::downloader::{DownloadProgress, Downloader, DownloaderConfig};
-use crate::error::{DownloadError, InstallError, UpdateError};
-use crate::hash::{hash_file, verify_file_hash};
+use crate::config::BrandConfig;
+use crate::downloader::{Downloader, DownloaderConfig};
+use crate::error::{InstallError, UpdateError};
+use crate::hash::verify_file_hash;
 use crate::manifest::{is_safe_relative_path, FileEntry, Manifest};
 use crate::signature;
 use chrono::Utc;
@@ -309,6 +309,7 @@ impl InstallLogEntry {
 
 /// Installation log for tracking operations.
 struct InstallLog {
+    #[allow(dead_code)]
     log_path: PathBuf,
     file: Option<File>,
 }
@@ -419,7 +420,6 @@ impl Installer {
         #[cfg(target_os = "windows")]
         {
             use std::mem;
-            use windows::Win32::Foundation::BOOL;
             use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
             use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
