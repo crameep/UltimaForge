@@ -99,74 +99,84 @@ function isValidTauriPublicKey(keyText) {
   return true;
 }
 
-function runSignerGenerateCommand(command, args, interactive) {
-  return new Promise((resolve) => {
-    try {
-      const child = spawn(command, args, {
-        cwd: appDir,
-        // Non-interactive: ignore stdin so the process gets EOF immediately.
-        // Interactive: inherit so the user can type at the password prompts.
-        stdio: [interactive ? "inherit" : "ignore", "pipe", "pipe"],
-      });
-
-      let stdout = "";
-      let stderr = "";
-      child.stdout.on("data", (chunk) => {
-        const text = chunk.toString();
-        stdout += text;
-        process.stdout.write(text);
-      });
-      child.stderr.on("data", (chunk) => {
-        const text = chunk.toString();
-        stderr += text;
-        process.stderr.write(text);
-      });
-
-      child.on("close", () => {
-        const combined = `${stdout}\n${stderr}`;
-        resolve(parseGeneratedKeys(combined));
-      });
-
-      child.on("error", () => {
-        resolve({ privateKey: "", publicKey: "" });
-      });
-    } catch (error) {
-      resolve({ privateKey: "", publicKey: "" });
+function tryReadWrittenKeys(keyBase) {
+  // Tauri --write-keys <base> writes <base>.key (private) and <base>.pub (public).
+  // Check both that pattern and a plain-path variant.
+  const candidates = [
+    [path.join(updaterDir, "tauri.key"), path.join(updaterDir, "tauri.pub")],
+    [`${keyBase}.key`, `${keyBase}.pub`],
+    [keyBase, `${keyBase}.pub`],
+  ];
+  for (const [privPath, pubPath] of candidates) {
+    if (!fs.existsSync(privPath) || !fs.existsSync(pubPath)) continue;
+    const priv = fs.readFileSync(privPath, "utf8").trim();
+    const pub = fs.readFileSync(pubPath, "utf8").trim();
+    if (isValidTauriPrivateKey(priv) && isValidTauriPublicKey(pub)) {
+      return { privateKey: priv, publicKey: pub };
     }
-  });
+  }
+  return null;
 }
 
-async function runSignerGenerate() {
+async function runSignerGenerate(rl) {
   const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  // Base path passed to --write-keys; Tauri appends .key / .pub
+  const keyBase = path.join(updaterDir, "tauri");
 
-  // Try non-interactive first: pass --password "" so the CLI skips prompts.
-  // Tauri v2 always uses the "encrypted" key format even with an empty password.
-  console.log("Generating Tauri updater keys (no password)...");
-  for (const [cmd, args] of [
-    [npxCommand, ["tauri", "signer", "generate", "--password", ""]],
-    [npmCommand, ["exec", "--", "tauri", "signer", "generate", "--password", ""]],
+  // Attempt 1: --write-keys writes key files directly — no stdout capture needed.
+  // This avoids the Windows limitation where interactive programs write through
+  // the console API and bypass Node.js stdout/stderr pipes.
+  console.log("Generating Tauri updater keys...");
+  for (const [cmd, baseArgs] of [
+    [npxCommand, ["tauri", "signer", "generate"]],
+    [npmCommand, ["exec", "--", "tauri", "signer", "generate"]],
   ]) {
-    const generated = await runSignerGenerateCommand(cmd, args, false);
-    if (generated.privateKey || generated.publicKey) {
-      return generated;
+    try {
+      execSync(
+        [cmd, ...baseArgs, "--password", "", "--write-keys", keyBase].join(" "),
+        { cwd: appDir, stdio: "ignore" }
+      );
+      const keys = tryReadWrittenKeys(keyBase);
+      if (keys) return keys;
+    } catch (e) {
+      // flag not supported or command failed — try next
     }
   }
 
-  // Fall back to interactive if the CLI does not support --password.
-  console.log("\nNon-interactive generation failed. Falling back to interactive.");
-  console.log("Press Enter at BOTH password prompts to create a no-password key.");
+  // Attempt 2: run interactively so the user can interact with password prompts,
+  // then ask them to paste the key values they see in the terminal.
+  console.log("\nAutomatic generation failed. Running interactively instead.");
+  console.log("Press Enter at BOTH password prompts for a no-password key.\n");
+
+  let ran = false;
   for (const [cmd, args] of [
     [npxCommand, ["tauri", "signer", "generate"]],
     [npmCommand, ["exec", "--", "tauri", "signer", "generate"]],
   ]) {
-    const generated = await runSignerGenerateCommand(cmd, args, true);
-    if (generated.privateKey || generated.publicKey) {
-      return generated;
+    try {
+      execSync([cmd, ...args].join(" "), { cwd: appDir, stdio: "inherit" });
+      ran = true;
+      break;
+    } catch (e) {
+      // try next
     }
   }
 
-  return { privateKey: "", publicKey: "" };
+  if (!ran) {
+    return { privateKey: "", publicKey: "" };
+  }
+
+  // The keys were printed to the terminal above. Ask the user to paste them.
+  console.log("\nPaste the key values shown above:");
+  const privateKey = (
+    await rl.question("  Private key (base64 line after 'Private:'): ")
+  ).trim();
+  const publicKey = (
+    await rl.question("  Public key  (base64 line after 'Public:'):  ")
+  ).trim();
+
+  return { privateKey, publicKey };
 }
 
 function findPublicKeyInPaths(paths) {
@@ -263,7 +273,7 @@ async function main() {
 
   if (wantGenerate) {
     fs.mkdirSync(updaterDir, { recursive: true });
-    const generated = await runSignerGenerate();
+    const generated = await runSignerGenerate(rl);
 
     const privateValid = isValidTauriPrivateKey(generated.privateKey);
     const publicValid = isValidTauriPublicKey(generated.publicKey);
