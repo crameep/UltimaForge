@@ -409,13 +409,48 @@ async function main() {
         console.log(`  2. Edit ${updaterPassPath} with the correct password.`);
         process.exit(1);
       }
-      if (!keyCheck.skipped) {
+      if (keyCheck.skipped) {
+        console.log("Note: Pre-build key validation skipped (tauri signer sign not available).");
+      } else {
         console.log("Updater key validation passed.");
       }
+
+      // Diagnostic: verify env vars actually reach child processes.
+      try {
+        const childKeyLen = execSync(
+          "node -e \"process.stdout.write(String(process.env.TAURI_SIGNING_PRIVATE_KEY?.length??0))\"",
+          { cwd: appDir, env, stdio: "pipe" }
+        ).toString().trim();
+        const childPassLen = execSync(
+          "node -e \"process.stdout.write(String(process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD?.length??-1))\"",
+          { cwd: appDir, env, stdio: "pipe" }
+        ).toString().trim();
+        const childPathSet = execSync(
+          "node -e \"process.stdout.write(process.env.TAURI_SIGNING_PRIVATE_KEY_PATH??'(unset)')\"",
+          { cwd: appDir, env, stdio: "pipe" }
+        ).toString().trim();
+        console.log(`  Key visible in child: length=${childKeyLen}`);
+        console.log(`  Password visible in child: length=${childPassLen}`);
+        console.log(`  PATH var in child: ${childPathSet}`);
+      } catch (_) {
+        console.log("  (child diagnostic failed — continuing)");
+      }
+
+      // Belt-and-suspenders: mutate the parent process.env directly so the
+      // signing vars are inherited even if execSync's env parameter is somehow
+      // not propagated (observed on some Windows + Node configurations).
+      process.env.TAURI_SIGNING_PRIVATE_KEY = env.TAURI_SIGNING_PRIVATE_KEY;
+      process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD;
+      delete process.env.TAURI_SIGNING_PRIVATE_KEY_PATH;
     }
 
     console.log("\nBuilding launcher (tauri build)...");
-    execSync("npm run tauri build", { cwd: appDir, stdio: "inherit", env });
+    try {
+      execSync("npm run tauri build", { cwd: appDir, stdio: "inherit", env });
+    } finally {
+      delete process.env.TAURI_SIGNING_PRIVATE_KEY;
+      delete process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD;
+    }
   } else {
     console.log("\nSkipping launcher build (launcher-build=false).");
   }
