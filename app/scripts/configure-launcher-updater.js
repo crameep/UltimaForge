@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import readline from "node:readline/promises";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -100,12 +100,13 @@ function isValidTauriPublicKey(keyText) {
 }
 
 function tryReadWrittenKeys(keyBase) {
-  // Tauri --write-keys <base> writes <base>.key (private) and <base>.pub (public).
-  // Check both that pattern and a plain-path variant.
+  // Tauri v2 --write-keys <base> writes <base> (no extension, private key) and
+  // <base>.pub (public key). We check the no-extension path FIRST so a freshly
+  // generated key is always preferred over an older tauri.key from a previous run.
   const candidates = [
-    [path.join(updaterDir, "tauri.key"), path.join(updaterDir, "tauri.pub")],
-    [`${keyBase}.key`, `${keyBase}.pub`],
     [keyBase, `${keyBase}.pub`],
+    [`${keyBase}.key`, `${keyBase}.pub`],
+    [path.join(updaterDir, "tauri.key"), path.join(updaterDir, "tauri.pub")],
   ];
   for (const [privPath, pubPath] of candidates) {
     if (!fs.existsSync(privPath) || !fs.existsSync(pubPath)) continue;
@@ -121,26 +122,17 @@ function tryReadWrittenKeys(keyBase) {
 async function runSignerGenerate(rl) {
   const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  // Base path passed to --write-keys; Tauri appends .key / .pub
+  // Base path passed to --write-keys; Tauri v2 writes <base> (no ext) and <base>.pub
   const keyBase = path.join(updaterDir, "tauri");
-  // Resolved path to tauri.js in node_modules — invoking node directly avoids
-  // shell/batch-file arg mangling that corrupts the empty-string password.
   const tauriJs = path.join(appDir, "node_modules", "@tauri-apps", "cli", "tauri.js");
 
-  // Attempt 1: --write-keys writes key files directly — no stdout capture needed.
-  // This avoids the Windows limitation where interactive programs write through
-  // the console API and bypass Node.js stdout/stderr pipes.
-  //
-  // We run the Tauri CLI via `node tauri.js` (shell:false) so the empty-string
-  // password argument is preserved exactly. Using npx.cmd or npm.cmd via a shell
-  // causes the shell to collapse whitespace or misquote "", which makes the Tauri
-  // CLI receive a non-empty password and produce an encrypted key.
-  console.log("Generating Tauri updater keys...");
+  // Use "inherit" so any password prompts from Tauri CLI are visible to the user.
+  // Tauri CLI may ignore --password "" and prompt interactively; with inherited
+  // stdio the user can see and respond to those prompts directly.
+  console.log("\nGenerating Tauri updater keys...");
+  console.log(">>> If a 'Password:' prompt appears, press Enter twice for no password. <<<\n");
 
-  // Build the candidate command+args list. Prefer invoking tauri.js directly via
-  // the current node binary (no shell, no batch file). Fall back to npx/npm as
-  // a secondary attempt in case tauri.js is not present.
-  const signerArgs = ["signer", "generate", "--password", "", "--write-keys", keyBase];
+  const signerArgs = ["signer", "generate", "--write-keys", keyBase];
   const attempts = fs.existsSync(tauriJs)
     ? [
         [process.execPath, [tauriJs, ...signerArgs]],
@@ -152,59 +144,40 @@ async function runSignerGenerate(rl) {
         [npmCommand, ["exec", "--", "tauri", ...signerArgs]],
       ];
 
+  let generated = null;
   for (const [cmd, fullArgs] of attempts) {
     try {
       const result = spawnSync(cmd, fullArgs, {
         cwd: appDir,
-        stdio: "ignore",
-        // shell:false preserves the empty "" arg on ALL platforms.
-        // process.execPath (node) is a real executable; npx/npm are .cmd files on
-        // Windows and need shell:true to run — but since we try node first, the
-        // fallback .cmd attempts are only reached if the node attempt failed.
+        // Inherit stdio so the user sees and can respond to any password prompts.
+        stdio: "inherit",
         shell: cmd !== process.execPath && process.platform === "win32",
       });
       if (result.status === 0) {
-        const keys = tryReadWrittenKeys(keyBase);
-        if (keys) return keys;
+        generated = tryReadWrittenKeys(keyBase);
+        if (generated) break;
       }
     } catch (e) {
-      // flag not supported or command failed — try next
+      // command failed — try next
     }
   }
 
-  // Attempt 2: run interactively so the user can interact with password prompts,
-  // then ask them to paste the key values they see in the terminal.
-  console.log("\nAutomatic generation failed. Running interactively instead.");
-  console.log("Press Enter at BOTH password prompts for a no-password key.\n");
-
-  let ran = false;
-  for (const [cmd, args] of [
-    [npxCommand, ["tauri", "signer", "generate"]],
-    [npmCommand, ["exec", "--", "tauri", "signer", "generate"]],
-  ]) {
-    try {
-      execSync([cmd, ...args].join(" "), { cwd: appDir, stdio: "inherit" });
-      ran = true;
-      break;
-    } catch (e) {
-      // try next
-    }
-  }
-
-  if (!ran) {
+  if (!generated) {
     return { privateKey: "", publicKey: "" };
   }
 
-  // The keys were printed to the terminal above. Ask the user to paste them.
-  console.log("\nPaste the key values shown above:");
-  const privateKey = (
-    await rl.question("  Private key (base64 line after 'Private:'): ")
+  // Ask the user what password they used so we can store it exactly.
+  // Tauri CLI may have ignored --password "" and prompted; whatever they entered
+  // here must match what they typed at the Tauri prompt.
+  console.log("\nKey generation complete.");
+  const password = (
+    await rl.question(
+      "What password did you use? Press Enter if you pressed Enter at the prompts (recommended): "
+    )
   ).trim();
-  const publicKey = (
-    await rl.question("  Public key  (base64 line after 'Public:'):  ")
-  ).trim();
+  writeKeyFile(privateKeyPasswordPath, password);
 
-  return { privateKey, publicKey };
+  return generated;
 }
 
 function findPublicKeyInPaths(paths) {
@@ -286,8 +259,8 @@ async function main() {
   console.log("Launcher Updater Key Setup");
   console.log("This configures Tauri updater keys for launcher self-updates.\n");
   console.log("Password guidance:");
-  console.log("- Recommended: press Enter at both key prompts to avoid passwords.");
-  console.log("- If you set a password, we will store it for signing.\n");
+  console.log("- Recommended: press Enter at both key prompts (no password).");
+  console.log("- Whatever you enter at the Tauri password prompt will be stored for signing.\n");
 
   let publicKey = findPublicKey(updaterDir);
 
@@ -320,10 +293,7 @@ async function main() {
 
     writeKeyFile(privateKeyPath, generated.privateKey);
     writeKeyFile(path.join(updaterDir, "tauri.pub"), generated.publicKey);
-    // Write empty password.txt — generated keys have no password.
-    // publish-all.js always passes TAURI_SIGNING_PRIVATE_KEY_PASSWORD from this
-    // file (empty string = no password), preventing an interactive prompt.
-    writeKeyFile(privateKeyPasswordPath, "");
+    // password.txt was already written by runSignerGenerate above.
     console.log("Tauri updater keys captured and saved.");
   }
 
