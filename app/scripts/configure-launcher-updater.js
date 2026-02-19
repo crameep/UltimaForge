@@ -132,7 +132,7 @@ async function runSignerGenerate(rl) {
   console.log("\nGenerating Tauri updater keys...");
   console.log(">>> If a 'Password:' prompt appears, press Enter twice for no password. <<<\n");
 
-  const signerArgs = ["signer", "generate", "--write-keys", keyBase];
+  const signerArgs = ["signer", "generate", "--force", "--write-keys", keyBase];
   const attempts = fs.existsSync(tauriJs)
     ? [
         [process.execPath, [tauriJs, ...signerArgs]],
