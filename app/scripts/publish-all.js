@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import readline from "node:readline/promises";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -148,27 +148,38 @@ function toTauriSigningEnvVar(fileContent) {
  * Validate the updater key + password before running the expensive tauri build.
  * Returns { ok: true } on success, { ok: false } on wrong password,
  * or { ok: true, skipped: true } if the signer command is unavailable.
+ *
+ * We pass -k/-p explicitly so the signer reads the key from our argument
+ * rather than from environment variables (which Tauri signer sign ignores).
  */
 function validateKeyCanSign(keyEnvVar, password, cwd) {
   const tmpFile = path.join(cwd, ".tauri-key-validate.tmp");
   try {
     fs.writeFileSync(tmpFile, "key-validation-test", "utf8");
+    const tauriJs = path.join(cwd, "node_modules", "@tauri-apps", "cli", "tauri.js");
     const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
-    const env = {
-      ...process.env,
-      TAURI_SIGNING_PRIVATE_KEY: keyEnvVar,
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: password,
-    };
-    // Ensure a stale PATH-based key in the inherited env never wins.
+    // Prefer invoking tauri.js via node directly (avoids shell/batch quoting).
+    // The password is passed as a shell argument here; on Linux/WSL the shell
+    // correctly handles an empty-string arg within a double-quoted string.
+    let cmd, args;
+    if (fs.existsSync(tauriJs)) {
+      // Direct node invocation — safest arg passing (no shell).
+      cmd = process.execPath;
+      args = [tauriJs, "signer", "sign", "-k", keyEnvVar, "-p", password, tmpFile];
+    } else {
+      // Fallback: npx with shell quoting
+      cmd = npxCmd;
+      args = ["tauri", "signer", "sign", "-k", keyEnvVar, "-p", password, tmpFile];
+    }
+    const env = { ...process.env };
+    delete env.TAURI_SIGNING_PRIVATE_KEY;
     delete env.TAURI_SIGNING_PRIVATE_KEY_PATH;
-    execSync(`"${npxCmd}" tauri signer sign "${tmpFile}"`, {
-      cwd,
-      stdio: "pipe",
-      env,
-    });
-    return { ok: true };
-  } catch (err) {
-    const combined = [err.stderr, err.stdout]
+    delete env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD;
+    const result = spawnSync(cmd, args, { cwd, stdio: "pipe", env, shell: false });
+    if (result.status === 0) {
+      return { ok: true };
+    }
+    const combined = [result.stderr, result.stdout]
       .map((b) => (b ? b.toString() : ""))
       .join(" ");
     // Definitively wrong password — bail before the long compile.
@@ -181,6 +192,8 @@ function validateKeyCanSign(keyEnvVar, password, cwd) {
       return { ok: false };
     }
     // Signer command not found or unrelated error — don't block the build.
+    return { ok: true, skipped: true };
+  } catch (err) {
     return { ok: true, skipped: true };
   } finally {
     try { fs.unlinkSync(tmpFile); } catch (_) {}

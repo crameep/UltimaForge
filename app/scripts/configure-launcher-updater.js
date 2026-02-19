@@ -123,32 +123,46 @@ async function runSignerGenerate(rl) {
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
   // Base path passed to --write-keys; Tauri appends .key / .pub
   const keyBase = path.join(updaterDir, "tauri");
+  // Resolved path to tauri.js in node_modules — invoking node directly avoids
+  // shell/batch-file arg mangling that corrupts the empty-string password.
+  const tauriJs = path.join(appDir, "node_modules", "@tauri-apps", "cli", "tauri.js");
 
   // Attempt 1: --write-keys writes key files directly — no stdout capture needed.
   // This avoids the Windows limitation where interactive programs write through
   // the console API and bypass Node.js stdout/stderr pipes.
+  //
+  // We run the Tauri CLI via `node tauri.js` (shell:false) so the empty-string
+  // password argument is preserved exactly. Using npx.cmd or npm.cmd via a shell
+  // causes the shell to collapse whitespace or misquote "", which makes the Tauri
+  // CLI receive a non-empty password and produce an encrypted key.
   console.log("Generating Tauri updater keys...");
-  for (const [cmd, baseArgs] of [
-    [npxCommand, ["tauri", "signer", "generate"]],
-    [npmCommand, ["exec", "--", "tauri", "signer", "generate"]],
-  ]) {
+
+  // Build the candidate command+args list. Prefer invoking tauri.js directly via
+  // the current node binary (no shell, no batch file). Fall back to npx/npm as
+  // a secondary attempt in case tauri.js is not present.
+  const signerArgs = ["signer", "generate", "--password", "", "--write-keys", keyBase];
+  const attempts = fs.existsSync(tauriJs)
+    ? [
+        [process.execPath, [tauriJs, ...signerArgs]],
+        [npxCommand, ["tauri", ...signerArgs]],
+        [npmCommand, ["exec", "--", "tauri", ...signerArgs]],
+      ]
+    : [
+        [npxCommand, ["tauri", ...signerArgs]],
+        [npmCommand, ["exec", "--", "tauri", ...signerArgs]],
+      ];
+
+  for (const [cmd, fullArgs] of attempts) {
     try {
-      // Use spawnSync with an args array so the empty string is passed as a
-      // genuine empty argument ("") — execSync with .join(" ") would drop it,
-      // causing Tauri to treat "--write-keys" as the password value.
-      const result = spawnSync(
-        cmd,
-        [...baseArgs, "--password", "", "--write-keys", keyBase],
-        {
-          cwd: appDir,
-          stdio: "ignore",
-          // On Windows the .cmd shim requires a shell; on Linux/WSL the shell
-          // collapses consecutive whitespace and silently drops the empty-string
-          // password argument, causing the key to be encrypted with "--write-keys"
-          // as the password. Use shell only on Windows.
-          shell: process.platform === "win32",
-        }
-      );
+      const result = spawnSync(cmd, fullArgs, {
+        cwd: appDir,
+        stdio: "ignore",
+        // shell:false preserves the empty "" arg on ALL platforms.
+        // process.execPath (node) is a real executable; npx/npm are .cmd files on
+        // Windows and need shell:true to run — but since we try node first, the
+        // fallback .cmd attempts are only reached if the node attempt failed.
+        shell: cmd !== process.execPath && process.platform === "win32",
+      });
       if (result.status === 0) {
         const keys = tryReadWrittenKeys(keyBase);
         if (keys) return keys;
