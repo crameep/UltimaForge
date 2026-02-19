@@ -29,7 +29,7 @@
       "endpoints": [
         "http://localhost:8080/launcher/{{target}}/{{arch}}/{{current_version}}"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNEMjE0M0YzMjE5NjM5M0IKUldRN09aWWg4ME1oUFU3RWJnZWtCcG93NzRXWWRqckdiMXlOb0N0eDg2cFY0aTBDWGdGa1BNcHQK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQyRTBFNzdGQThBRDdDNjAKUldSZ2ZLMm9mK2ZnMHBQekJpMCtuTXN1MS9xY3prcUxobmxmOTJnRmx0K3Z4RXRvSGxIMmxiYnMK"
     }
   },
   "bundle": {

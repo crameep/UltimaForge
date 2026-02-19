@@ -113,27 +113,15 @@ function resolveKeyPath(inputPath, filename) {
 
 function validateUpdaterKeyPassword(keyPath, passwordPath) {
   if (!fs.existsSync(keyPath)) {
-    throw new Error("Missing Tauri updater private key.");
-  }
-  const keyText = fs.readFileSync(keyPath, "utf8");
-  const isEncrypted = keyText.includes("encrypted secret key");
-  const hasPassword = fs.existsSync(passwordPath) &&
-    fs.readFileSync(passwordPath, "utf8").trim().length > 0;
-
-  if (isEncrypted && !hasPassword) {
     throw new Error(
-      `Updater key is encrypted but no password file found at: ${passwordPath}\n` +
-      `Fix option 1 (recommended): Re-run option D and regenerate keys,\n` +
-      `  pressing Enter at BOTH password prompts to create an unencrypted key.\n` +
-      `Fix option 2: Create ${passwordPath} containing the password you used.`
+      `Missing Tauri updater private key at: ${keyPath}\n` +
+      `Fix: Re-run option D to generate updater keys.`
     );
   }
-
-  if (!isEncrypted && hasPassword) {
-    console.log("Warning: password.txt exists but the updater key is unencrypted. Ignoring password.");
-  }
-
-  return { isEncrypted, hasPassword };
+  // Note: Tauri v2 always emits keys in "encrypted" format even with an empty
+  // password. We therefore cannot reliably detect encryption from the key text.
+  // We always pass TAURI_SIGNING_PRIVATE_KEY_PASSWORD (empty string for
+  // no-password keys) so Tauri never falls back to an interactive prompt.
 }
 
 function findLatestInstaller(bundleDir) {
@@ -330,11 +318,12 @@ async function main() {
       env.TAURI_SIGNING_PRIVATE_KEY = fs
         .readFileSync(updaterKeyPath, "utf8")
         .trim();
-      if (fs.existsSync(updaterPassPath)) {
-        env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = fs
-          .readFileSync(updaterPassPath, "utf8")
-          .trim();
-      }
+      // Always set the password env var — empty string for no-password keys.
+      // Without this, Tauri falls back to an interactive prompt even for keys
+      // generated with no password (Tauri v2 always uses the "encrypted" format).
+      env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = fs.existsSync(updaterPassPath)
+        ? fs.readFileSync(updaterPassPath, "utf8").trim()
+        : "";
     }
     execSync("npm run tauri build", { cwd: appDir, stdio: "inherit", env });
   } else {
