@@ -124,6 +124,48 @@ function validateUpdaterKeyPassword(keyPath, passwordPath) {
   // no-password keys) so Tauri never falls back to an interactive prompt.
 }
 
+/**
+ * Validate the updater key + password before running the expensive tauri build.
+ * Returns { ok: true } on success, { ok: false, reason } on wrong password,
+ * or { ok: true, skipped: true } if the signer command is unavailable.
+ */
+function validateKeyCanSign(keyContent, password, cwd) {
+  const tmpFile = path.join(cwd, ".tauri-key-validate.tmp");
+  try {
+    fs.writeFileSync(tmpFile, "key-validation-test", "utf8");
+    const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+    const env = {
+      ...process.env,
+      TAURI_SIGNING_PRIVATE_KEY: keyContent,
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: password,
+    };
+    execSync(`"${npxCmd}" tauri signer sign "${tmpFile}"`, {
+      cwd,
+      stdio: "pipe",
+      env,
+    });
+    return { ok: true };
+  } catch (err) {
+    const combined = [err.stderr, err.stdout]
+      .map((b) => (b ? b.toString() : ""))
+      .join(" ");
+    // Definitively wrong password — bail before the long compile.
+    if (
+      combined.includes("password") ||
+      combined.includes("Wrong") ||
+      combined.includes("incorrect") ||
+      combined.includes("decode secret key")
+    ) {
+      return { ok: false };
+    }
+    // Signer command not found or unrelated error — don't block the build.
+    return { ok: true, skipped: true };
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+    try { fs.unlinkSync(`${tmpFile}.sig`); } catch (_) {}
+  }
+}
+
 function findLatestInstaller(bundleDir) {
   if (!fs.existsSync(bundleDir)) {
     return "";
@@ -311,10 +353,13 @@ async function main() {
         process.exit(1);
       }
     }
-    console.log("\nBuilding launcher (tauri build)...");
     const env = { ...process.env };
     if (fs.existsSync(updaterKeyPath)) {
-      env.TAURI_SIGNING_PRIVATE_KEY_PATH = updaterKeyPath;
+      // Use the inline env var, NOT TAURI_SIGNING_PRIVATE_KEY_PATH.
+      // Our key file stores the base64-encoded key string (the "Private:" value
+      // from `tauri signer generate`). This is exactly what TAURI_SIGNING_PRIVATE_KEY
+      // expects. TAURI_SIGNING_PRIVATE_KEY_PATH expects the raw multi-line text
+      // format, so setting both causes Tauri to read the wrong format and fail.
       env.TAURI_SIGNING_PRIVATE_KEY = fs
         .readFileSync(updaterKeyPath, "utf8")
         .trim();
@@ -324,7 +369,27 @@ async function main() {
       env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = fs.existsSync(updaterPassPath)
         ? fs.readFileSync(updaterPassPath, "utf8").trim()
         : "";
+
+      // Validate the key + password BEFORE the expensive 2.5-minute compile.
+      console.log("\nValidating updater signing key...");
+      const keyCheck = validateKeyCanSign(
+        env.TAURI_SIGNING_PRIVATE_KEY,
+        env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD,
+        appDir
+      );
+      if (!keyCheck.ok) {
+        console.log("\nERROR: Tauri updater key cannot be decrypted with the stored password.");
+        console.log("Fix options:");
+        console.log("  1. Re-run Option D to regenerate keys (press Enter for no password).");
+        console.log(`  2. Edit ${updaterPassPath} with the correct password.`);
+        process.exit(1);
+      }
+      if (!keyCheck.skipped) {
+        console.log("Updater key validation passed.");
+      }
     }
+
+    console.log("\nBuilding launcher (tauri build)...");
     execSync("npm run tauri build", { cwd: appDir, stdio: "inherit", env });
   } else {
     console.log("\nSkipping launcher build (launcher-build=false).");
