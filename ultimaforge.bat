@@ -116,6 +116,7 @@ echo   - Rust (via rustup)
 echo   - Node.js LTS
 echo   - Visual Studio Build Tools
 echo   - Tauri CLI
+echo   - rsync (optional, for efficient VPS deploys)
 echo.
 echo Press any key to start installation...
 pause >nul

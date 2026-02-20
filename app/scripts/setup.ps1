@@ -406,6 +406,69 @@ function Install-VSBuildTools {
     }
 }
 
+function Install-Rsync {
+    Write-Status "Checking rsync installation..." -Type "Step"
+
+    if (Test-Command "rsync") {
+        $version = (rsync --version 2>$null | Select-Object -First 1) -replace '^rsync\s+version\s+', '' -replace '\s.*', ''
+        Write-Status "rsync $version already installed" -Type "Success"
+        return $true
+    }
+
+    Write-Status "rsync not found. Installing for efficient VPS deploys..." -Type "Info"
+    Write-Status "(Without rsync, deploy falls back to scp which re-uploads all files each time)" -Type "Warning"
+
+    # Try Scoop first — no admin required
+    if ($UseScoop -or (Test-Command "scoop")) {
+        if (-not (Test-Command "scoop")) {
+            Install-Scoop | Out-Null
+        }
+        if (Test-Command "scoop") {
+            try {
+                Write-Status "Installing rsync via Scoop..." -Type "Info"
+                scoop install rsync
+                if (Test-Command "rsync") {
+                    Write-Status "rsync installed successfully via Scoop" -Type "Success"
+                    return $true
+                }
+            }
+            catch {
+                Write-Status "Scoop install failed: $_" -Type "Warning"
+            }
+        }
+    }
+
+    # Try winget (cwrsync — standalone rsync.exe for Windows)
+    if (Test-Command "winget") {
+        try {
+            Write-Status "Installing cwrsync via winget..." -Type "Info"
+            winget install Itefix.cwRsync --accept-source-agreements --accept-package-agreements
+
+            # cwrsync installs to a versioned dir; refresh PATH
+            $cwrsyncDir = Get-ChildItem "${env:ProgramFiles}\cwRsync*" -Directory -ErrorAction SilentlyContinue |
+                          Sort-Object Name -Descending | Select-Object -First 1
+            if ($cwrsyncDir) {
+                $env:PATH = "$($cwrsyncDir.FullName)\bin;$env:PATH"
+            }
+            $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" +
+                        [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
+
+            if (Test-Command "rsync") {
+                Write-Status "rsync installed successfully via cwrsync" -Type "Success"
+                return $true
+            }
+        }
+        catch {
+            Write-Status "winget cwrsync install failed: $_" -Type "Warning"
+        }
+    }
+
+    Write-Status "Could not install rsync automatically." -Type "Warning"
+    Write-Status "Deploy will use scp (works but uploads all files each time)." -Type "Warning"
+    Write-Status "To fix later: install Scoop (https://scoop.sh) then run: scoop install rsync" -Type "Info"
+    return $true  # Optional — don't block setup
+}
+
 function Install-TauriCLI {
     Write-Status "Checking Tauri CLI installation..." -Type "Step"
 
@@ -491,6 +554,14 @@ function Show-Summary {
         }
     }
 
+    # rsync is optional — show status but don't fail
+    if ($Results["rsync"]) {
+        Write-Host "  [+] rsync (efficient VPS deploy)" -ForegroundColor $Colors.Green
+    }
+    else {
+        Write-Host "  [-] rsync (optional — deploy falls back to scp)" -ForegroundColor $Colors.Yellow
+    }
+
     Write-Host ""
     Write-Host "==========================================================" -ForegroundColor $Colors.Cyan
 
@@ -546,6 +617,7 @@ function Main {
         "Node.js" = $false
         "VS Build Tools" = $false
         "Tauri CLI" = $false
+        "rsync" = $false
     }
 
     # Install dependencies in order
@@ -553,6 +625,7 @@ function Main {
     $results["Node.js"] = Install-NodeJS
     $results["VS Build Tools"] = Install-VSBuildTools
     $results["Tauri CLI"] = Install-TauriCLI
+    $results["rsync"] = Install-Rsync
 
     # Show summary and exit
     $exitCode = Show-Summary -Results $results
