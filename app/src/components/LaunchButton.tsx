@@ -6,6 +6,7 @@
  */
 
 import { useLaunch } from "../hooks/useLaunch";
+import type { UseLaunchActions, UseLaunchState } from "../hooks/useLaunch";
 import type { LaunchGameRequest } from "../lib/types";
 import "./LaunchButton.css";
 
@@ -20,7 +21,7 @@ interface LaunchButtonProps {
   /** Callback when update is requested */
   onUpdateRequest?: () => void;
   /** Callback when launch succeeds */
-  onLaunchSuccess?: (pid: number | null, shouldClose: boolean) => void;
+  onLaunchSuccess?: (pid: number | null, shouldClose: boolean, runningClients: number) => void;
   /** Callback when launch fails */
   onLaunchError?: (error: string) => void;
   /** Callback when game state changes */
@@ -29,6 +30,14 @@ interface LaunchButtonProps {
   launchArgs?: string[];
   /** Whether to close launcher after launch */
   closeAfterLaunch?: boolean;
+  /** Launch state from parent (optional) */
+  launchState?: UseLaunchState;
+  /** Launch actions from parent (optional) */
+  launchActions?: UseLaunchActions;
+  /** Number of client instances to open */
+  clientCount?: number;
+  /** Callback when client count changes */
+  onClientCountChange?: (count: number) => void;
 }
 
 /**
@@ -66,8 +75,14 @@ export function LaunchButton({
   onGameStateChange,
   launchArgs,
   closeAfterLaunch,
+  launchState: externalLaunchState,
+  launchActions: externalLaunchActions,
+  clientCount,
+  onClientCountChange,
 }: LaunchButtonProps) {
-  const [launchState, launchActions] = useLaunch();
+  const [internalLaunchState, internalLaunchActions] = useLaunch();
+  const launchState = externalLaunchState ?? internalLaunchState;
+  const launchActions = externalLaunchActions ?? internalLaunchActions;
 
   const handleClick = async () => {
     // If update is available, trigger update first
@@ -102,7 +117,7 @@ export function LaunchButton({
         onGameStateChange(true);
       }
       if (onLaunchSuccess) {
-        onLaunchSuccess(result.pid, result.should_close_launcher);
+        onLaunchSuccess(result.pid, result.should_close_launcher, result.running_clients);
       }
     } else if (result.error && onLaunchError) {
       onLaunchError(result.error);
@@ -130,23 +145,47 @@ export function LaunchButton({
 
   return (
     <div className="launch-button-container">
-      <button
-        className="launch-button"
-        onClick={handleClick}
-        disabled={isDisabled}
-        aria-label={buttonLabel}
-      >
-        {launchState.isLaunching || launchState.isValidating ? (
-          <span className="launch-button-content">
-            <span className="launch-spinner" />
-            <span className="launch-button-text">{buttonLabel}</span>
-          </span>
-        ) : (
-          <span className="launch-button-content">
-            <span className="launch-button-text">{buttonLabel}</span>
-          </span>
+      <div className="launch-row">
+        <button
+          className="launch-button"
+          onClick={handleClick}
+          disabled={isDisabled}
+          aria-label={buttonLabel}
+        >
+          {launchState.isLaunching || launchState.isValidating ? (
+            <span className="launch-button-content">
+              <span className="launch-spinner" />
+              <span className="launch-button-text">{buttonLabel}</span>
+            </span>
+          ) : (
+            <span className="launch-button-content">
+              <span className="launch-button-text">{buttonLabel}</span>
+            </span>
+          )}
+        </button>
+
+        {onClientCountChange && (
+          <div className="client-count-spinner">
+            <button
+              className="client-count-btn"
+              onClick={() => onClientCountChange(Math.max(1, (clientCount ?? 1) - 1))}
+              disabled={isDisabled || (clientCount ?? 1) <= 1}
+              aria-label="Decrease client count"
+            >
+              −
+            </button>
+            <span className="client-count-value">{clientCount ?? 1}</span>
+            <button
+              className="client-count-btn"
+              onClick={() => onClientCountChange(Math.min(5, (clientCount ?? 1) + 1))}
+              disabled={isDisabled || (clientCount ?? 1) >= 5}
+              aria-label="Increase client count"
+            >
+              +
+            </button>
+          </div>
         )}
-      </button>
+      </div>
 
       {/* Show "Mark as Closed" option when game is running */}
       {launchState.isGameRunning && (

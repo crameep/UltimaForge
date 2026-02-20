@@ -40,5 +40,24 @@
       }
     ]
   },
+  "cuo": {
+    "client_version": "7.0.10.3",
+    "live_server": {
+      "label": "UO Unchained",
+      "ip": "login.patchuo.com",
+      "port": 2593
+    },
+    "test_server": {
+      "label": "Test Center",
+      "ip": "login.patchuo.com",
+      "port": 2594
+    },
+    "available_assistants": [
+      "razor_enhanced",
+      "razor"
+    ],
+    "default_assistant": "razor_enhanced",
+    "default_server": "live"
+  },
   "brandVersion": "1.0"
 }

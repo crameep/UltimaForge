@@ -212,6 +212,69 @@ impl Default for UiConfig {
     }
 }
 
+/// Which assistant program to use with ClassicUO.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum AssistantKind {
+    /// Razor Enhanced (Python-based macro client).
+    #[default]
+    RazorEnhanced,
+    /// Legacy Razor macro client.
+    Razor,
+    /// No assistant.
+    None,
+}
+
+/// Which server to connect to.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerChoice {
+    /// Live / production server.
+    #[default]
+    Live,
+    /// Test Center / staging server.
+    Test,
+}
+
+/// Connection details for a single server endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ServerConfig {
+    /// Display label shown in the launcher dropdown.
+    pub label: String,
+    /// Login server hostname or IP.
+    pub ip: String,
+    /// Login server port.
+    pub port: u16,
+}
+
+/// ClassicUO-specific configuration embedded in brand.json.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CuoConfig {
+    /// UO client version string passed to ClassicUO (e.g. "7.0.10.3").
+    #[serde(rename = "client_version")]
+    pub client_version: String,
+
+    /// Live / production server connection details.
+    #[serde(rename = "live_server")]
+    pub live_server: ServerConfig,
+
+    /// Optional test server. If absent, no server dropdown is shown.
+    #[serde(rename = "test_server", default)]
+    pub test_server: Option<ServerConfig>,
+
+    /// Which assistants are available for players to choose from.
+    #[serde(rename = "available_assistants")]
+    pub available_assistants: Vec<AssistantKind>,
+
+    /// Default assistant selected on first run.
+    #[serde(rename = "default_assistant", default)]
+    pub default_assistant: AssistantKind,
+
+    /// Default server selected on first run.
+    #[serde(rename = "default_server", default)]
+    pub default_server: ServerChoice,
+}
+
 /// Brand configuration embedded at build time.
 ///
 /// This structure mirrors the `branding/brand.json` file that server owners
@@ -250,6 +313,10 @@ pub struct BrandConfig {
     /// UI customization settings.
     #[serde(default)]
     pub ui: UiConfig,
+
+    /// Optional ClassicUO client configuration.
+    #[serde(default)]
+    pub cuo: Option<CuoConfig>,
 
     /// Version of this branding configuration format.
     #[serde(rename = "brandVersion", default = "default_brand_version")]
@@ -411,6 +478,18 @@ pub struct LauncherConfig {
     #[serde(rename = "clientExecutable", default)]
     pub client_executable: Option<String>,
 
+    /// Which server the player has selected (live or test).
+    #[serde(rename = "selectedServer", default)]
+    pub selected_server: ServerChoice,
+
+    /// Which assistant the player has selected.
+    #[serde(rename = "selectedAssistant", default)]
+    pub selected_assistant: AssistantKind,
+
+    /// Number of client instances to launch (1-5).
+    #[serde(rename = "clientCount", default = "default_client_count")]
+    pub client_count: u8,
+
     /// Version of this configuration format.
     #[serde(rename = "configVersion", default = "default_config_version")]
     pub config_version: u32,
@@ -428,6 +507,10 @@ fn default_config_version() -> u32 {
     1
 }
 
+fn default_client_count() -> u8 {
+    1
+}
+
 impl Default for LauncherConfig {
     fn default() -> Self {
         Self {
@@ -439,6 +522,9 @@ impl Default for LauncherConfig {
             check_updates_on_startup: true,
             config_version: 1,
             client_executable: None,
+            selected_server: ServerChoice::Live,
+            selected_assistant: AssistantKind::RazorEnhanced,
+            client_count: 1,
         }
     }
 }
@@ -726,6 +812,7 @@ impl BrandConfigBuilder {
                 sidebar_subtitle: None,
                 sidebar_links: None,
             },
+            cuo: None,
             brand_version: "1.0".to_string(),
         };
 
@@ -820,6 +907,67 @@ mod tests {
         assert_eq!(config.ui.colors.primary, "#1a1a2e");
         assert!(config.ui.show_patch_notes);
         assert!(config.ui.window_title.is_none());
+    }
+
+    #[test]
+    fn test_parse_brand_config_with_cuo_block() {
+        let json = format!(
+            r#"{{
+            "product": {{"displayName": "Test", "serverName": "Test"}},
+            "updateUrl": "https://test.com",
+            "publicKey": "{key}",
+            "cuo": {{
+                "client_version": "7.0.10.3",
+                "live_server": {{"label": "Live", "ip": "live.example.com", "port": 2593}},
+                "test_server": {{"label": "TC", "ip": "tc.example.com", "port": 2594}},
+                "available_assistants": ["razor_enhanced", "razor"],
+                "default_assistant": "razor_enhanced",
+                "default_server": "live"
+            }}
+        }}"#,
+            key = TEST_PUBLIC_KEY
+        );
+
+        let config = BrandConfig::parse_str(&json).expect("Should parse");
+        let cuo = config.cuo.expect("Should have cuo config");
+        assert_eq!(cuo.client_version, "7.0.10.3");
+        assert_eq!(cuo.live_server.ip, "live.example.com");
+        assert_eq!(cuo.live_server.port, 2593);
+        assert!(cuo.test_server.is_some());
+        assert_eq!(cuo.test_server.unwrap().port, 2594);
+        assert_eq!(cuo.available_assistants.len(), 2);
+        assert_eq!(cuo.default_assistant, AssistantKind::RazorEnhanced);
+        assert_eq!(cuo.default_server, ServerChoice::Live);
+    }
+
+    #[test]
+    fn test_parse_brand_config_without_cuo_block() {
+        let json = minimal_brand_json();
+        let config = BrandConfig::parse_str(&json).expect("Should parse");
+        assert!(config.cuo.is_none());
+    }
+
+    #[test]
+    fn test_parse_cuo_config_no_test_server() {
+        let json = format!(
+            r#"{{
+            "product": {{"displayName": "Test", "serverName": "Test"}},
+            "updateUrl": "https://test.com",
+            "publicKey": "{key}",
+            "cuo": {{
+                "client_version": "7.0.10.3",
+                "live_server": {{"label": "Live", "ip": "live.example.com", "port": 2593}},
+                "available_assistants": ["razor_enhanced"],
+                "default_assistant": "razor_enhanced",
+                "default_server": "live"
+            }}
+        }}"#,
+            key = TEST_PUBLIC_KEY
+        );
+
+        let config = BrandConfig::parse_str(&json).expect("Should parse");
+        let cuo = config.cuo.expect("Should have cuo config");
+        assert!(cuo.test_server.is_none());
     }
 
     #[test]
@@ -964,7 +1112,40 @@ mod tests {
         assert!(!config.auto_launch);
         assert!(config.close_on_launch);
         assert!(config.check_updates_on_startup);
+        assert_eq!(config.selected_server, ServerChoice::Live);
+        assert_eq!(config.selected_assistant, AssistantKind::RazorEnhanced);
+        assert_eq!(config.client_count, 1);
         assert_eq!(config.config_version, 1);
+    }
+
+    #[test]
+    fn test_launcher_config_cuo_defaults() {
+        let config = LauncherConfig::new();
+        assert_eq!(config.selected_server, ServerChoice::Live);
+        assert_eq!(config.selected_assistant, AssistantKind::RazorEnhanced);
+        assert_eq!(config.client_count, 1);
+    }
+
+    #[test]
+    fn test_launcher_config_cuo_serialization() {
+        let mut config = LauncherConfig::new();
+        config.selected_server = ServerChoice::Test;
+        config.selected_assistant = AssistantKind::Razor;
+        config.client_count = 3;
+
+        let json = config.to_json_string().unwrap();
+        let loaded = LauncherConfig::parse_str(&json).unwrap();
+
+        assert_eq!(loaded.selected_server, ServerChoice::Test);
+        assert_eq!(loaded.selected_assistant, AssistantKind::Razor);
+        assert_eq!(loaded.client_count, 3);
+    }
+
+    #[test]
+    fn test_launcher_config_client_count_capped() {
+        let mut config = LauncherConfig::new();
+        config.client_count = config.client_count.min(5);
+        assert!(config.client_count <= 5);
     }
 
     #[test]

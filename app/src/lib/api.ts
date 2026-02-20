@@ -11,6 +11,7 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import type {
   AppStatus,
   BrandInfo,
+  CuoConfig,
   GetSettingsResponse,
   InstallProgress,
   InstallResponse,
@@ -192,6 +193,13 @@ export async function saveSettings(
  */
 export async function getBrandConfig(): Promise<BrandInfo> {
   return invoke<BrandInfo>("get_brand_config");
+}
+
+/**
+ * Fetches the CUO config block from brand.json. Returns null if not configured.
+ */
+export async function getCuoConfig(): Promise<CuoConfig | null> {
+  return invoke<CuoConfig | null>("get_cuo_config");
 }
 
 /**

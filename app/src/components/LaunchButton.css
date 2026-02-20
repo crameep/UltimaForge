@@ -10,6 +10,49 @@
   gap: var(--spacing-md);
 }
 
+.launch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.client-count-spinner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.client-count-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #eaeaea;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.client-count-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.client-count-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.client-count-value {
+  font-size: 14px;
+  color: #eaeaea;
+  min-width: 16px;
+  text-align: center;
+}
+
 /* Main launch button */
 .launch-button {
   min-width: 200px;

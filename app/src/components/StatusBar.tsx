@@ -18,6 +18,8 @@ interface StatusBarProps {
   message?: string;
   /** Application version */
   version?: string;
+  /** Number of running clients */
+  runningClients?: number;
 }
 
 /**
@@ -28,6 +30,7 @@ export function StatusBar({
   phase = "Ready",
   message,
   version = "v0.1.0",
+  runningClients = 0,
 }: StatusBarProps) {
   // Get status indicator color based on phase
   const getStatusColor = (phase: string): string => {
@@ -68,7 +71,7 @@ export function StatusBar({
       case "Ready":
         return "Ready to Play";
       case "GameRunning":
-        return "Game Running";
+        return runningClients > 1 ? `${runningClients} clients running` : "Game Running";
       case "Error":
         return "Error";
       default:

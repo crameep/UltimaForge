@@ -4,12 +4,14 @@ import { isTauri } from "@tauri-apps/api/core";
 import { Layout } from "./components/Layout";
 import { InstallWizard } from "./components/InstallWizard";
 import { UpdateProgress, useUpdate } from "./components/UpdateProgress";
+import { CuoControls } from "./components/CuoControls";
 import { LaunchButton } from "./components/LaunchButton";
 import { PatchNotes } from "./components/PatchNotes";
 import { Settings } from "./components/Settings";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
-import { getSettings, validateClient, launchGame } from "./lib/api";
+import { useLaunch } from "./hooks/useLaunch";
+import { getSettings } from "./lib/api";
 import { checkForLauncherUpdate } from "./lib/launcherUpdater";
 import "./App.css";
 
@@ -35,6 +37,7 @@ function App() {
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
+  const [launchState, launchActions] = useLaunch();
 
   // Track auto-launch to prevent duplicate launches (one-shot)
   const autoLaunchTriggeredRef = useRef(false);
@@ -127,9 +130,17 @@ function App() {
     updateActions.startUpdate();
   };
 
-  const handleLaunchSuccess = (pid: number | null, _shouldClose: boolean) => {
+  const handleLaunchSuccess = (
+    pid: number | null,
+    _shouldClose: boolean,
+    runningClients: number
+  ) => {
     setPhase("GameRunning");
-    setStatusMessage(pid ? `Game running (PID: ${pid})` : "Game is running");
+    if (runningClients > 1) {
+      setStatusMessage(`${runningClients} clients running`);
+    } else {
+      setStatusMessage(pid ? `Game running (PID: ${pid})` : "Game is running");
+    }
   };
 
   const handleLaunchError = (error: string) => {
@@ -177,11 +188,11 @@ function App() {
 
         // Validate client before launching
         try {
-          const validationResult = await validateClient();
-          if (!validationResult.is_valid) {
+          const isValid = await launchActions.validateClient();
+          if (!isValid) {
             // Validation failed - show error gracefully, user can retry via Launch button
             setStatusMessage(
-              `Update complete. Auto-launch failed: ${validationResult.error || "Validation failed"}. Click Play to launch manually.`
+              "Update complete. Auto-launch failed: Validation failed. Click Play to launch manually."
             );
             return;
           }
@@ -200,14 +211,16 @@ function App() {
         // Launch the game
         setStatusMessage("Update complete! Launching game...");
         try {
-          const launchResult = await launchGame();
+          const launchResult = await launchActions.launch();
 
           if (launchResult.success) {
             setPhase("GameRunning");
             setStatusMessage(
-              launchResult.pid
-                ? `Game running (PID: ${launchResult.pid})`
-                : "Game is running"
+              launchResult.running_clients > 1
+                ? `${launchResult.running_clients} clients running`
+                : launchResult.pid
+                  ? `Game running (PID: ${launchResult.pid})`
+                  : "Game is running"
             );
           } else {
             // Launch returned failure - show error gracefully
@@ -248,6 +261,7 @@ function App() {
         phase={phase}
         statusMessage={statusMessage}
         version={appVersion}
+        runningClients={launchState.runningClients}
       >
         <InstallWizard
           serverName={brandInfo?.display_name || "UltimaForge"}
@@ -264,6 +278,7 @@ function App() {
         phase={phase}
         statusMessage="Detecting installation..."
         version={appVersion}
+        runningClients={launchState.runningClients}
       >
         <div className="main-content">
           <div className="hero-section">
@@ -282,6 +297,7 @@ function App() {
         phase={phase}
         statusMessage={statusMessage}
         version={appVersion}
+        runningClients={launchState.runningClients}
       >
         <div className="main-content">
           <UpdateProgress
@@ -300,6 +316,7 @@ function App() {
         phase={phase}
         statusMessage="Checking for updates..."
         version={appVersion}
+        runningClients={launchState.runningClients}
       >
         <div className="main-content">
           <div className="hero-section">
@@ -320,6 +337,7 @@ function App() {
         version={appVersion}
         onHomeClick={navigateToHome}
         onSettingsClick={navigateToSettings}
+        runningClients={launchState.runningClients}
       >
         <Settings onBack={navigateToHome} />
       </Layout>
@@ -334,6 +352,7 @@ function App() {
       version={appVersion}
       onHomeClick={navigateToHome}
       onSettingsClick={navigateToSettings}
+      runningClients={launchState.runningClients}
     >
       <div className="main-content">
         <div className="hero-section">
@@ -365,6 +384,16 @@ function App() {
         )}
 
         <div className="action-section">
+          {launchState.cuoConfig && (
+            <CuoControls
+              config={launchState.cuoConfig}
+              selectedServer={launchState.selectedServer}
+              selectedAssistant={launchState.selectedAssistant}
+              onServerChange={launchActions.setSelectedServer}
+              onAssistantChange={launchActions.setSelectedAssistant}
+              disabled={launchState.isLaunching || updateState.isUpdating}
+            />
+          )}
           <LaunchButton
             disabled={phase === "CheckingUpdates"}
             updateAvailable={updateState.updateAvailable}
@@ -372,6 +401,10 @@ function App() {
             onLaunchSuccess={handleLaunchSuccess}
             onLaunchError={handleLaunchError}
             onGameStateChange={handleGameStateChange}
+            launchState={launchState}
+            launchActions={launchActions}
+            clientCount={launchState.clientCount}
+            onClientCountChange={launchActions.setClientCount}
           />
 
           {phase === "UpdateAvailable" && !updateState.checkResult && (

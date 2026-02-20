@@ -5,6 +5,7 @@
 // Core modules
 pub mod commands;
 pub mod config;
+pub mod cuo_settings;
 pub mod downloader;
 pub mod error;
 pub mod hash;
@@ -121,6 +122,7 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::settings::get_brand_config,
+            commands::settings::get_cuo_config,
             commands::settings::get_launcher_dir,
             commands::settings::save_brand_config,
             commands::settings::get_theme_colors,

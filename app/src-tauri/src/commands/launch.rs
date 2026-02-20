@@ -5,6 +5,8 @@
 //! - Launching the game
 //! - Handling launch options
 
+use crate::config::{default_config_path, AssistantKind, ServerChoice};
+use crate::cuo_settings::write_cuo_settings;
 use crate::launcher::{ClientLauncher, LaunchConfig};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
@@ -20,6 +22,19 @@ pub struct LaunchGameRequest {
     /// Whether to close the launcher after launching.
     #[serde(default)]
     pub close_after_launch: Option<bool>,
+    /// Number of client instances to launch (1-5).
+    #[serde(default = "default_client_count")]
+    pub client_count: u8,
+    /// Which server to connect to.
+    #[serde(default)]
+    pub server_choice: ServerChoice,
+    /// Which assistant to use.
+    #[serde(default)]
+    pub assistant_choice: AssistantKind,
+}
+
+fn default_client_count() -> u8 {
+    1
 }
 
 impl Default for LaunchGameRequest {
@@ -27,6 +42,9 @@ impl Default for LaunchGameRequest {
         Self {
             args: Vec::new(),
             close_after_launch: None,
+            client_count: 1,
+            server_choice: ServerChoice::Live,
+            assistant_choice: AssistantKind::RazorEnhanced,
         }
     }
 }
@@ -42,6 +60,8 @@ pub struct LaunchResponse {
     pub error: Option<String>,
     /// Whether the launcher should close.
     pub should_close_launcher: bool,
+    /// Number of client instances currently running.
+    pub running_clients: usize,
 }
 
 /// Response for client validation.
@@ -81,11 +101,11 @@ pub async fn launch_game(
     }
 
     // Get required configuration
-    let _brand_config = state
+    let brand_config = state
         .brand_config()
         .ok_or("Brand configuration not available")?;
 
-    let launcher_config = state
+    let mut launcher_config = state
         .launcher_config()
         .ok_or("Launcher configuration not available")?;
 
@@ -102,16 +122,14 @@ pub async fn launch_game(
         .or_else(|| launcher_config.client_executable.clone())
         .unwrap_or_else(|| "client.exe".to_string());
 
-    // Determine if we should close after launch
-    let should_close = request
-        .close_after_launch
-        .unwrap_or(launcher_config.close_on_launch);
+    // Clamp client count to valid range
+    let client_count = request.client_count.clamp(1, 5) as usize;
 
     // Create launcher
     let mut config = LaunchConfig::new(&executable);
-    config = config.with_args(request.args);
+    config = config.with_args(request.args.clone());
 
-    let launcher = ClientLauncher::with_config(&install_path, config);
+    let launcher = ClientLauncher::with_config(&install_path, config.clone());
 
     // Validate before launching
     if let Err(e) = launcher.validate() {
@@ -121,42 +139,85 @@ pub async fn launch_game(
             pid: None,
             error: Some(format!("Client validation failed: {}", e)),
             should_close_launcher: false,
+            running_clients: 0,
         });
     }
 
-    // Mark game as running
-    state.set_game_running(true);
     state.set_current_operation("Launching game...");
 
-    // Launch the game
-    match launcher.launch() {
-        Ok(result) => {
-            info!("Game launched successfully with PID: {:?}", result.pid);
-            state.clear_current_operation();
+    launcher_config.selected_server = request.server_choice.clone();
+    launcher_config.selected_assistant = request.assistant_choice.clone();
+    launcher_config.client_count = request.client_count.clamp(1, 5);
+    state.set_launcher_config(launcher_config.clone());
+    let config_path = default_config_path(&brand_config.product.server_name);
+    if let Err(e) = launcher_config.save(&config_path) {
+        warn!("Failed to save launcher config: {}", e);
+    }
 
-            // If not waiting for exit, we don't know when the game closes
-            // In a real implementation, we might watch the process
-
-            Ok(LaunchResponse {
-                success: result.success,
-                pid: result.pid,
-                error: result.error_message,
-                should_close_launcher: should_close,
-            })
-        }
-        Err(e) => {
-            error!("Game launch failed: {}", e);
-            state.set_game_running(false);
-            state.clear_current_operation();
-
-            Ok(LaunchResponse {
-                success: false,
-                pid: None,
-                error: Some(e.to_string()),
-                should_close_launcher: false,
-            })
+    if let Some(cuo_config) = &brand_config.cuo {
+        if let Err(e) = write_cuo_settings(
+            &install_path,
+            cuo_config,
+            &request.server_choice,
+            &request.assistant_choice,
+        ) {
+            warn!("Failed to write CUO settings: {}", e);
         }
     }
+
+    let mut first_pid = None;
+    let mut launched = 0usize;
+
+    for i in 0..client_count {
+        let launcher = ClientLauncher::with_config(&install_path, config.clone());
+        match launcher.launch() {
+            Ok(result) if result.success => {
+                if first_pid.is_none() {
+                    first_pid = result.pid;
+                }
+                launched += 1;
+                info!("Client {} launched (PID {:?})", i + 1, result.pid);
+            }
+            Ok(result) => {
+                warn!("Client {} failed to launch: {:?}", i + 1, result.error_message);
+            }
+            Err(e) => {
+                warn!("Client {} error: {}", i + 1, e);
+            }
+        }
+
+        if i + 1 < client_count {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+        }
+    }
+
+    state.clear_current_operation();
+
+    if launched == 0 {
+        state.set_running_clients(0);
+        return Ok(LaunchResponse {
+            success: false,
+            pid: None,
+            error: Some("No client instances launched successfully".into()),
+            should_close_launcher: false,
+            running_clients: 0,
+        });
+    }
+
+    state.set_running_clients(launched);
+
+    let should_close = client_count == 1
+        && request
+            .close_after_launch
+            .unwrap_or(launcher_config.close_on_launch);
+
+    Ok(LaunchResponse {
+        success: true,
+        pid: first_pid,
+        error: None,
+        should_close_launcher: should_close,
+        running_clients: launched,
+    })
 }
 
 /// Validates that the game client can be launched.
@@ -211,7 +272,7 @@ pub async fn validate_client(state: State<'_, AppState>) -> Result<ValidateClien
 #[tauri::command]
 pub async fn game_closed(state: State<'_, AppState>) -> Result<(), String> {
     info!("Game marked as closed");
-    state.set_game_running(false);
+    state.set_running_clients(0);
     Ok(())
 }
 
@@ -224,6 +285,9 @@ mod tests {
         let request = LaunchGameRequest::default();
         assert!(request.args.is_empty());
         assert!(request.close_after_launch.is_none());
+        assert_eq!(request.client_count, 1);
+        assert_eq!(request.server_choice, ServerChoice::Live);
+        assert_eq!(request.assistant_choice, AssistantKind::RazorEnhanced);
     }
 
     #[test]
@@ -231,6 +295,9 @@ mod tests {
         let request = LaunchGameRequest {
             args: vec!["--server".to_string(), "127.0.0.1".to_string()],
             close_after_launch: Some(true),
+            client_count: 2,
+            server_choice: ServerChoice::Test,
+            assistant_choice: AssistantKind::Razor,
         };
 
         assert_eq!(request.args.len(), 2);
@@ -244,6 +311,7 @@ mod tests {
             pid: Some(12345),
             error: None,
             should_close_launcher: true,
+            running_clients: 1,
         };
 
         assert!(response.success);
@@ -258,6 +326,7 @@ mod tests {
             pid: None,
             error: Some("Executable not found".to_string()),
             should_close_launcher: false,
+            running_clients: 0,
         };
 
         assert!(!response.success);
@@ -294,6 +363,9 @@ mod tests {
         let request = LaunchGameRequest {
             args: vec!["--test".to_string()],
             close_after_launch: Some(false),
+            client_count: 1,
+            server_choice: ServerChoice::Live,
+            assistant_choice: AssistantKind::RazorEnhanced,
         };
 
         let json = serde_json::to_string(&request).expect("Should serialize");

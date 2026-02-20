@@ -20,6 +20,8 @@ interface LayoutProps {
   statusMessage?: string;
   /** Current version string */
   version?: string;
+  /** Number of running clients */
+  runningClients?: number;
   /** Custom sidebar navigation links */
   sidebarLinks?: SidebarLink[];
   /** Callback when settings is clicked */
@@ -40,6 +42,7 @@ export function Layout({
   sidebarLinks,
   onSettingsClick,
   onHomeClick,
+  runningClients,
 }: LayoutProps) {
   const { brandInfo } = useBrand();
 
@@ -80,7 +83,12 @@ export function Layout({
       <main className="layout-main" style={mainStyle}>
         <div className="layout-content">{children}</div>
       </main>
-      <StatusBar phase={phase} message={statusMessage} version={version} />
+      <StatusBar
+        phase={phase}
+        message={statusMessage}
+        version={version}
+        runningClients={runningClients}
+      />
     </div>
   );
 }

@@ -48,6 +48,8 @@ export interface AppStatus {
   is_updating: boolean;
   /** Whether the game is currently running */
   is_game_running: boolean;
+  /** Number of game client instances currently running */
+  running_clients: number;
   /** Current error message (if any) */
   error_message: string | null;
   /** Installation progress percentage (0-100) */
@@ -248,6 +250,12 @@ export interface LaunchGameRequest {
   args?: string[];
   /** Whether to close the launcher after launching */
   close_after_launch?: boolean;
+  /** Number of client instances to open (1-5) */
+  client_count?: number;
+  /** Which server to connect to */
+  server_choice?: ServerChoice;
+  /** Which assistant to use */
+  assistant_choice?: AssistantKind;
 }
 
 /**
@@ -262,6 +270,8 @@ export interface LaunchResponse {
   error: string | null;
   /** Whether the launcher should close */
   should_close_launcher: boolean;
+  /** Number of clients that launched successfully */
+  running_clients: number;
 }
 
 /**
@@ -290,6 +300,29 @@ export interface UserSettings {
   close_on_launch: boolean;
   /** Check for updates on startup */
   check_updates_on_startup: boolean;
+}
+
+/** Which assistant is active. Mirrors Rust AssistantKind. */
+export type AssistantKind = "razor_enhanced" | "razor" | "none";
+
+/** Which server to connect to. Mirrors Rust ServerChoice. */
+export type ServerChoice = "live" | "test";
+
+/** Single server endpoint from brand.json. */
+export interface ServerConfig {
+  label: string;
+  ip: string;
+  port: number;
+}
+
+/** CUO block from brand.json. Null if server owner didn't configure it. */
+export interface CuoConfig {
+  client_version: string;
+  live_server: ServerConfig;
+  test_server: ServerConfig | null;
+  available_assistants: AssistantKind[];
+  default_assistant: AssistantKind;
+  default_server: ServerChoice;
 }
 
 /**

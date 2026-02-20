@@ -5,17 +5,21 @@
  * including validation, launching, and error handling.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 import {
+  getCuoConfig,
   launchGame,
   validateClient,
   gameClosed,
 } from "../lib/api";
 
 import type {
+  AssistantKind,
+  CuoConfig,
   LaunchGameRequest,
   LaunchResponse,
+  ServerChoice,
   ValidateClientResponse,
 } from "../lib/types";
 
@@ -37,6 +41,16 @@ export interface UseLaunchState {
   validationResult: ValidateClientResponse | null;
   /** Launch result from last launch */
   launchResult: LaunchResponse | null;
+  /** CUO config if configured */
+  cuoConfig: CuoConfig | null;
+  /** Selected server choice */
+  selectedServer: ServerChoice;
+  /** Selected assistant choice */
+  selectedAssistant: AssistantKind;
+  /** Selected client count */
+  clientCount: number;
+  /** Number of clients currently running */
+  runningClients: number;
 }
 
 /**
@@ -53,6 +67,12 @@ export interface UseLaunchActions {
   reset: () => void;
   /** Clear error message */
   clearError: () => void;
+  /** Update selected server */
+  setSelectedServer: (server: ServerChoice) => void;
+  /** Update selected assistant */
+  setSelectedAssistant: (assistant: AssistantKind) => void;
+  /** Update client count (1-5) */
+  setClientCount: (count: number) => void;
 }
 
 /**
@@ -69,6 +89,21 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validationResult, setValidationResult] = useState<ValidateClientResponse | null>(null);
   const [launchResult, setLaunchResult] = useState<LaunchResponse | null>(null);
+  const [cuoConfig, setCuoConfig] = useState<CuoConfig | null>(null);
+  const [selectedServer, setSelectedServer] = useState<ServerChoice>("live");
+  const [selectedAssistant, setSelectedAssistant] = useState<AssistantKind>("razor_enhanced");
+  const [clientCount, setClientCount] = useState<number>(1);
+  const [runningClients, setRunningClients] = useState<number>(0);
+
+  useEffect(() => {
+    getCuoConfig().then((cfg) => {
+      if (cfg) {
+        setCuoConfig(cfg);
+        setSelectedServer(cfg.default_server);
+        setSelectedAssistant(cfg.default_assistant);
+      }
+    });
+  }, []);
 
   /**
    * Validate that the client can be launched.
@@ -105,11 +140,19 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
     setErrorMessage(null);
 
     try {
-      const result = await launchGame(request);
+      const mergedRequest: LaunchGameRequest = {
+        ...request,
+        client_count: clientCount,
+        server_choice: selectedServer,
+        assistant_choice: selectedAssistant,
+      };
+
+      const result = await launchGame(mergedRequest);
       setLaunchResult(result);
 
       if (result.success) {
-        setIsGameRunning(true);
+        setIsGameRunning(result.running_clients > 0);
+        setRunningClients(result.running_clients);
       } else if (result.error) {
         setErrorMessage(result.error);
       }
@@ -124,13 +167,14 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
         pid: null,
         error: msg,
         should_close_launcher: false,
+        running_clients: 0,
       };
       setLaunchResult(errorResult);
       return errorResult;
     } finally {
       setIsLaunching(false);
     }
-  }, []);
+  }, [clientCount, selectedAssistant, selectedServer]);
 
   /**
    * Mark the game as closed.
@@ -139,6 +183,7 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
     try {
       await gameClosed();
       setIsGameRunning(false);
+      setRunningClients(0);
       setLaunchResult(null);
     } catch (error) {
       // Ignore errors when marking game as closed
@@ -156,6 +201,7 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
     setErrorMessage(null);
     setValidationResult(null);
     setLaunchResult(null);
+    setRunningClients(0);
   }, []);
 
   /**
@@ -163,6 +209,10 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
    */
   const clearError = useCallback(() => {
     setErrorMessage(null);
+  }, []);
+
+  const handleSetClientCount = useCallback((count: number) => {
+    setClientCount(Math.min(5, Math.max(1, count)));
   }, []);
 
   // Assemble state object
@@ -174,6 +224,11 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
     errorMessage,
     validationResult,
     launchResult,
+    cuoConfig,
+    selectedServer,
+    selectedAssistant,
+    clientCount,
+    runningClients,
   };
 
   // Assemble actions object
@@ -183,6 +238,9 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
     markGameClosed: handleGameClosed,
     reset,
     clearError,
+    setSelectedServer,
+    setSelectedAssistant,
+    setClientCount: handleSetClientCount,
   };
 
   return [state, actions];

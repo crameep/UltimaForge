@@ -301,6 +301,19 @@ pub async fn get_brand_config(state: State<'_, AppState>) -> Result<BrandInfo, S
     Ok(BrandInfo::from(&brand_config))
 }
 
+/// Returns the CUO config block from brand.json so the frontend can
+/// build the server and assistant dropdowns.
+#[tauri::command]
+pub async fn get_cuo_config(
+    state: State<'_, AppState>,
+) -> Result<Option<serde_json::Value>, String> {
+    let brand = state.brand_config().ok_or("Brand config not available")?;
+    match &brand.cuo {
+        Some(cuo) => Ok(Some(serde_json::to_value(cuo).map_err(|e| e.to_string())?)),
+        None => Ok(None),
+    }
+}
+
 /// Gets the launcher's installation directory.
 ///
 /// Returns the directory where the launcher executable is installed.

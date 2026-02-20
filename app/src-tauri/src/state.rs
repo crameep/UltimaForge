@@ -101,6 +101,8 @@ struct AppStateInner {
     is_updating: bool,
     /// Whether the game client is currently running.
     is_game_running: bool,
+    /// Number of game client instances currently running.
+    running_clients: usize,
     /// Current error message (if any).
     error_message: Option<String>,
     /// Update progress information.
@@ -342,10 +344,29 @@ impl AppState {
         self.inner.lock().unwrap().is_game_running
     }
 
+    /// Returns the number of currently running client instances.
+    pub fn running_clients(&self) -> usize {
+        self.inner.lock().unwrap().running_clients
+    }
+
+    /// Sets the number of running client instances.
+    /// Automatically updates is_game_running and phase.
+    pub fn set_running_clients(&self, count: usize) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.running_clients = count;
+        inner.is_game_running = count > 0;
+        if count == 0 && inner.phase == AppPhase::GameRunning {
+            inner.phase = AppPhase::Ready;
+        } else if count > 0 {
+            inner.phase = AppPhase::GameRunning;
+        }
+    }
+
     /// Sets whether the game is currently running.
     pub fn set_game_running(&self, running: bool) {
         let mut inner = self.inner.lock().unwrap();
         inner.is_game_running = running;
+        inner.running_clients = if running { 1 } else { 0 };
         if running {
             inner.phase = AppPhase::GameRunning;
         } else if !inner.is_updating && !inner.is_installing {
@@ -451,6 +472,7 @@ impl AppState {
             is_installing: inner.is_installing,
             is_updating: inner.is_updating,
             is_game_running: inner.is_game_running,
+            running_clients: inner.running_clients,
             error_message: inner.error_message.clone(),
             install_progress: inner.install_progress,
             current_operation: inner.current_operation.clone(),
@@ -524,6 +546,7 @@ impl std::fmt::Debug for AppState {
             .field("is_installing", &inner.is_installing)
             .field("is_updating", &inner.is_updating)
             .field("is_game_running", &inner.is_game_running)
+            .field("running_clients", &inner.running_clients)
             .finish()
     }
 }
@@ -551,6 +574,8 @@ pub struct AppStatus {
     pub is_updating: bool,
     /// Whether the game is currently running.
     pub is_game_running: bool,
+    /// Number of client instances currently running.
+    pub running_clients: usize,
     /// Current error message (if any).
     pub error_message: Option<String>,
     /// Installation progress percentage (0-100).
@@ -641,6 +666,7 @@ mod tests {
         assert!(!state.is_installing());
         assert!(!state.is_updating());
         assert!(!state.is_game_running());
+        assert_eq!(state.running_clients(), 0);
         assert!(state.error_message().is_none());
     }
 
@@ -818,13 +844,16 @@ mod tests {
         state.set_phase(AppPhase::Ready);
 
         assert!(!state.is_game_running());
+        assert_eq!(state.running_clients(), 0);
 
         state.set_game_running(true);
         assert!(state.is_game_running());
+        assert_eq!(state.running_clients(), 1);
         assert_eq!(state.phase(), AppPhase::GameRunning);
 
         state.set_game_running(false);
         assert!(!state.is_game_running());
+        assert_eq!(state.running_clients(), 0);
         assert_eq!(state.phase(), AppPhase::Ready);
     }
 
@@ -1021,6 +1050,7 @@ mod tests {
             is_installing: false,
             is_updating: false,
             is_game_running: false,
+            running_clients: 0,
             error_message: None,
             install_progress: 0.0,
             current_operation: None,
@@ -1042,6 +1072,7 @@ mod tests {
             is_installing: false,
             is_updating: false,
             is_game_running: false,
+            running_clients: 0,
             error_message: None,
             install_progress: 0.0,
             current_operation: None,
@@ -1070,6 +1101,7 @@ mod tests {
             is_installing: false,
             is_updating: false,
             is_game_running: false,
+            running_clients: 0,
             error_message: None,
             install_progress: 0.0,
             current_operation: None,
