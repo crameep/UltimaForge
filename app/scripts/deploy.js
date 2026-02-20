@@ -95,6 +95,22 @@ const { host, user, port = 22, remote_path: remotePath, update_url: updateUrl } 
   config;
 const displayUrl = updateUrl || `http://${host}`;
 
+if (!remotePath || typeof remotePath !== "string") {
+  exitWithError("Invalid remote_path in deploy.json. Re-run Option H (Setup VPS).");
+}
+
+const trimmedRemotePath = remotePath.trim();
+if (
+  trimmedRemotePath === "" ||
+  trimmedRemotePath === "/" ||
+  trimmedRemotePath === "." ||
+  trimmedRemotePath === "~"
+) {
+  exitWithError(
+    "Refusing to deploy to an unsafe remote_path. Set a dedicated path like /var/www/ultimaforge."
+  );
+}
+
 if (!fs.existsSync(path.join(publishDir, "manifest.json"))) {
   exitWithError(
     "No publish output found at server-data/publish/manifest.json.\n" +

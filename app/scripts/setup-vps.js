@@ -58,6 +58,25 @@ function generateDeployKey() {
   console.log("Deploy keypair generated.");
 }
 
+function ensureDeployKeypair() {
+  if (fs.existsSync(deployKeyPath) && fs.existsSync(deployKeyPubPath)) {
+    return;
+  }
+
+  if (fs.existsSync(deployKeyPath) && !fs.existsSync(deployKeyPubPath)) {
+    console.warn(
+      "\nDeploy key exists but the public key is missing. Regenerating the keypair..."
+    );
+    try {
+      fs.unlinkSync(deployKeyPath);
+    } catch {
+      // ignore
+    }
+  }
+
+  generateDeployKey();
+}
+
 function testSshConnection(host, user, port, keyPath) {
   console.log(`\nTesting SSH connection to ${user}@${host}:${port} ...`);
   const result = spawnSync(
@@ -157,10 +176,10 @@ async function main() {
   ensureDir(path.join(serverDataDir, "publish"));
 
   // Step 1: Generate keypair if needed
-  if (fs.existsSync(deployKeyPath)) {
+  if (fs.existsSync(deployKeyPath) && fs.existsSync(deployKeyPubPath)) {
     console.log("\nDeploy key already exists at: " + deployKeyPath);
   } else {
-    generateDeployKey();
+    ensureDeployKeypair();
   }
 
   const pubKey = fs.readFileSync(deployKeyPubPath, "utf8").trim();
@@ -180,6 +199,12 @@ async function main() {
   console.log("  -> Add the key to ~/.ssh/authorized_keys on the VPS");
   console.log("    (ssh in with a password, then: echo '<key>' >> ~/.ssh/authorized_keys)");
 
+  console.log("\nDigital Ocean quick steps:");
+  console.log("  1. Create Droplet -> Ubuntu 22.04 LTS");
+  console.log("  2. Authentication: SSH Key -> New SSH Key");
+  console.log("  3. Paste the key above and create the Droplet");
+  console.log("  4. Copy the Droplet IP address");
+
   await prompt(rl, "\nPress Enter when the key is on your VPS and it is running");
 
   // Step 3: Collect VPS details
@@ -190,10 +215,11 @@ async function main() {
   const existing = readJsonIfExists(deployConfigPath);
   const host = await prompt(rl, "VPS IP address", existing.host || "");
   const user = await prompt(rl, "SSH user", existing.user || "root");
-  const port = parseInt(
-    await prompt(rl, "SSH port", String(existing.port || 22)),
-    10
-  );
+  let port = parseInt(await prompt(rl, "SSH port", String(existing.port || 22)), 10);
+  if (Number.isNaN(port) || port <= 0 || port > 65535) {
+    console.warn("Invalid SSH port. Defaulting to 22.");
+    port = 22;
+  }
   const remotePath = await prompt(
     rl,
     "Remote path to serve files from",
