@@ -34,6 +34,17 @@ function toWslPath(winPath) {
 }
 
 /**
+ * Converts a Windows absolute path to a Cygwin /cygdrive/ path.
+ * Required for cwrsync (Cygwin-based rsync) on Windows.
+ * e.g. "G:\foo\bar" -> "/cygdrive/g/foo/bar"
+ */
+function toCygwinPath(winPath) {
+  return winPath
+    .replace(/^([A-Za-z]):/, (_, d) => `/cygdrive/${d.toLowerCase()}`)
+    .replace(/\\/g, "/");
+}
+
+/**
  * Resolves the rsync executable. Returns either:
  *   { bin: "rsync", wsl: false }   - native rsync on PATH or known path
  *   { bin: "wsl", wsl: true }      - rsync available inside WSL
@@ -98,12 +109,18 @@ function tryRsync(rsync, user, host, port, keyPath, localDir, remotePath) {
     ];
   } else {
     bin = rsync.bin;
+    // On Windows, native rsync (cwrsync) is Cygwin-based and chokes on
+    // Windows paths like "G:\foo" — the drive letter + colon looks like
+    // a remote host spec. Convert to /cygdrive/g/foo style paths.
+    const isWin = process.platform === "win32";
+    const srcDir = isWin ? toCygwinPath(localDir) : localDir;
+    const sshKey = isWin ? toCygwinPath(keyPath) : keyPath;
     args = [
       "-avz",
       "--delete",
       "-e",
-      `ssh -i "${keyPath}" -o StrictHostKeyChecking=accept-new -p ${port}`,
-      localDir + "/",
+      `ssh -i "${sshKey}" -o StrictHostKeyChecking=accept-new -p ${port}`,
+      srcDir + "/",
       `${user}@${host}:${remotePath}/`,
     ];
   }
