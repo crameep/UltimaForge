@@ -10,6 +10,8 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import readline from "node:readline/promises";
 
+let rl = null;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const appDir = path.resolve(__dirname, "..");
@@ -48,12 +50,11 @@ function generateDeployKey() {
     { stdio: "inherit" }
   );
   if (result.status !== 0) {
-    console.error(
-      "\nERROR: ssh-keygen failed. Make sure OpenSSH is installed.\n" +
+    throw new Error(
+      "ssh-keygen failed. Make sure OpenSSH is installed.\n" +
         "  Windows: Settings -> Apps -> Optional Features -> OpenSSH Client\n" +
         "  Linux:   sudo apt install openssh-client"
     );
-    process.exit(1);
   }
   console.log("Deploy keypair generated.");
 }
@@ -157,7 +158,7 @@ ${caddyNote}
 }
 
 async function main() {
-  const rl = readline.createInterface({
+  rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
@@ -233,6 +234,12 @@ async function main() {
 
   if (!host) {
     console.error("\nERROR: VPS IP is required.");
+    rl.close();
+    process.exit(1);
+  }
+
+  if (remotePath.includes(" ")) {
+    console.error("\nERROR: Remote path must not contain spaces (Caddy does not support spaces in root paths).");
     rl.close();
     process.exit(1);
   }
@@ -362,5 +369,6 @@ async function main() {
 
 main().catch((err) => {
   console.error("\nSetup failed:", err.message);
+  if (rl) rl.close();
   process.exit(1);
 });

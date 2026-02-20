@@ -115,6 +115,11 @@ This will:
 - Starts host server and launcher in a single terminal
 - Generates test updates automatically if missing
 
+### [G] Publish Launcher Only (fast)
+- Builds and publishes launcher update metadata only
+- Skips game file manifest/blob generation
+- Use when you only updated the launcher binary
+
 ### [H] Setup VPS ⭐ **First-time only**
 - Generates an SSH deploy keypair
 - Guides you through VPS + domain setup

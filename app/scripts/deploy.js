@@ -30,7 +30,7 @@ function tryRsync(user, host, port, keyPath, localDir, remotePath) {
       "-avz",
       "--delete",
       "-e",
-      `ssh -i ${keyPath} -o StrictHostKeyChecking=accept-new -p ${port}`,
+      `ssh -i "${keyPath}" -o StrictHostKeyChecking=accept-new -p ${port}`,
       localDir + "/",
       `${user}@${host}:${remotePath}/`,
     ],
@@ -94,6 +94,14 @@ const config = JSON.parse(fs.readFileSync(deployConfigPath, "utf8"));
 const { host, user, port = 22, remote_path: remotePath, update_url: updateUrl } =
   config;
 const displayUrl = updateUrl || `http://${host}`;
+
+if (!host || typeof host !== "string") {
+  exitWithError("Invalid host in deploy.json. Re-run Option H (Setup VPS).");
+}
+
+if (!user || typeof user !== "string") {
+  exitWithError("Invalid user in deploy.json. Re-run Option H (Setup VPS).");
+}
 
 if (!remotePath || typeof remotePath !== "string") {
   exitWithError("Invalid remote_path in deploy.json. Re-run Option H (Setup VPS).");
