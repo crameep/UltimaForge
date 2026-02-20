@@ -23,9 +23,47 @@ function exitWithError(msg) {
   process.exit(1);
 }
 
-function tryRsync(user, host, port, keyPath, localDir, remotePath) {
+/**
+ * Resolves the rsync executable path, checking PATH and common Windows
+ * install locations (Scoop shims, cwRsync). Returns null if not found.
+ */
+function findRsync() {
+  // Check if rsync is already on PATH
+  const probe = spawnSync("rsync", ["--version"], { stdio: "ignore" });
+  if (!probe.error) return "rsync";
+
+  // Common Windows install locations
+  const home = process.env.USERPROFILE || "";
+  const progFiles = process.env.ProgramFiles || "C:\\Program Files";
+  const progFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
+
+  const candidates = [
+    // Scoop shims
+    path.join(home, "scoop", "shims", "rsync.exe"),
+    // cwRsync versioned dirs under Program Files
+    ...["", "64"].flatMap((bits) =>
+      (bits ? [progFiles, progFilesX86] : [progFiles]).flatMap((base) => {
+        try {
+          return fs
+            .readdirSync(base)
+            .filter((d) => d.toLowerCase().startsWith("cwrsync"))
+            .map((d) => path.join(base, d, "bin", "rsync.exe"));
+        } catch {
+          return [];
+        }
+      })
+    ),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function tryRsync(rsyncBin, user, host, port, keyPath, localDir, remotePath) {
   const result = spawnSync(
-    "rsync",
+    rsyncBin,
     [
       "-avz",
       "--delete",
@@ -36,9 +74,6 @@ function tryRsync(user, host, port, keyPath, localDir, remotePath) {
     ],
     { stdio: "inherit" }
   );
-  if (result.error && result.error.code === "ENOENT") {
-    return false;
-  }
   if (result.status !== 0) {
     exitWithError("rsync failed. Check the output above.");
   }
@@ -137,9 +172,13 @@ console.log(`\nTarget: ${user}@${host}:${remotePath}`);
 console.log(`Update URL: ${displayUrl}`);
 console.log("\nSyncing files...\n");
 
-const usedRsync = tryRsync(user, host, port, deployKeyPath, publishDir, remotePath);
-if (!usedRsync) {
-  console.log("rsync not found - using scp instead.");
+const rsyncBin = findRsync();
+if (rsyncBin) {
+  console.log(`Using rsync${rsyncBin !== "rsync" ? ` (${rsyncBin})` : ""}...`);
+  tryRsync(rsyncBin, user, host, port, deployKeyPath, publishDir, remotePath);
+} else {
+  console.log("rsync not found - using scp instead (re-uploads all files).");
+  console.log("Run Option 0 (Install Prerequisites) to install rsync for faster deploys.");
   tryScp(user, host, port, deployKeyPath, publishDir, remotePath);
 }
 
