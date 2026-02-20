@@ -433,8 +433,16 @@ function Install-Rsync {
 
     if (Test-Command "scoop") {
         try {
+            # Ensure the main bucket is present and up to date
+            Write-Status "Updating Scoop and adding main bucket..." -Type "Info"
+            scoop bucket add main 2>&1 | Out-Host
+            scoop update 2>&1 | Out-Host
+
             Write-Status "Installing rsync via Scoop..." -Type "Info"
-            scoop install rsync
+            # Pipe to Out-Host so output goes to console but NOT to the function pipeline.
+            # (External command stdout is captured as function return value in PowerShell
+            # unless explicitly redirected, which breaks the boolean return value.)
+            scoop install rsync 2>&1 | Out-Host
 
             # Refresh PATH from user environment (Scoop adds its shims dir on install)
             $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
@@ -452,7 +460,7 @@ function Install-Rsync {
                 return $true
             }
 
-            Write-Status "scoop install rsync ran but rsync shim not found at $rsyncShim" -Type "Warning"
+            Write-Status "scoop install rsync ran but rsync shim not found at: $rsyncShim" -Type "Warning"
         }
         catch {
             Write-Status "Scoop rsync install failed: $_" -Type "Warning"
@@ -463,7 +471,7 @@ function Install-Rsync {
     if (Test-Command "winget") {
         try {
             Write-Status "Trying cwrsync via winget..." -Type "Info"
-            winget install Itefix.cwRsync --accept-source-agreements --accept-package-agreements
+            winget install Itefix.cwRsync --accept-source-agreements --accept-package-agreements 2>&1 | Out-Host
 
             # cwrsync installs to a versioned dir; find and add to PATH
             $cwrsyncDir = Get-ChildItem "${env:ProgramFiles}\cwRsync*" -Directory -ErrorAction SilentlyContinue |
@@ -578,7 +586,8 @@ function Show-Summary {
     }
 
     # rsync is optional - show status but don't fail
-    if ($Results["rsync"]) {
+    # Use -eq $true (not just truthy) to avoid false-positive from captured stdout arrays
+    if ($Results["rsync"] -eq $true) {
         Write-Host "  [+] rsync (efficient VPS deploy)" -ForegroundColor $Colors.Green
     }
     else {
