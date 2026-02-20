@@ -51,21 +51,12 @@ function toCygwinPath(winPath) {
  *   null                           - not found anywhere
  */
 function findRsync() {
-  // On Windows, prefer WSL rsync first — it handles paths natively and
-  // avoids the cygwin/OpenSSH interop issues that cwrsync has.
-  if (process.platform === "win32") {
-    const wslProbe = spawnSync("wsl", ["which", "rsync"], { stdio: "pipe" });
-    if (!wslProbe.error && wslProbe.status === 0 && wslProbe.stdout.toString().trim()) {
-      return { bin: "wsl", wsl: true };
-    }
-  }
-
-  // Check native rsync on PATH (works directly on Linux/Mac, or if user
-  // has a working native rsync on Windows PATH)
+  // 1. Native rsync on PATH (works on Linux/Mac; also works on Windows if
+  //    the user has a working rsync in their PATH)
   const probe = spawnSync("rsync", ["--version"], { stdio: "ignore" });
   if (!probe.error) return { bin: "rsync", wsl: false };
 
-  // Common Windows install locations (Scoop shims, cwRsync)
+  // 2. Common Windows install locations (Scoop shims, cwRsync)
   const home = process.env.USERPROFILE || "";
   const progFiles = process.env.ProgramFiles || "C:\\Program Files";
   const progFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
@@ -89,6 +80,12 @@ function findRsync() {
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return { bin: candidate, wsl: false };
+  }
+
+  // 3. WSL fallback — only if WSL is available (not required)
+  const wslProbe = spawnSync("wsl", ["which", "rsync"], { stdio: "pipe" });
+  if (!wslProbe.error && wslProbe.status === 0 && wslProbe.stdout.toString().trim()) {
+    return { bin: "wsl", wsl: true };
   }
 
   return null;
