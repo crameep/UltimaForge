@@ -4,6 +4,7 @@
  *
  * This is a helper for server owners so launcher self-updates work out of the box.
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,9 +127,25 @@ async function runSignerGenerate() {
   const keyBase = path.join(updaterDir, "tauri");
   const tauriJs = path.join(appDir, "node_modules", "@tauri-apps", "cli", "tauri.js");
 
-  console.log("\nGenerating Tauri updater keys with no password (CI mode)...");
+  // Generate a random non-empty password.
+  // Windows silently drops TAURI_SIGNING_PRIVATE_KEY_PASSWORD from the env block
+  // when its value is an empty string, causing "Wrong password for that key" errors
+  // during `tauri build` even when the key itself was generated without a password.
+  // Using --password <random> guarantees a non-empty password that Windows passes
+  // correctly to the native Tauri signing executable.
+  const generatedPassword = crypto.randomBytes(16).toString("hex");
 
-  const signerArgs = ["signer", "generate", "--force", "--write-keys", keyBase];
+  console.log("\nGenerating Tauri updater keys...");
+
+  const signerArgs = [
+    "signer",
+    "generate",
+    "--force",
+    "--write-keys",
+    keyBase,
+    "--password",
+    generatedPassword,
+  ];
   const attempts = fs.existsSync(tauriJs)
     ? [
         [process.execPath, [tauriJs, ...signerArgs]],
@@ -140,37 +157,76 @@ async function runSignerGenerate() {
         [npmCommand, ["exec", "--", "tauri", ...signerArgs]],
       ];
 
-  // CI=1 causes Tauri CLI v2 to skip the interactive password prompt and
-  // generate the key with an empty password. The signer generate command
-  // reads the CI env var (#[clap(long, env = "CI")]) and uses "" instead
-  // of calling dialoguer::Password.
-  const childEnv = { ...process.env, CI: "true" };
-
-  let generated = null;
-  for (const [cmd, fullArgs] of attempts) {
-    try {
-      const result = spawnSync(cmd, fullArgs, {
-        cwd: appDir,
-        stdio: "inherit",
-        env: childEnv,
-        shell: cmd !== process.execPath && process.platform === "win32",
-      });
-      if (result.status === 0) {
-        generated = tryReadWrittenKeys(keyBase);
-        if (generated) break;
+  function tryAttempts(argsList) {
+    for (const [cmd, fullArgs] of argsList) {
+      try {
+        const result = spawnSync(cmd, fullArgs, {
+          cwd: appDir,
+          stdio: "inherit",
+          shell: cmd !== process.execPath && process.platform === "win32",
+        });
+        if (result.status === 0) {
+          const keys = tryReadWrittenKeys(keyBase);
+          if (keys) return keys;
+        }
+      } catch (e) {
+        // command failed — try next
       }
-    } catch (e) {
-      // command failed — try next
     }
+    return null;
   }
 
+  // Primary: use --password so the key has a known non-empty password.
+  let generated = tryAttempts(attempts);
+
+  // Fallback: if --password flag is not supported by this Tauri version,
+  // retry with CI mode (empty password). Warn the user that on Windows,
+  // signing may require a non-empty password.
   if (!generated) {
+    console.log("\n--password flag not supported; retrying with CI mode (empty password).");
+    console.log("NOTE: signing with an empty password may fail on Windows.");
+    const ciArgs = ["signer", "generate", "--force", "--write-keys", keyBase];
+    const ciAttempts = fs.existsSync(tauriJs)
+      ? [
+          [process.execPath, [tauriJs, ...ciArgs]],
+          [npxCommand, ["tauri", ...ciArgs]],
+          [npmCommand, ["exec", "--", "tauri", ...ciArgs]],
+        ]
+      : [
+          [npxCommand, ["tauri", ...ciArgs]],
+          [npmCommand, ["exec", "--", "tauri", ...ciArgs]],
+        ];
+    const ciEnv = { ...process.env, CI: "true" };
+    for (const [cmd, fullArgs] of ciAttempts) {
+      try {
+        const result = spawnSync(cmd, fullArgs, {
+          cwd: appDir,
+          stdio: "inherit",
+          env: ciEnv,
+          shell: cmd !== process.execPath && process.platform === "win32",
+        });
+        if (result.status === 0) {
+          generated = tryReadWrittenKeys(keyBase);
+          if (generated) break;
+        }
+      } catch (e) {
+        // command failed — try next
+      }
+    }
+    if (generated) {
+      // CI mode generates with empty password — store empty so publish-all
+      // at least attempts to pass it (may still fail on Windows).
+      writeKeyFile(privateKeyPasswordPath, "");
+      console.log("\nCI-mode key generated. Password is empty.");
+      return generated;
+    }
     return { privateKey: "", publicKey: "" };
   }
 
-  // Store empty password.txt — the key was generated with no password (CI mode).
-  writeKeyFile(privateKeyPasswordPath, "");
-  console.log("\nKey generation complete. No password set (CI mode).");
+  // Store the generated password so publish-all can pass it as
+  // TAURI_SIGNING_PRIVATE_KEY_PASSWORD (non-empty, safe on Windows).
+  writeKeyFile(privateKeyPasswordPath, generatedPassword);
+  console.log("\nKey generation complete. Password stored in password.txt.");
 
   return generated;
 }
@@ -253,9 +309,8 @@ async function main() {
 
   console.log("Launcher Updater Key Setup");
   console.log("This configures Tauri updater keys for launcher self-updates.\n");
-  console.log("Password guidance:");
-  console.log("- Recommended: press Enter at both key prompts (no password).");
-  console.log("- Whatever you enter at the Tauri password prompt will be stored for signing.\n");
+  console.log("A random password will be generated automatically and stored in password.txt.");
+  console.log("You do not need to enter or remember it — publish-all reads it automatically.\n");
 
   let publicKey = findPublicKey(updaterDir);
 
@@ -376,9 +431,9 @@ async function main() {
 
   const savedPassword = fs.readFileSync(privateKeyPasswordPath, "utf8").trim();
   if (savedPassword) {
-    console.log("\nPassword stored for updater key.");
+    console.log("\nPassword stored for updater key (publish-all will read it automatically).");
   } else {
-    console.log("\nNo password stored (key has no password — recommended).");
+    console.log("\nNo password stored. If signing fails, re-run Option D to regenerate keys.");
   }
 
   rl.close();
