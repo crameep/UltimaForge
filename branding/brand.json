@@ -8,7 +8,7 @@
     "discord": "https://discord.gg/example"
   },
   "updateUrl": "http://localhost:8080",
-  "publicKey": "204c2b90c74ca9461f049640494a6ef0c943b4085b7308402fd43e36f68c7d57",
+  "publicKey": "c6fbe510e4abd23cf4813a43399648ee955ec7581e55b2577484f381e5f73489",
   "ui": {
     "colors": {
       "primary": "#1a1a2e",
