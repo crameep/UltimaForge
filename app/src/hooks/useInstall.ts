@@ -13,8 +13,6 @@ import {
   validateInstallPath,
   startInstall,
   onInstallProgress,
-  getBrandConfig,
-  getLauncherDir,
   relaunchAsAdmin,
   getRecommendedInstallPath,
 } from "../lib/api";
@@ -131,7 +129,7 @@ export function useInstall(): [UseInstallState, UseInstallActions] {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [eulaAccepted, setEulaAcceptedState] = useState(false);
 
-  // Set default install path based on launcher location + branding
+  // Set default install path to %LOCALAPPDATA%\{ServerName} (no elevation needed)
   useEffect(() => {
     const setDefaultPath = async () => {
       if (installPath) return; // Don't override if already set
@@ -139,15 +137,10 @@ export function useInstall(): [UseInstallState, UseInstallActions] {
       let pathToSet: string;
 
       try {
-        const brand = await getBrandConfig();
-        const serverName = brand.server_name || brand.display_name || "Game";
-        const launcherDir = await getLauncherDir();
-
-        // Default to {launcher_dir}\{ServerName}
-        // e.g., C:\Program Files\Unchained Patcher\Unchained
-        pathToSet = `${launcherDir}\\${serverName}`;
+        // Use recommended path (%LOCALAPPDATA%\{ServerName}) so no elevation is required
+        pathToSet = await getRecommendedInstallPath();
       } catch (err) {
-        console.warn("Failed to get default install path:", err);
+        console.warn("Failed to get recommended install path:", err);
         // Fallback to generic path
         pathToSet = "C:\\Games\\Game";
       }

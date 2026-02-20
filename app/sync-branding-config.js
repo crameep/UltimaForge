@@ -13,8 +13,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BRAND_JSON = path.join(__dirname, '..', 'branding', 'brand.json');
+const BRANDING_DIR = path.join(__dirname, '..', 'branding');
+const BRAND_JSON = path.join(BRANDING_DIR, 'brand.json');
 const TAURI_CONFIG = path.join(__dirname, 'src-tauri', 'tauri.conf.json');
+const PUBLIC_BRANDING_DIR = path.join(__dirname, 'public', 'branding');
 
 console.log('🎨 Syncing branding to Tauri config...\n');
 
@@ -48,4 +50,30 @@ fs.writeFileSync(TAURI_CONFIG, JSON.stringify(config, null, 2));
 console.log('✅ Updated tauri.conf.json:');
 console.log(`   productName: "${productName}"`);
 console.log(`   window.title: "${windowTitle}"`);
+
+// Copy branding assets (brand.json + images) to app/public/branding/
+// Vite bundles everything under public/ into the production build.
+fs.mkdirSync(PUBLIC_BRANDING_DIR, { recursive: true });
+
+// Always copy brand.json so the frontend gets the current branding config
+fs.copyFileSync(BRAND_JSON, path.join(PUBLIC_BRANDING_DIR, 'brand.json'));
+console.log('\n✅ Copied brand.json → app/public/branding/brand.json');
+
+// Copy any image assets that exist in branding/
+const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.bmp'];
+const brandingFiles = fs.readdirSync(BRANDING_DIR);
+const copiedImages = [];
+for (const file of brandingFiles) {
+  if (IMAGE_EXTS.includes(path.extname(file).toLowerCase())) {
+    fs.copyFileSync(
+      path.join(BRANDING_DIR, file),
+      path.join(PUBLIC_BRANDING_DIR, file)
+    );
+    copiedImages.push(file);
+  }
+}
+if (copiedImages.length > 0) {
+  console.log(`✅ Copied ${copiedImages.length} image(s) → app/public/branding/: ${copiedImages.join(', ')}`);
+}
+
 console.log('\n✨ Branding synced successfully!\n');
