@@ -215,10 +215,15 @@ async function main() {
   const existing = readJsonIfExists(deployConfigPath);
   const host = await prompt(rl, "VPS IP address", existing.host || "");
   const user = await prompt(rl, "SSH user", existing.user || "root");
-  let port = parseInt(await prompt(rl, "SSH port", String(existing.port || 22)), 10);
-  if (Number.isNaN(port) || port <= 0 || port > 65535) {
-    console.warn("Invalid SSH port. Defaulting to 22.");
-    port = 22;
+  let port = 22;
+  while (true) {
+    const portInput = await prompt(rl, "SSH port", String(existing.port || 22));
+    const parsed = parseInt(portInput, 10);
+    if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 65535) {
+      port = parsed;
+      break;
+    }
+    console.warn("Invalid SSH port. Please enter a number between 1 and 65535.");
   }
   const remotePath = await prompt(
     rl,
