@@ -418,33 +418,35 @@ function Install-Rsync {
     Write-Status "rsync not found. Installing for efficient VPS deploys..." -Type "Info"
     Write-Status "(Without rsync, deploy falls back to scp which re-uploads all files each time)" -Type "Warning"
 
-    # Try Scoop first - no admin required
-    if ($UseScoop -or (Test-Command "scoop")) {
-        if (-not (Test-Command "scoop")) {
-            Install-Scoop | Out-Null
+    # Install via Scoop (no admin required). Install Scoop first if needed.
+    if (-not (Test-Command "scoop")) {
+        Write-Status "Installing Scoop to get rsync (no admin required)..." -Type "Info"
+        Install-Scoop | Out-Null
+    }
+
+    if (Test-Command "scoop") {
+        try {
+            Write-Status "Installing rsync via Scoop..." -Type "Info"
+            scoop install rsync
+            # Refresh PATH so rsync is visible in this session
+            $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
+            if (Test-Command "rsync") {
+                Write-Status "rsync installed successfully via Scoop" -Type "Success"
+                return $true
+            }
         }
-        if (Test-Command "scoop") {
-            try {
-                Write-Status "Installing rsync via Scoop..." -Type "Info"
-                scoop install rsync
-                if (Test-Command "rsync") {
-                    Write-Status "rsync installed successfully via Scoop" -Type "Success"
-                    return $true
-                }
-            }
-            catch {
-                Write-Status "Scoop install failed: $_" -Type "Warning"
-            }
+        catch {
+            Write-Status "Scoop rsync install failed: $_" -Type "Warning"
         }
     }
 
-    # Try winget (cwrsync - standalone rsync.exe for Windows)
+    # Fallback: cwrsync via winget
     if (Test-Command "winget") {
         try {
-            Write-Status "Installing cwrsync via winget..." -Type "Info"
+            Write-Status "Trying cwrsync via winget..." -Type "Info"
             winget install Itefix.cwRsync --accept-source-agreements --accept-package-agreements
 
-            # cwrsync installs to a versioned dir; refresh PATH
+            # cwrsync installs to a versioned dir; find and add to PATH
             $cwrsyncDir = Get-ChildItem "${env:ProgramFiles}\cwRsync*" -Directory -ErrorAction SilentlyContinue |
                           Sort-Object Name -Descending | Select-Object -First 1
             if ($cwrsyncDir) {
@@ -459,14 +461,16 @@ function Install-Rsync {
             }
         }
         catch {
-            Write-Status "winget cwrsync install failed: $_" -Type "Warning"
+            Write-Status "cwrsync winget install failed: $_" -Type "Warning"
         }
     }
 
     Write-Status "Could not install rsync automatically." -Type "Warning"
     Write-Status "Deploy will use scp (works but uploads all files each time)." -Type "Warning"
-    Write-Status "To fix later: install Scoop (https://scoop.sh) then run: scoop install rsync" -Type "Info"
-    return $true  # Optional - don't block setup
+    Write-Status "To install manually: open PowerShell and run:" -Type "Info"
+    Write-Status "  iex (new-object net.webclient).downloadstring('https://get.scoop.sh')" -Type "Info"
+    Write-Status "  scoop install rsync" -Type "Info"
+    return $false  # Not installed - summary will show as optional/warning
 }
 
 function Install-TauriCLI {
