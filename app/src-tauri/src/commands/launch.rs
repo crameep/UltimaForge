@@ -10,7 +10,8 @@ use crate::cuo_settings::write_cuo_settings;
 use crate::launcher::{ClientLauncher, LaunchConfig};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
+use tokio::time::{sleep, Duration};
 use tracing::{error, info, warn};
 
 /// Request for launching the game.
@@ -22,7 +23,7 @@ pub struct LaunchGameRequest {
     /// Whether to close the launcher after launching.
     #[serde(default)]
     pub close_after_launch: Option<bool>,
-    /// Number of client instances to launch (1-5).
+    /// Number of client instances to launch (1-3).
     #[serde(default = "default_client_count")]
     pub client_count: u8,
     /// Which server to connect to.
@@ -81,6 +82,7 @@ pub struct ValidateClientResponse {
 #[tauri::command]
 pub async fn launch_game(
     request: Option<LaunchGameRequest>,
+    app_handle: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<LaunchResponse, String> {
     let request = request.unwrap_or_default();
@@ -123,7 +125,7 @@ pub async fn launch_game(
         .unwrap_or_else(|| "client.exe".to_string());
 
     // Clamp client count to valid range
-    let client_count = request.client_count.clamp(1, 5) as usize;
+    let client_count = request.client_count.clamp(1, 3) as usize;
 
     // Create launcher
     let mut config = LaunchConfig::new(&executable);
@@ -147,7 +149,7 @@ pub async fn launch_game(
 
     launcher_config.selected_server = request.server_choice.clone();
     launcher_config.selected_assistant = request.assistant_choice.clone();
-    launcher_config.client_count = request.client_count.clamp(1, 5);
+    launcher_config.client_count = request.client_count.clamp(1, 3);
     state.set_launcher_config(launcher_config.clone());
     let config_path = default_config_path(&brand_config.product.server_name);
     if let Err(e) = launcher_config.save(&config_path) {
@@ -165,21 +167,29 @@ pub async fn launch_game(
         }
     }
 
+    state.set_running_clients(0);
+
     let mut first_pid = None;
     let mut launched = 0usize;
 
     for i in 0..client_count {
         let launcher = ClientLauncher::with_config(&install_path, config.clone());
-        match launcher.launch() {
-            Ok(result) if result.success => {
+        match launcher.spawn_child() {
+            Ok(mut child) => {
+                let pid = child.id();
                 if first_pid.is_none() {
-                    first_pid = result.pid;
+                    first_pid = Some(pid);
                 }
                 launched += 1;
-                info!("Client {} launched (PID {:?})", i + 1, result.pid);
-            }
-            Ok(result) => {
-                warn!("Client {} failed to launch: {:?}", i + 1, result.error_message);
+                state.increment_running_clients();
+                info!("Client {} launched (PID {})", i + 1, pid);
+
+                let handle = app_handle.clone();
+                std::thread::spawn(move || {
+                    let _ = child.wait();
+                    let app_state = handle.state::<AppState>();
+                    app_state.decrement_running_clients();
+                });
             }
             Err(e) => {
                 warn!("Client {} error: {}", i + 1, e);
@@ -187,7 +197,7 @@ pub async fn launch_game(
         }
 
         if i + 1 < client_count {
-            std::thread::sleep(std::time::Duration::from_millis(300));
+            sleep(Duration::from_millis(300)).await;
         }
     }
 
@@ -203,8 +213,6 @@ pub async fn launch_game(
             running_clients: 0,
         });
     }
-
-    state.set_running_clients(launched);
 
     let should_close = client_count == 1
         && request

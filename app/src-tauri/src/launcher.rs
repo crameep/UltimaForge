@@ -285,6 +285,11 @@ impl ClientLauncher {
         self.launch_with_args(&self.config.args)
     }
 
+    /// Spawns the client process without waiting and returns the child handle.
+    pub fn spawn_child(&self) -> Result<Child, LaunchError> {
+        self.spawn_child_with_args(&self.config.args)
+    }
+
     /// Launches the client executable with custom arguments.
     ///
     /// # Arguments
@@ -295,6 +300,20 @@ impl ClientLauncher {
     ///
     /// A `LaunchResult` containing the process ID or error information.
     pub fn launch_with_args(&self, args: &[String]) -> Result<LaunchResult, LaunchError> {
+        let child = self.spawn_child_with_args(args)?;
+        let pid = child.id();
+        info!("Client launched successfully with PID: {}", pid);
+
+        // If configured to wait, do so
+        if self.config.wait_for_exit {
+            self.wait_for_child(child, pid)
+        } else {
+            Ok(LaunchResult::success(pid))
+        }
+    }
+
+    /// Spawns the client executable with custom arguments and returns the child handle.
+    pub fn spawn_child_with_args(&self, args: &[String]) -> Result<Child, LaunchError> {
         // Validate before launching
         self.validate()?;
 
@@ -329,7 +348,7 @@ impl ClientLauncher {
         command.stderr(Stdio::null());
 
         // Spawn the process
-        let child = command.spawn().map_err(|e| {
+        command.spawn().map_err(|e| {
             error!("Failed to spawn client process: {}", e);
 
             // Check for specific error types
@@ -340,17 +359,7 @@ impl ClientLauncher {
             } else {
                 LaunchError::ProcessSpawnFailed { source: e }
             }
-        })?;
-
-        let pid = child.id();
-        info!("Client launched successfully with PID: {}", pid);
-
-        // If configured to wait, do so
-        if self.config.wait_for_exit {
-            self.wait_for_child(child, pid)
-        } else {
-            Ok(LaunchResult::success(pid))
-        }
+        })
     }
 
     /// Waits for a child process to complete.

@@ -96,13 +96,15 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
   const [runningClients, setRunningClients] = useState<number>(0);
 
   useEffect(() => {
-    getCuoConfig().then((cfg) => {
-      if (cfg) {
-        setCuoConfig(cfg);
-        setSelectedServer(cfg.default_server);
-        setSelectedAssistant(cfg.default_assistant);
-      }
-    });
+    getCuoConfig()
+      .then((cfg) => {
+        if (cfg) {
+          setCuoConfig(cfg);
+          setSelectedServer("live");
+          setSelectedAssistant(cfg.default_assistant);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   /**
@@ -212,7 +214,7 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
   }, []);
 
   const handleSetClientCount = useCallback((count: number) => {
-    setClientCount(Math.min(5, Math.max(1, count)));
+    setClientCount(Math.min(3, Math.max(1, count)));
   }, []);
 
   // Assemble state object

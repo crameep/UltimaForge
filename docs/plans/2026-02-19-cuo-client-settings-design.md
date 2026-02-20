@@ -121,7 +121,7 @@ Controls sit between the hero/patch notes area and the launch button:
 - **Assistant dropdown** — shows only assistants listed in
   `available_assistants`. Rendered as a read-only label if only one is
   configured.
-- **Client count spinner** `[−] N [+]` — minimum 1, maximum 5. When N > 1,
+- **Client count spinner** `[−] N [+]` — minimum 1, maximum 3. When N > 1,
   `close_on_launch` is ignored and the launcher stays open.
 - **Status bar** — shows "N clients running" when multiple instances are active.
 

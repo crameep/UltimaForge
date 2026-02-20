@@ -486,7 +486,7 @@ pub struct LauncherConfig {
     #[serde(rename = "selectedAssistant", default)]
     pub selected_assistant: AssistantKind,
 
-    /// Number of client instances to launch (1-5).
+    /// Number of client instances to launch (1-3).
     #[serde(rename = "clientCount", default = "default_client_count")]
     pub client_count: u8,
 
@@ -1144,8 +1144,9 @@ mod tests {
     #[test]
     fn test_launcher_config_client_count_capped() {
         let mut config = LauncherConfig::new();
-        config.client_count = config.client_count.min(5);
-        assert!(config.client_count <= 5);
+        config.client_count = 255;
+        config.client_count = config.client_count.clamp(1, 3);
+        assert_eq!(config.client_count, 3);
     }
 
     #[test]

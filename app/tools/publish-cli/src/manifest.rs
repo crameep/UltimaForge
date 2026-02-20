@@ -20,7 +20,7 @@ use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::Path;
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
 /// Errors that can occur during manifest generation.
@@ -272,6 +272,11 @@ pub fn generate_manifest(
             executable_found = true;
         }
 
+        if is_excluded_path(&relative_path_str) {
+            warn!("Excluding file from manifest: {}", relative_path_str);
+            continue;
+        }
+
         // Get file metadata for size
         let metadata = fs::metadata(path).map_err(|e| ManifestError::ReadFileFailed {
             path: relative_path_str.clone(),
@@ -335,6 +340,44 @@ pub fn generate_manifest(
         total_size,
         version: version.to_string(),
     })
+}
+
+fn is_excluded_path(relative_path: &str) -> bool {
+    let normalized = relative_path.replace('\\', "/");
+    let lower = normalized.to_ascii_lowercase();
+
+    const EXCLUDED_FILES: &[&str] = &[
+        "settings.json",
+        "data/client/player-map-markers.csv",
+        "data/client/usermarkers.usr",
+        "data/profiles/lastcharacter.json",
+        "login.cfg",
+        "unchained.exe.log",
+        "thumbs.db",
+    ];
+
+    const EXCLUDED_DIR_PREFIXES: &[&str] = &[
+        "data/client/journallogs/",
+        "data/client/screenshots/",
+        "data/profiles/",
+        "data/plugins/razor/profiles/",
+        "data/plugins/razor/.logs/",
+        "data/plugins/razorenhanced/profiles/",
+        "data/plugins/razorenhanced/scripts/",
+        "data/plugins/razorenhanced/backup/",
+        "data/plugins/razorenhanced/.beads/",
+        "logs/",
+        "macros/",
+        "temp/",
+    ];
+
+    if EXCLUDED_FILES.iter().any(|f| *f == lower) {
+        return true;
+    }
+
+    EXCLUDED_DIR_PREFIXES
+        .iter()
+        .any(|prefix| lower.starts_with(prefix))
 }
 
 /// Formats a byte count as a human-readable string.
@@ -453,6 +496,70 @@ mod tests {
         let manifest: Manifest = serde_json::from_str(&manifest_json).unwrap();
 
         assert!(manifest.files.iter().any(|f| f.path == "data/map0.mul"));
+    }
+
+    #[test]
+    fn test_generate_manifest_excludes_settings_json() {
+        let temp_dir = tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        fs::create_dir(&source_dir).unwrap();
+
+        fs::write(source_dir.join("client.exe"), b"executable").unwrap();
+        fs::write(source_dir.join("settings.json"), b"user settings").unwrap();
+
+        let output_path = temp_dir.path().join("manifest.json");
+
+        let result = generate_manifest(
+            source_dir.to_str().unwrap(),
+            output_path.to_str().unwrap(),
+            "1.0.0",
+            "client.exe",
+        )
+        .unwrap();
+
+        assert_eq!(result.file_count, 1);
+
+        let manifest_json = fs::read_to_string(&output_path).unwrap();
+        let manifest: Manifest = serde_json::from_str(&manifest_json).unwrap();
+
+        assert!(manifest.files.iter().any(|f| f.path == "client.exe"));
+        assert!(!manifest.files.iter().any(|f| f.path == "settings.json"));
+    }
+
+    #[test]
+    fn test_generate_manifest_excludes_profile_and_log_dirs() {
+        let temp_dir = tempdir().unwrap();
+        let source_dir = temp_dir.path().join("source");
+        let razor_profiles = source_dir.join("Data/Plugins/Razor/Profiles");
+        let logs_dir = source_dir.join("Logs");
+        fs::create_dir_all(&razor_profiles).unwrap();
+        fs::create_dir_all(&logs_dir).unwrap();
+
+        fs::write(source_dir.join("client.exe"), b"executable").unwrap();
+        fs::write(razor_profiles.join("chars.lst"), b"chars").unwrap();
+        fs::write(logs_dir.join("launcher.log"), b"log").unwrap();
+
+        let output_path = temp_dir.path().join("manifest.json");
+
+        let result = generate_manifest(
+            source_dir.to_str().unwrap(),
+            output_path.to_str().unwrap(),
+            "1.0.0",
+            "client.exe",
+        )
+        .unwrap();
+
+        assert_eq!(result.file_count, 1);
+
+        let manifest_json = fs::read_to_string(&output_path).unwrap();
+        let manifest: Manifest = serde_json::from_str(&manifest_json).unwrap();
+
+        assert!(manifest.files.iter().any(|f| f.path == "client.exe"));
+        assert!(!manifest
+            .files
+            .iter()
+            .any(|f| f.path == "Data/Plugins/Razor/Profiles/chars.lst"));
+        assert!(!manifest.files.iter().any(|f| f.path == "Logs/launcher.log"));
     }
 
     #[test]

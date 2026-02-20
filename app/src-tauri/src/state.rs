@@ -362,6 +362,28 @@ impl AppState {
         }
     }
 
+    /// Increments the running client count.
+    pub fn increment_running_clients(&self) -> usize {
+        let mut inner = self.inner.lock().unwrap();
+        inner.running_clients = inner.running_clients.saturating_add(1);
+        inner.is_game_running = true;
+        inner.phase = AppPhase::GameRunning;
+        inner.running_clients
+    }
+
+    /// Decrements the running client count.
+    pub fn decrement_running_clients(&self) -> usize {
+        let mut inner = self.inner.lock().unwrap();
+        if inner.running_clients > 0 {
+            inner.running_clients -= 1;
+        }
+        inner.is_game_running = inner.running_clients > 0;
+        if inner.running_clients == 0 && inner.phase == AppPhase::GameRunning {
+            inner.phase = AppPhase::Ready;
+        }
+        inner.running_clients
+    }
+
     /// Sets whether the game is currently running.
     pub fn set_game_running(&self, running: bool) {
         let mut inner = self.inner.lock().unwrap();

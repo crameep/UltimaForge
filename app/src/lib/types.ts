@@ -254,7 +254,7 @@ export interface LaunchGameRequest {
   args?: string[];
   /** Whether to close the launcher after launching */
   close_after_launch?: boolean;
-  /** Number of client instances to open (1-5) */
+  /** Number of client instances to open (1-3) */
   client_count?: number;
   /** Which server to connect to */
   server_choice?: ServerChoice;

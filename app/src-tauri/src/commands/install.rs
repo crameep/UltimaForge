@@ -5,7 +5,8 @@
 //! - Validating installation paths
 //! - Performing full installation
 
-use crate::config::{default_config_path, LauncherConfig};
+use crate::config::{default_config_path, LauncherConfig, ServerChoice};
+use crate::cuo_settings::write_cuo_settings;
 use crate::installer::{detect_existing_installation, Installer, PathValidationResult};
 use crate::state::{AppState, AppStatus};
 use serde::{Deserialize, Serialize};
@@ -228,6 +229,20 @@ pub async fn start_install(
             // Update launcher config
             let mut launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
             launcher_config.set_installed(install_path, &version);
+            if let Some(cuo_config) = &brand_config.cuo {
+                launcher_config.selected_server = ServerChoice::Live;
+                launcher_config.selected_assistant = cuo_config.default_assistant.clone();
+                launcher_config.client_count = 1;
+
+                if let Err(e) = write_cuo_settings(
+                    &install_path,
+                    cuo_config,
+                    &ServerChoice::Live,
+                    &cuo_config.default_assistant,
+                ) {
+                    warn!("Failed to write CUO settings after install: {}", e);
+                }
+            }
             state.set_launcher_config(launcher_config.clone());
 
             // Save config to disk (Bug fix: was only in-memory before)

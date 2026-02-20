@@ -31,7 +31,7 @@ export function CuoControls({
   onAssistantChange,
   disabled,
 }: CuoControlsProps) {
-  const showServerDropdown = config.test_server !== null;
+  const showServerDropdown = false;
   const showAssistantDropdown = config.available_assistants.length > 1;
 
   return (

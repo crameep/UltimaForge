@@ -72,7 +72,7 @@ fn assistant_plugins(
     install_path: &Path,
     assistant: &AssistantKind,
 ) -> Result<Vec<Value>, CuoSettingsError> {
-    let path_str = |rel: &str| -> Result<Value, CuoSettingsError> {
+    let path_value = |rel: &Path| -> Result<Value, CuoSettingsError> {
         let p = install_path.join(rel);
         Ok(Value::String(
             p.to_str().ok_or(CuoSettingsError::InvalidPath)?.to_string(),
@@ -80,10 +80,20 @@ fn assistant_plugins(
     };
 
     match assistant {
-        AssistantKind::RazorEnhanced => Ok(vec![path_str(
-            "Data/Plugins/RazorEnhanced/RazorEnhanced.exe",
+        AssistantKind::RazorEnhanced => Ok(vec![path_value(
+            Path::new("Data")
+                .join("Plugins")
+                .join("RazorEnhanced")
+                .join("RazorEnhanced.exe")
+                .as_path(),
         )?]),
-        AssistantKind::Razor => Ok(vec![path_str("Data/Plugins/Razor/Razor.exe")?]),
+        AssistantKind::Razor => Ok(vec![path_value(
+            Path::new("Data")
+                .join("Plugins")
+                .join("Razor")
+                .join("Razor.exe")
+                .as_path(),
+        )?]),
         AssistantKind::None => Ok(vec![]),
     }
 }

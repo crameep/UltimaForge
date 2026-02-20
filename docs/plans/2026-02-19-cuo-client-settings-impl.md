@@ -211,8 +211,8 @@ fn test_launcher_config_cuo_serialization() {
 #[test]
 fn test_launcher_config_client_count_capped() {
     let mut config = LauncherConfig::new();
-    config.client_count = config.client_count.min(5);
-    assert!(config.client_count <= 5);
+    config.client_count = config.client_count.min(3);
+    assert!(config.client_count <= 3);
 }
 ```
 
@@ -237,7 +237,7 @@ pub selected_server: ServerChoice,
 #[serde(rename = "selectedAssistant", default)]
 pub selected_assistant: AssistantKind,
 
-/// Number of client instances to launch (1-5).
+/// Number of client instances to launch (1-3).
 #[serde(rename = "clientCount", default = "default_client_count")]
 pub client_count: u8,
 ```
@@ -591,7 +591,7 @@ pub struct LaunchGameRequest {
     pub args: Vec<String>,
     #[serde(default)]
     pub close_after_launch: Option<bool>,
-    /// Number of client instances to launch (1-5).
+    /// Number of client instances to launch (1-3).
     #[serde(default = "default_client_count")]
     pub client_count: u8,
     /// Which server to connect to.
@@ -628,7 +628,7 @@ pub struct LaunchResponse {
 
 ```rust
 // Clamp client_count to valid range
-let client_count = request.client_count.clamp(1, 5) as usize;
+let client_count = request.client_count.clamp(1, 3) as usize;
 
 // Write settings.json with player's current choices before spawning
 if let Some(cuo_config) = &brand_config.cuo {
@@ -821,7 +821,7 @@ running_clients: number;
 **Step 3: Update `LaunchGameRequest`** — add:
 
 ```typescript
-/** Number of client instances to open (1-5). */
+/** Number of client instances to open (1-3). */
 client_count?: number;
 /** Which server to connect to. */
 server_choice?: ServerChoice;
