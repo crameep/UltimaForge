@@ -418,7 +418,7 @@ function Install-Rsync {
     Write-Status "rsync not found. Installing for efficient VPS deploys..." -Type "Info"
     Write-Status "(Without rsync, deploy falls back to scp which re-uploads all files each time)" -Type "Warning"
 
-    # Try Scoop first — no admin required
+    # Try Scoop first - no admin required
     if ($UseScoop -or (Test-Command "scoop")) {
         if (-not (Test-Command "scoop")) {
             Install-Scoop | Out-Null
@@ -438,7 +438,7 @@ function Install-Rsync {
         }
     }
 
-    # Try winget (cwrsync — standalone rsync.exe for Windows)
+    # Try winget (cwrsync - standalone rsync.exe for Windows)
     if (Test-Command "winget") {
         try {
             Write-Status "Installing cwrsync via winget..." -Type "Info"
@@ -466,7 +466,7 @@ function Install-Rsync {
     Write-Status "Could not install rsync automatically." -Type "Warning"
     Write-Status "Deploy will use scp (works but uploads all files each time)." -Type "Warning"
     Write-Status "To fix later: install Scoop (https://scoop.sh) then run: scoop install rsync" -Type "Info"
-    return $true  # Optional — don't block setup
+    return $true  # Optional - don't block setup
 }
 
 function Install-TauriCLI {
@@ -554,12 +554,12 @@ function Show-Summary {
         }
     }
 
-    # rsync is optional — show status but don't fail
+    # rsync is optional - show status but don't fail
     if ($Results["rsync"]) {
         Write-Host "  [+] rsync (efficient VPS deploy)" -ForegroundColor $Colors.Green
     }
     else {
-        Write-Host "  [-] rsync (optional — deploy falls back to scp)" -ForegroundColor $Colors.Yellow
+        Write-Host "  [-] rsync (optional - deploy falls back to scp)" -ForegroundColor $Colors.Yellow
     }
 
     Write-Host ""
