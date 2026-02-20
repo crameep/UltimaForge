@@ -70,8 +70,8 @@
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
                  Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
                  'Helvetica Neue', sans-serif;
-  /* Display font for headings — Cinzel gives a Roman/inscribed character fitting a UO launcher */
-  --font-family-display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  /* Display font for headings — Eagle Lake gives a carved/inscribed character fitting a UO launcher */
+  --font-family-display: 'Eagle Lake', Georgia, 'Times New Roman', serif;
   --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code',
                       Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
 

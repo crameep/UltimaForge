@@ -1,8 +1,8 @@
 /* Import theme variables */
 @import './styles/theme.css';
 
-/* Display font — Roman inscribed character for headings */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+/* Display font — carved/inscribed character for headings */
+@import url('https://fonts.googleapis.com/css2?family=Eagle+Lake&display=swap');
 
 /* Base styles */
 * {
