@@ -267,6 +267,9 @@ async function main() {
   const brand = fs.existsSync(brandPath) ? readJson(brandPath) : null;
   const defaultUpdateUrl = brand?.updateUrl ?? "http://localhost:8080";
 
+  const defaultGameSource = path.join(repoRoot, "server-data", "client");
+  const defaultGameKey = path.join(repoRoot, "server-data", "keys", "private.key");
+
   let gameSource = "";
   let gameKey = "";
   let gameVersion = "";
@@ -277,13 +280,13 @@ async function main() {
     gameSource = await promptForValue(
       rl,
       "Game client source folder",
-      args["game-source"] || cache.gameSource || "",
+      args["game-source"] || cache.gameSource || defaultGameSource,
       true
     );
     gameKey = await promptForValue(
       rl,
       "Private key path for game updates",
-      args["game-key"] || cache.gameKey || "",
+      args["game-key"] || cache.gameKey || defaultGameKey,
       true
     );
     gameVersion = await promptForValue(
@@ -311,10 +314,7 @@ async function main() {
     }
   }
 
-  const legacyUpdatesDir = path.join(repoRoot, "updates");
-  const defaultUpdatesDir = fs.existsSync(legacyUpdatesDir)
-    ? legacyUpdatesDir
-    : path.join(repoRoot, "server-data", "updates");
+  const defaultUpdatesDir = path.join(repoRoot, "server-data", "publish");
   const updatesDir = resolvePath(
     args["updates-dir"] || cache.updatesDir || defaultUpdatesDir
   );

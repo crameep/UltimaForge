@@ -115,6 +115,15 @@ This will:
 - Starts host server and launcher in a single terminal
 - Generates test updates automatically if missing
 
+### [H] Setup VPS ⭐ **First-time only**
+- Generates an SSH deploy keypair
+- Guides you through VPS + domain setup
+- Installs Caddy (automatic HTTPS) on your VPS
+
+### [I] Deploy to VPS
+- Syncs `server-data/publish/` to your VPS
+- Run after Option E to push updates live
+
 ### [0] Exit
 - Closes the menu
 
@@ -179,6 +188,24 @@ src-tauri/target/release/
 └── bundle/msi/*.msi      ← Installer
 ```
 
+**Server publish output** (deploy this to your VPS):
+```
+server-data/publish/
+├── manifest.json
+├── manifest.sig
+├── files/          ← content-addressed game file blobs
+└── launcher/       ← launcher update metadata
+```
+
+**Game client source** (drop your ClassicUO files here):
+```
+server-data/client/
+├── ClassicUO.exe
+├── Files/
+├── Data/
+└── ...
+```
+
 ---
 
 ## 🎯 Common Workflows
@@ -210,6 +237,21 @@ npm run dev:all
 2. Run ultimaforge.bat
 3. Press 7 (build)
 4. Get .exe from src-tauri/target/release/
+```
+
+### Publish Game Update (Production)
+```
+1. Drop new game files into server-data/client/ (overwrite old ones)
+2. Run ultimaforge.bat → Option E (Publish)
+3. Run ultimaforge.bat → Option I (Deploy to VPS)
+```
+
+### First-Time VPS Setup
+```
+1. Get a VPS (Digital Ocean, Hetzner, etc.) with Ubuntu 22.04
+2. Run ultimaforge.bat → Option H (Setup VPS)
+3. Follow the guided prompts - the wizard installs Caddy and configures HTTPS
+4. Point your domain's A record to the VPS IP
 ```
 
 ---

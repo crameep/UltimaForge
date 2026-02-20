@@ -35,6 +35,8 @@ if /i "%choice%"=="D" goto SERVER_OWNER_WIZARD
 if /i "%choice%"=="E" goto PUBLISH_ALL
 if /i "%choice%"=="F" goto DEV_ALL
 if /i "%choice%"=="G" goto PUBLISH_LAUNCHER_ONLY
+if /i "%choice%"=="H" goto SETUP_VPS
+if /i "%choice%"=="I" goto DEPLOY_VPS
 if /i "%choice%"=="X" goto END
 
 echo Invalid choice: %choice%
@@ -66,11 +68,13 @@ echo  [D] Server Owner Wizard (branding + keys)
 echo  [E] Publish All (game + launcher)
 echo  [F] Dev All-in-One (server + launcher)
 echo  [G] Publish Launcher Only (fast)
+echo  [H] Setup VPS (first-time)
+echo  [I] Deploy to VPS
 echo  [X] Exit
 echo.
 echo ========================================
 echo.
-set /p choice="Enter your choice (0-9, A, B, C, D, E, F, G, X): "
+set /p choice="Enter your choice (0-9, A-I, X): "
 
 if /i "%choice%"=="0" goto INSTALL_PREREQS
 if /i "%choice%"=="1" goto QUICK_START
@@ -89,6 +93,8 @@ if /i "%choice%"=="D" goto SERVER_OWNER_WIZARD
 if /i "%choice%"=="E" goto PUBLISH_ALL
 if /i "%choice%"=="F" goto DEV_ALL
 if /i "%choice%"=="G" goto PUBLISH_LAUNCHER_ONLY
+if /i "%choice%"=="H" goto SETUP_VPS
+if /i "%choice%"=="I" goto DEPLOY_VPS
 if /i "%choice%"=="X" goto END
 
 echo Invalid choice. Please try again.
@@ -704,7 +710,7 @@ echo ========================================
 echo.
 echo This will publish game updates and launcher update metadata.
 echo.
-node app\scripts\publish-all.js --updates-dir app\test-updates --launcher-base-url http://localhost:8080
+node app\scripts\publish-all.js
 
 echo.
 echo Press any key to return to menu...
@@ -724,7 +730,47 @@ echo.
 echo This will build and publish launcher updates only.
 echo (Skips game update manifest/blob generation.)
 echo.
-node app\scripts\publish-all.js --launcher-only true --updates-dir app\test-updates --launcher-base-url http://localhost:8080
+node app\scripts\publish-all.js --launcher-only true
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM SETUP VPS (FIRST-TIME)
+REM ============================================================================
+:SETUP_VPS
+cls
+echo.
+echo ========================================
+echo    Setup VPS (First-Time)
+echo ========================================
+echo.
+echo This will guide you through setting up a VPS to host game updates.
+echo You will need a VPS (e.g. Digital Ocean) and a domain name pointed at it.
+echo.
+node app\scripts\setup-vps.js
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM DEPLOY TO VPS
+REM ============================================================================
+:DEPLOY_VPS
+cls
+echo.
+echo ========================================
+echo    Deploy to VPS
+echo ========================================
+echo.
+echo This will sync your published files to your VPS.
+echo Run Option E first to publish, then Option I to deploy.
+echo.
+node app\scripts\deploy.js
 
 echo.
 echo Press any key to return to menu...

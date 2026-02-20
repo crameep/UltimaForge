@@ -5,7 +5,8 @@
 /app/src-tauri/target/
 /app/src-tauri/gen/
 /app/tools/*/target/
-/server-data/
+/server-data/*
+!/server-data/README.md
 /keys/
 /updates/
 
