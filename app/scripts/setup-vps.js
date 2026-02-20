@@ -111,22 +111,30 @@ function runRemoteSetup(host, user, port, keyPath, remotePath, domain, hasDomain
   const script = `#!/bin/bash
 set -e
 export DEBIAN_FRONTEND=noninteractive
-echo "[1/6] Updating package index..."
+echo "[1/7] Updating package index..."
 apt-get update -y -qq
-echo "[2/6] Installing Caddy dependencies..."
+echo "[2/7] Installing Caddy dependencies..."
 apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl gnupg
-echo "[3/6] Adding Caddy apt repository..."
+echo "[3/7] Adding Caddy apt repository..."
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \\
   | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg 2>/dev/null
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \\
   | tee /etc/apt/sources.list.d/caddy-stable.list > /dev/null
 apt-get update -y -qq
-echo "[4/6] Installing Caddy..."
+echo "[4/7] Installing Caddy..."
 apt-get install -y -qq caddy
-echo "[5/6] Creating serve directory: ${remotePath}"
+echo "[5/7] Opening firewall ports..."
+if command -v ufw > /dev/null 2>&1; then
+  ufw allow 80/tcp
+  ufw allow 443/tcp
+  echo "ufw: ports 80 and 443 open"
+else
+  echo "ufw not found - skipping (configure your firewall manually if needed)"
+fi
+echo "[6/7] Creating serve directory: ${remotePath}"
 mkdir -p '${remotePath}'
 chown -R caddy:caddy '${remotePath}' 2>/dev/null || true
-echo "[6/6] Writing Caddyfile..."
+echo "[7/7] Writing Caddyfile..."
 cat > /etc/caddy/Caddyfile << 'CADDYEOF'
 ${caddyDirective} {
     root * ${remotePath}
