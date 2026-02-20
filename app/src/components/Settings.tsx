@@ -429,6 +429,7 @@ export function Settings({ onBack }: SettingsProps) {
                   </button>
                   <button
                     className="settings-remove-confirm-btn"
+                    disabled={isAnyOperationRunning}
                     onClick={actions.removeGameFiles}
                   >
                     Yes, Remove Files

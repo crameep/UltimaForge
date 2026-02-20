@@ -468,6 +468,8 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     setIsVerifying(false);
     setIsClearing(false);
     setIsRepairing(false);
+    setIsConfirmingRemove(false);
+    setIsRemoving(false);
     setIsAdmin(false);
     setSettings(null);
     setInstallPath(null);

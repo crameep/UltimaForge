@@ -33,8 +33,29 @@
     ; Trim trailing newline/CR from the path
     ${TrimNewLines} "$2" $2
 
-    ; Skip if path is empty
+    ; Guard: reject empty path
     StrCmp "$2" "" no_game_files
+
+    ; Guard: reject paths <= 3 chars (e.g. "C:\" is 3 chars — a bare drive root)
+    StrLen $3 "$2"
+    IntCmp $3 3 no_game_files no_game_files path_length_ok
+    path_length_ok:
+
+    ; Guard: character at index 2 must be "\" — rejects bare "C:" or two-char junk
+    StrCpy $4 "$2" 1 2
+    StrCmp "$4" "\" has_subdirectory no_game_files
+    has_subdirectory:
+
+    ; Guard: reject well-known system paths.
+    ; StrCmp is case-insensitive in NSIS, so "c:\windows" matches "C:\Windows" etc.
+    StrCpy $5 "$2" 10
+    StrCmp "$5" "C:\Windows" no_game_files
+    StrCpy $5 "$2" 16
+    StrCmp "$5" "C:\Program Files" no_game_files
+    StrCpy $5 "$2" 24
+    StrCmp "$5" "C:\Program Files (x86)" no_game_files
+    StrCpy $5 "$2" 9
+    StrCmp "$5" "C:\System" no_game_files
 
     ; Ask the user
     MessageBox MB_YESNO|MB_ICONQUESTION \
