@@ -354,9 +354,8 @@ async function main() {
     : "";
   const launcherVersion =
     (args["launcher-version"] || "").trim() ||
-    cache.launcherVersion ||
-    gameVersion ||
     tauriVersion ||
+    gameVersion ||
     "1.0.0";
   const bundleDir = path.join(
     repoRoot,
@@ -496,7 +495,6 @@ async function main() {
     gameExecutable,
     updatesDir,
     launcherBinary,
-    launcherVersion,
     launcherTarget,
     launcherArch,
     launcherBaseUrl,
