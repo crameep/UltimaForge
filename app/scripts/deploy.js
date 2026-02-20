@@ -24,59 +24,91 @@ function exitWithError(msg) {
 }
 
 /**
- * Resolves the rsync executable path, checking PATH and common Windows
- * install locations (Scoop shims, cwRsync). Returns null if not found.
+ * Converts a Windows absolute path to a WSL /mnt/ path.
+ * e.g. "G:\foo\bar" -> "/mnt/g/foo/bar"
+ */
+function toWslPath(winPath) {
+  return winPath
+    .replace(/^([A-Za-z]):/, (_, d) => `/mnt/${d.toLowerCase()}`)
+    .replace(/\\/g, "/");
+}
+
+/**
+ * Resolves the rsync executable. Returns either:
+ *   { bin: "rsync", wsl: false }   - native rsync on PATH or known path
+ *   { bin: "wsl", wsl: true }      - rsync available inside WSL
+ *   null                           - not found anywhere
  */
 function findRsync() {
   // Check if rsync is already on PATH
   const probe = spawnSync("rsync", ["--version"], { stdio: "ignore" });
-  if (!probe.error) return "rsync";
+  if (!probe.error) return { bin: "rsync", wsl: false };
 
-  // Common Windows install locations
+  // Common Windows install locations (Scoop shims, cwRsync)
   const home = process.env.USERPROFILE || "";
   const progFiles = process.env.ProgramFiles || "C:\\Program Files";
   const progFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
 
   const candidates = [
-    // Scoop shims (can be .exe shim or .cmd wrapper)
     path.join(home, "scoop", "shims", "rsync.exe"),
     path.join(home, "scoop", "shims", "rsync.cmd"),
-    // Scoop app dir directly
     path.join(home, "scoop", "apps", "rsync", "current", "rsync.exe"),
-    // cwRsync versioned dirs under Program Files
-    ...["", "64"].flatMap((bits) =>
-      (bits ? [progFiles, progFilesX86] : [progFiles]).flatMap((base) => {
-        try {
-          return fs
-            .readdirSync(base)
-            .filter((d) => d.toLowerCase().startsWith("cwrsync"))
-            .map((d) => path.join(base, d, "bin", "rsync.exe"));
-        } catch {
-          return [];
-        }
-      })
-    ),
+    path.join(home, "scoop", "apps", "cwrsync", "current", "rsync.exe"),
+    ...[progFiles, progFilesX86].flatMap((base) => {
+      try {
+        return fs
+          .readdirSync(base)
+          .filter((d) => d.toLowerCase().startsWith("cwrsync"))
+          .map((d) => path.join(base, d, "bin", "rsync.exe"));
+      } catch {
+        return [];
+      }
+    }),
   ];
 
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) return { bin: candidate, wsl: false };
   }
+
+  // Last resort: use rsync inside WSL (very likely available on dev machines)
+  const wslProbe = spawnSync("wsl", ["which", "rsync"], { stdio: "pipe" });
+  if (!wslProbe.error && wslProbe.status === 0 && wslProbe.stdout.toString().trim()) {
+    return { bin: "wsl", wsl: true };
+  }
+
   return null;
 }
 
-function tryRsync(rsyncBin, user, host, port, keyPath, localDir, remotePath) {
-  const result = spawnSync(
-    rsyncBin,
-    [
+function tryRsync(rsync, user, host, port, keyPath, localDir, remotePath) {
+  let bin, args;
+
+  if (rsync.wsl) {
+    // Run rsync inside WSL, converting Windows paths to /mnt/... paths
+    const wslLocalDir = toWslPath(localDir);
+    const wslKeyPath = toWslPath(keyPath);
+    bin = "wsl";
+    args = [
+      "rsync",
+      "-avz",
+      "--delete",
+      "-e",
+      `ssh -i "${wslKeyPath}" -o StrictHostKeyChecking=accept-new -p ${port}`,
+      `${wslLocalDir}/`,
+      `${user}@${host}:${remotePath}/`,
+    ];
+  } else {
+    bin = rsync.bin;
+    args = [
       "-avz",
       "--delete",
       "-e",
       `ssh -i "${keyPath}" -o StrictHostKeyChecking=accept-new -p ${port}`,
       localDir + "/",
       `${user}@${host}:${remotePath}/`,
-    ],
-    { stdio: "inherit" }
-  );
+    ];
+  }
+
+  const result = spawnSync(bin, args, { stdio: "inherit" });
   if (result.status !== 0) {
     exitWithError("rsync failed. Check the output above.");
   }
@@ -175,10 +207,11 @@ console.log(`\nTarget: ${user}@${host}:${remotePath}`);
 console.log(`Update URL: ${displayUrl}`);
 console.log("\nSyncing files...\n");
 
-const rsyncBin = findRsync();
-if (rsyncBin) {
-  console.log(`Using rsync${rsyncBin !== "rsync" ? ` (${rsyncBin})` : ""}...`);
-  tryRsync(rsyncBin, user, host, port, deployKeyPath, publishDir, remotePath);
+const rsync = findRsync();
+if (rsync) {
+  const label = rsync.wsl ? "wsl rsync" : rsync.bin !== "rsync" ? rsync.bin : "rsync";
+  console.log(`Using ${label}...`);
+  tryRsync(rsync, user, host, port, deployKeyPath, publishDir, remotePath);
 } else {
   console.log("rsync not found - using scp instead (re-uploads all files).");
   console.log("Run Option 0 (Install Prerequisites) to install rsync for faster deploys.");

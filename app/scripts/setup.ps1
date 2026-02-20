@@ -433,70 +433,48 @@ function Install-Rsync {
 
     if (Test-Command "scoop") {
         try {
-            # Ensure the main bucket is present and up to date
-            Write-Status "Updating Scoop and adding main bucket..." -Type "Info"
-            scoop bucket add main 2>&1 | Out-Host
+            # Add extras bucket (has cwrsync) and update
+            Write-Status "Adding Scoop extras bucket..." -Type "Info"
+            scoop bucket add extras 2>&1 | Out-Host
             scoop update 2>&1 | Out-Host
 
-            Write-Status "Installing rsync via Scoop..." -Type "Info"
-            # Pipe to Out-Host so output goes to console but NOT to the function pipeline.
-            # (External command stdout is captured as function return value in PowerShell
-            # unless explicitly redirected, which breaks the boolean return value.)
-            scoop install rsync 2>&1 | Out-Host
+            # Try package names that are known to provide rsync on Windows via Scoop
+            $scoopPackages = @("rsync", "cwrsync")
+            foreach ($pkg in $scoopPackages) {
+                Write-Status "Trying: scoop install $pkg ..." -Type "Info"
+                scoop install $pkg 2>&1 | Out-Host
 
-            # Refresh PATH from user environment (Scoop adds its shims dir on install)
-            $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
+                # Refresh PATH so newly installed shims are visible
+                $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
+                $scoopShims = Join-Path $env:USERPROFILE "scoop\shims"
+                if (Test-Path $scoopShims) { $env:PATH = "$scoopShims;$env:PATH" }
 
-            # Also add shims dir explicitly in case PATH registry hasn't flushed yet
-            $scoopShims = Join-Path $env:USERPROFILE "scoop\shims"
-            if (Test-Path $scoopShims) {
-                $env:PATH = "$scoopShims;$env:PATH"
+                if ((Test-Command "rsync") -or (Test-Path (Join-Path $scoopShims "rsync.exe"))) {
+                    Write-Status "rsync installed successfully via Scoop ($pkg)" -Type "Success"
+                    return $true
+                }
             }
-
-            # Check by command and by shim file (Get-Command can miss freshly added paths)
-            $rsyncShim = Join-Path $scoopShims "rsync.exe"
-            if ((Test-Command "rsync") -or (Test-Path $rsyncShim)) {
-                Write-Status "rsync installed successfully via Scoop" -Type "Success"
-                return $true
-            }
-
-            Write-Status "scoop install rsync ran but rsync shim not found at: $rsyncShim" -Type "Warning"
         }
         catch {
             Write-Status "Scoop rsync install failed: $_" -Type "Warning"
         }
     }
 
-    # Fallback: cwrsync via winget
-    if (Test-Command "winget") {
-        try {
-            Write-Status "Trying cwrsync via winget..." -Type "Info"
-            winget install Itefix.cwRsync --accept-source-agreements --accept-package-agreements 2>&1 | Out-Host
-
-            # cwrsync installs to a versioned dir; find and add to PATH
-            $cwrsyncDir = Get-ChildItem "${env:ProgramFiles}\cwRsync*" -Directory -ErrorAction SilentlyContinue |
-                          Sort-Object Name -Descending | Select-Object -First 1
-            if ($cwrsyncDir) {
-                $env:PATH = "$($cwrsyncDir.FullName)\bin;$env:PATH"
-            }
-            $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" +
-                        [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
-
-            if (Test-Command "rsync") {
-                Write-Status "rsync installed successfully via cwrsync" -Type "Success"
-                return $true
-            }
-        }
-        catch {
-            Write-Status "cwrsync winget install failed: $_" -Type "Warning"
+    # Fallback: check if WSL has rsync (very likely on dev machines)
+    try {
+        $wslRsync = wsl which rsync 2>$null
+        if ($wslRsync -and $wslRsync.Trim() -ne "") {
+            Write-Status "rsync found in WSL at $($wslRsync.Trim()) - deploy will use 'wsl rsync'" -Type "Success"
+            return $true
         }
     }
+    catch { }
 
     Write-Status "Could not install rsync automatically." -Type "Warning"
     Write-Status "Deploy will use scp (works but uploads all files each time)." -Type "Warning"
-    Write-Status "To install manually: open PowerShell and run:" -Type "Info"
-    Write-Status "  iex (new-object net.webclient).downloadstring('https://get.scoop.sh')" -Type "Info"
-    Write-Status "  scoop install rsync" -Type "Info"
+    Write-Status "Options to fix:" -Type "Info"
+    Write-Status "  1. In WSL: sudo apt install rsync" -Type "Info"
+    Write-Status "  2. In PowerShell: scoop bucket add extras; scoop install cwrsync" -Type "Info"
     return $false  # Not installed - summary will show as optional/warning
 }
 
