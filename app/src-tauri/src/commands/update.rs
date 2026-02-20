@@ -5,7 +5,7 @@
 //! - Starting update process
 //! - Getting update progress
 
-use crate::config::default_config_path;
+use crate::config::{default_config_path, LauncherConfig};
 use crate::state::AppState;
 use crate::updater::{UpdateProgress, Updater};
 use serde::{Deserialize, Serialize};
@@ -102,6 +102,20 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
 
             // Reset phase appropriately (Ready if no update, UpdateAvailable if update found)
             state.end_update_check();
+
+            // Persist client_executable so the launch command works after a restart
+            // even when the update server is unreachable (cached manifest is lost).
+            {
+                let mut lconfig = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+                lconfig.client_executable = Some(result.client_executable.clone());
+                state.set_launcher_config(lconfig.clone());
+                let config_path = state.brand_config()
+                    .map(|b| default_config_path(&b.product.server_name))
+                    .unwrap_or_else(|| default_config_path("UltimaForge"));
+                if let Err(e) = lconfig.save(&config_path) {
+                    warn!("Failed to persist client_executable to config: {}", e);
+                }
+            }
 
             Ok(UpdateCheckResponse {
                 update_available: result.update_available,

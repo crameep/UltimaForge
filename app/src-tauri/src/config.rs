@@ -405,6 +405,12 @@ pub struct LauncherConfig {
     #[serde(rename = "checkUpdatesOnStartup", default = "default_check_updates")]
     pub check_updates_on_startup: bool,
 
+    /// Client executable name from the last successful manifest fetch.
+    /// Persisted so the launcher can start the correct binary after a restart
+    /// even when the update server is unreachable.
+    #[serde(rename = "clientExecutable", default)]
+    pub client_executable: Option<String>,
+
     /// Version of this configuration format.
     #[serde(rename = "configVersion", default = "default_config_version")]
     pub config_version: u32,

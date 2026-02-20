@@ -94,11 +94,12 @@ pub async fn launch_game(
         .clone()
         .ok_or("Installation path not set")?;
 
-    // Get client executable from manifest or default
+    // Get client executable: prefer cached manifest, then persisted config, then fallback
     let manifest = state.cached_manifest();
     let executable = manifest
         .as_ref()
         .map(|m| m.client_executable.clone())
+        .or_else(|| launcher_config.client_executable.clone())
         .unwrap_or_else(|| "client.exe".to_string());
 
     // Determine if we should close after launch
@@ -175,11 +176,12 @@ pub async fn validate_client(state: State<'_, AppState>) -> Result<ValidateClien
         .clone()
         .ok_or("Installation path not set")?;
 
-    // Get client executable from manifest or default
+    // Get client executable: prefer cached manifest, then persisted config, then fallback
     let manifest = state.cached_manifest();
     let executable = manifest
         .as_ref()
         .map(|m| m.client_executable.clone())
+        .or_else(|| launcher_config.client_executable.clone())
         .unwrap_or_else(|| "client.exe".to_string());
 
     let launcher = ClientLauncher::new(&install_path, &executable);

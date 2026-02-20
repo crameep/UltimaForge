@@ -208,6 +208,8 @@ pub struct UpdateCheckResult {
     pub download_size: u64,
     /// URL to patch notes (if available).
     pub patch_notes_url: Option<String>,
+    /// Client executable name from the manifest.
+    pub client_executable: String,
 }
 
 impl UpdateCheckResult {
@@ -551,6 +553,7 @@ impl Updater {
             files_to_update: files_to_update.len(),
             download_size,
             patch_notes_url: manifest.patch_notes_url.clone(),
+            client_executable: manifest.client_executable.clone(),
         })
     }
 
@@ -1268,6 +1271,7 @@ mod tests {
             files_to_update: 5,
             download_size: 1024 * 1024, // 1 MB
             patch_notes_url: None,
+            client_executable: "client.exe".to_string(),
         };
 
         assert_eq!(result.download_size_formatted(), "1.00 MB");
@@ -2121,6 +2125,7 @@ mod tests {
             files_to_update: 0,                  // But no files need updating
             download_size: 0,
             patch_notes_url: None,
+            client_executable: "client.exe".to_string(),
         };
 
         // With 0 files to update, update_available should be false
@@ -2159,6 +2164,7 @@ mod tests {
             files_to_update: 0,
             download_size: 0,
             patch_notes_url: None,
+            client_executable: "client.exe".to_string(),
         };
         assert!(!up_to_date.update_available);
         assert_eq!(up_to_date.files_to_update, 0);
@@ -2172,6 +2178,7 @@ mod tests {
             files_to_update: 10,
             download_size: 1024 * 1024 * 50, // 50MB
             patch_notes_url: Some("https://example.com/notes".to_string()),
+            client_executable: "client.exe".to_string(),
         };
         assert!(needs_update.update_available);
         assert_eq!(needs_update.files_to_update, 10);
@@ -2187,6 +2194,7 @@ mod tests {
             files_to_update: 0,                   // But all files match
             download_size: 0,
             patch_notes_url: None,
+            client_executable: "client.exe".to_string(),
         };
         assert!(
             !version_only_bump.update_available,
@@ -2202,6 +2210,7 @@ mod tests {
             files_to_update: 100,
             download_size: 1024 * 1024 * 500, // 500MB
             patch_notes_url: None,
+            client_executable: "client.exe".to_string(),
         };
         assert!(first_install.update_available);
         assert!(first_install.current_version.is_none());
@@ -2286,6 +2295,7 @@ mod tests {
             files_to_update: files_to_update.len(),
             download_size: 0,
             patch_notes_url: None,
+            client_executable: "client.exe".to_string(),
         };
 
         // Assert the expected behavior
@@ -2306,6 +2316,7 @@ mod tests {
             files_to_update: 0,
             download_size: 0,
             patch_notes_url: Some("https://example.com/v3-notes".to_string()),
+            client_executable: "client.exe".to_string(),
         };
 
         assert!(
@@ -2321,6 +2332,7 @@ mod tests {
             files_to_update: 0,
             download_size: 0,
             patch_notes_url: None,
+            client_executable: "client.exe".to_string(),
         };
 
         assert!(
@@ -2336,6 +2348,7 @@ mod tests {
             files_to_update: 0,
             download_size: 0,
             patch_notes_url: None,
+            client_executable: "client.exe".to_string(),
         };
 
         assert!(
