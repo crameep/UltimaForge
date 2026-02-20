@@ -451,8 +451,8 @@ async function main() {
     rl,
     "Launcher binary/installer path",
     args["launcher-binary"] ||
-      cache.launcherBinary ||
       detectedLauncherBinary ||
+      cache.launcherBinary ||
       "",
     true
   );
