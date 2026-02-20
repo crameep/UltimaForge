@@ -38,8 +38,11 @@ function findRsync() {
   const progFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
 
   const candidates = [
-    // Scoop shims
+    // Scoop shims (can be .exe shim or .cmd wrapper)
     path.join(home, "scoop", "shims", "rsync.exe"),
+    path.join(home, "scoop", "shims", "rsync.cmd"),
+    // Scoop app dir directly
+    path.join(home, "scoop", "apps", "rsync", "current", "rsync.exe"),
     // cwRsync versioned dirs under Program Files
     ...["", "64"].flatMap((bits) =>
       (bits ? [progFiles, progFilesX86] : [progFiles]).flatMap((base) => {

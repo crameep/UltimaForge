@@ -435,12 +435,24 @@ function Install-Rsync {
         try {
             Write-Status "Installing rsync via Scoop..." -Type "Info"
             scoop install rsync
-            # Refresh PATH so rsync is visible in this session
+
+            # Refresh PATH from user environment (Scoop adds its shims dir on install)
             $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
-            if (Test-Command "rsync") {
+
+            # Also add shims dir explicitly in case PATH registry hasn't flushed yet
+            $scoopShims = Join-Path $env:USERPROFILE "scoop\shims"
+            if (Test-Path $scoopShims) {
+                $env:PATH = "$scoopShims;$env:PATH"
+            }
+
+            # Check by command and by shim file (Get-Command can miss freshly added paths)
+            $rsyncShim = Join-Path $scoopShims "rsync.exe"
+            if ((Test-Command "rsync") -or (Test-Path $rsyncShim)) {
                 Write-Status "rsync installed successfully via Scoop" -Type "Success"
                 return $true
             }
+
+            Write-Status "scoop install rsync ran but rsync shim not found at $rsyncShim" -Type "Warning"
         }
         catch {
             Write-Status "Scoop rsync install failed: $_" -Type "Warning"
