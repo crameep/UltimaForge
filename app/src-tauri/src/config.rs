@@ -647,6 +647,18 @@ pub fn default_config_path(server_name: &str) -> PathBuf {
     base.join(server_name).join(LAUNCHER_CONFIG_FILE)
 }
 
+/// Returns the path for the game install path sidecar file.
+///
+/// This plain-text file contains the game installation directory so that
+/// the Windows NSIS uninstaller can locate and optionally remove game files
+/// without needing to parse JSON.
+///
+/// On Windows: `%APPDATA%\UltimaForge\{server_name}\game_path.txt`
+pub fn game_path_sidecar(server_name: &str) -> PathBuf {
+    let base = dirs_config_path();
+    base.join(server_name).join("game_path.txt")
+}
+
 /// Returns the platform-specific config directory base path.
 fn dirs_config_path() -> PathBuf {
     // Use std::env for cross-platform config directory

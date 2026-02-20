@@ -5,7 +5,7 @@
 //! - Validating installation paths
 //! - Performing full installation
 
-use crate::config::{default_config_path, LauncherConfig, ServerChoice};
+use crate::config::{default_config_path, game_path_sidecar, LauncherConfig, ServerChoice};
 use crate::cuo_settings::write_cuo_settings;
 use crate::installer::{detect_existing_installation, Installer, PathValidationResult};
 use crate::state::{AppState, AppStatus};
@@ -254,6 +254,14 @@ pub async fn start_install(
                 }
                 Err(e) => {
                     warn!("Failed to save installation configuration: {}", e);
+                }
+            }
+
+            // Write game_path.txt sidecar so the NSIS uninstaller can find game files
+            if let Some(ref install_path) = launcher_config.install_path {
+                let sidecar = game_path_sidecar(&brand_config.product.server_name);
+                if let Err(e) = std::fs::write(&sidecar, install_path.to_string_lossy().as_bytes()) {
+                    warn!("Failed to write game_path.txt sidecar: {}", e);
                 }
             }
 

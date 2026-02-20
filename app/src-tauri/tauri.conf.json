@@ -49,6 +49,7 @@
         "installerIcon": "icons/icon.ico",
         "headerImage": "installer-assets/nsis-header.bmp",
         "sidebarImage": "installer-assets/nsis-sidebar.bmp",
+        "installerHooks": "installer-assets/nsis-hooks.nsi",
         "displayLanguageSelector": false,
         "installMode": "currentUser"
       }

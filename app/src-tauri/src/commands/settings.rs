@@ -6,7 +6,7 @@
 //! - Managing user preferences
 //! - Saving brand configuration for setup wizard
 
-use crate::config::{default_config_path, BrandConfig, LauncherConfig, ThemeColors};
+use crate::config::{default_config_path, game_path_sidecar, BrandConfig, LauncherConfig, ThemeColors};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -710,6 +710,16 @@ pub async fn remove_game_files(state: State<'_, AppState>) -> Result<SaveRespons
         .as_ref()
         .map(|b| default_config_path(&b.product.server_name))
         .unwrap_or_else(|| default_config_path("UltimaForge"));
+
+    // Remove game_path.txt sidecar (used by NSIS uninstaller)
+    let server_name = brand_config
+        .as_ref()
+        .map(|b| b.product.server_name.as_str())
+        .unwrap_or("UltimaForge");
+    let sidecar = game_path_sidecar(server_name);
+    if sidecar.exists() {
+        let _ = fs::remove_file(&sidecar);
+    }
 
     match updated_config.save(&config_path) {
         Ok(()) => {
