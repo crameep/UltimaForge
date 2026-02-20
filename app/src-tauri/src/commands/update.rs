@@ -29,6 +29,10 @@ pub struct UpdateCheckResponse {
     pub download_size_formatted: String,
     /// URL to patch notes if available.
     pub patch_notes_url: Option<String>,
+    /// List of file paths that need updating (possibly truncated).
+    pub files_to_update_paths: Vec<String>,
+    /// Whether the files_to_update_paths list was truncated.
+    pub files_to_update_truncated: bool,
     /// Error message if check failed.
     pub error: Option<String>,
 }
@@ -125,6 +129,8 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
                 download_size: result.download_size,
                 download_size_formatted,
                 patch_notes_url: result.patch_notes_url,
+                files_to_update_paths: result.files_to_update_paths,
+                files_to_update_truncated: result.files_to_update_truncated,
                 error: None,
             })
         }
@@ -144,6 +150,8 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
                     download_size: 0,
                     download_size_formatted: "0 bytes".to_string(),
                     patch_notes_url: None,
+                    files_to_update_paths: Vec::new(),
+                    files_to_update_truncated: false,
                     error: None,
                 })
             } else {
@@ -155,6 +163,8 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
                     download_size: 0,
                     download_size_formatted: "0 bytes".to_string(),
                     patch_notes_url: None,
+                    files_to_update_paths: Vec::new(),
+                    files_to_update_truncated: false,
                     error: Some(e.to_string()),
                 })
             }
@@ -318,6 +328,8 @@ mod tests {
             download_size: 1024 * 1024,
             download_size_formatted: "1.00 MB".to_string(),
             patch_notes_url: Some("https://example.com/notes".to_string()),
+            files_to_update_paths: vec!["client.exe".to_string()],
+            files_to_update_truncated: false,
             error: None,
         };
 
@@ -365,6 +377,8 @@ mod tests {
             download_size: 0,
             download_size_formatted: "0 bytes".to_string(),
             patch_notes_url: None,
+            files_to_update_paths: Vec::new(),
+            files_to_update_truncated: false,
             error: None,
         };
 

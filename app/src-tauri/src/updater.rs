@@ -210,6 +210,10 @@ pub struct UpdateCheckResult {
     pub patch_notes_url: Option<String>,
     /// Client executable name from the manifest.
     pub client_executable: String,
+    /// List of file paths that need updating (possibly truncated).
+    pub files_to_update_paths: Vec<String>,
+    /// Whether the files_to_update_paths list was truncated.
+    pub files_to_update_truncated: bool,
 }
 
 impl UpdateCheckResult {
@@ -534,6 +538,14 @@ impl Updater {
         let files_to_update = manifest.files_to_update(&local_hashes);
         let download_size: u64 = files_to_update.iter().map(|f| f.size).sum();
 
+        const MAX_UPDATE_FILE_LIST: usize = 200;
+        let files_to_update_truncated = files_to_update.len() > MAX_UPDATE_FILE_LIST;
+        let files_to_update_paths: Vec<String> = files_to_update
+            .iter()
+            .take(MAX_UPDATE_FILE_LIST)
+            .map(|f| f.path.clone())
+            .collect();
+
         // Task D: update_available is based solely on file deltas.
         // A version bump without file changes should NOT trigger a full update flow.
         // This prevents unnecessary updates when the manifest version changes but
@@ -554,6 +566,8 @@ impl Updater {
             download_size,
             patch_notes_url: manifest.patch_notes_url.clone(),
             client_executable: manifest.client_executable.clone(),
+            files_to_update_paths,
+            files_to_update_truncated,
         })
     }
 
@@ -1272,6 +1286,8 @@ mod tests {
             download_size: 1024 * 1024, // 1 MB
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: vec!["client.exe".to_string()],
+            files_to_update_truncated: false,
         };
 
         assert_eq!(result.download_size_formatted(), "1.00 MB");
@@ -2126,6 +2142,8 @@ mod tests {
             download_size: 0,
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: Vec::new(),
+            files_to_update_truncated: false,
         };
 
         // With 0 files to update, update_available should be false
@@ -2165,6 +2183,8 @@ mod tests {
             download_size: 0,
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: Vec::new(),
+            files_to_update_truncated: false,
         };
         assert!(!up_to_date.update_available);
         assert_eq!(up_to_date.files_to_update, 0);
@@ -2179,6 +2199,8 @@ mod tests {
             download_size: 1024 * 1024 * 50, // 50MB
             patch_notes_url: Some("https://example.com/notes".to_string()),
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: vec!["client.exe".to_string()],
+            files_to_update_truncated: false,
         };
         assert!(needs_update.update_available);
         assert_eq!(needs_update.files_to_update, 10);
@@ -2195,6 +2217,8 @@ mod tests {
             download_size: 0,
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: Vec::new(),
+            files_to_update_truncated: false,
         };
         assert!(
             !version_only_bump.update_available,
@@ -2211,6 +2235,8 @@ mod tests {
             download_size: 1024 * 1024 * 500, // 500MB
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: vec!["client.exe".to_string()],
+            files_to_update_truncated: false,
         };
         assert!(first_install.update_available);
         assert!(first_install.current_version.is_none());
@@ -2296,6 +2322,8 @@ mod tests {
             download_size: 0,
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: Vec::new(),
+            files_to_update_truncated: false,
         };
 
         // Assert the expected behavior
@@ -2317,6 +2345,8 @@ mod tests {
             download_size: 0,
             patch_notes_url: Some("https://example.com/v3-notes".to_string()),
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: Vec::new(),
+            files_to_update_truncated: false,
         };
 
         assert!(
@@ -2333,6 +2363,8 @@ mod tests {
             download_size: 0,
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: Vec::new(),
+            files_to_update_truncated: false,
         };
 
         assert!(
@@ -2349,6 +2381,8 @@ mod tests {
             download_size: 0,
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
+            files_to_update_paths: Vec::new(),
+            files_to_update_truncated: false,
         };
 
         assert!(

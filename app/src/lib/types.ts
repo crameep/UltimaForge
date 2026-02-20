@@ -220,6 +220,10 @@ export interface UpdateCheckResponse {
   download_size_formatted: string;
   /** URL to patch notes if available */
   patch_notes_url: string | null;
+  /** List of file paths that need updating (possibly truncated) */
+  files_to_update_paths: string[];
+  /** Whether the files_to_update_paths list was truncated */
+  files_to_update_truncated: boolean;
   /** Error message if check failed */
   error: string | null;
 }

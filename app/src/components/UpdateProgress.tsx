@@ -5,6 +5,7 @@
  * Shows download progress, file counts, speed, and ETA.
  */
 
+import { useState } from "react";
 import { useUpdate } from "../hooks/useUpdate";
 import type { UpdateProgress as UpdateProgressType, UpdateCheckResponse } from "../lib/types";
 import {
@@ -65,6 +66,13 @@ function UpdateAvailableBanner({
   onUpdate: () => void;
   onDismiss: () => void;
 }) {
+  const [showFiles, setShowFiles] = useState(false);
+
+  const hasFiles = checkResult.files_to_update_paths.length > 0;
+  const hiddenCount = checkResult.files_to_update_truncated
+    ? Math.max(checkResult.files_to_update - checkResult.files_to_update_paths.length, 0)
+    : 0;
+
   return (
     <div className="update-banner">
       <div className="update-banner-content">
@@ -80,6 +88,30 @@ function UpdateAvailableBanner({
               </span>
             )}
           </p>
+          {hasFiles && (
+            <div className="update-banner-files">
+              <button
+                className="update-banner-files-toggle"
+                onClick={() => setShowFiles((prev) => !prev)}
+              >
+                {showFiles ? "Hide files" : "Show files"}
+              </button>
+              {showFiles && (
+                <div className="update-banner-files-list">
+                  <ul>
+                    {checkResult.files_to_update_paths.map((path) => (
+                      <li key={path}>{path}</li>
+                    ))}
+                  </ul>
+                  {hiddenCount > 0 && (
+                    <div className="update-banner-files-more">
+                      {hiddenCount} more file(s) not shown
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <div className="update-banner-actions">
