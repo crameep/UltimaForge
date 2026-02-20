@@ -7,7 +7,7 @@
     "website": "https://example.com",
     "discord": "https://discord.gg/example"
   },
-  "updateUrl": "http://localhost:8080",
+  "updateUrl": "http://45.76.19.61",
   "publicKey": "c6fbe510e4abd23cf4813a43399648ee955ec7581e55b2577484f381e5f73489",
   "ui": {
     "colors": {

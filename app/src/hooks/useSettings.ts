@@ -16,6 +16,8 @@ import {
   onVerifyProgress,
   isRunningAsAdmin,
   relaunchAsAdmin,
+  openInstallFolder,
+  removeGameFiles,
 } from "../lib/api";
 
 import type {
@@ -38,6 +40,10 @@ export interface UseSettingsState {
   isClearing: boolean;
   /** Whether repair is in progress */
   isRepairing: boolean;
+  /** Whether the user has clicked "Remove Game Files" and is awaiting confirmation */
+  isConfirmingRemove: boolean;
+  /** Whether game file removal is in progress */
+  isRemoving: boolean;
   /** Whether running with admin privileges */
   isAdmin: boolean;
   /** Current user settings */
@@ -81,6 +87,14 @@ export interface UseSettingsActions {
   checkAdminStatus: () => Promise<void>;
   /** Relaunch app with admin privileges */
   relaunchAsAdmin: () => Promise<void>;
+  /** Open the game installation folder in the system file manager */
+  openInstallFolder: () => Promise<void>;
+  /** Enter the remove-game-files confirmation state */
+  confirmRemoveGameFiles: () => void;
+  /** Cancel the remove-game-files confirmation */
+  cancelRemoveGameFiles: () => void;
+  /** Remove all game files and reset installation state */
+  removeGameFiles: () => Promise<void>;
   /** Clear error message */
   clearError: () => void;
   /** Clear success message */
@@ -110,6 +124,8 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isRepairing, setIsRepairing] = useState(false);
+  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   // Admin state
   const [isAdmin, setIsAdmin] = useState(false);
@@ -376,6 +392,60 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   }, []);
 
   /**
+   * Open the game installation folder in the system file manager.
+   */
+  const handleOpenInstallFolder = useCallback(async () => {
+    setErrorMessage(null);
+    try {
+      await openInstallFolder();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to open folder";
+      setErrorMessage(msg);
+    }
+  }, []);
+
+  /**
+   * Enter the remove-game-files confirmation state.
+   */
+  const handleConfirmRemoveGameFiles = useCallback(() => {
+    setIsConfirmingRemove(true);
+    setErrorMessage(null);
+  }, []);
+
+  /**
+   * Cancel the remove-game-files confirmation.
+   */
+  const handleCancelRemoveGameFiles = useCallback(() => {
+    setIsConfirmingRemove(false);
+  }, []);
+
+  /**
+   * Remove all game files and reset installation state.
+   */
+  const handleRemoveGameFiles = useCallback(async () => {
+    setIsRemoving(true);
+    setIsConfirmingRemove(false);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      const response = await removeGameFiles();
+      if (response.success) {
+        setInstallPath(null);
+        setCurrentVersion(null);
+        setInstallComplete(false);
+        setSuccessMessage("Game files removed. The launcher will return to the setup screen.");
+      } else {
+        setErrorMessage(response.error || "Failed to remove game files");
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to remove game files";
+      setErrorMessage(msg);
+    } finally {
+      setIsRemoving(false);
+    }
+  }, []);
+
+  /**
    * Clear error message.
    */
   const handleClearError = useCallback(() => {
@@ -422,6 +492,8 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     isVerifying,
     isClearing,
     isRepairing,
+    isConfirmingRemove,
+    isRemoving,
     isAdmin,
     settings,
     installPath,
@@ -443,6 +515,10 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     clearCache: handleClearCache,
     checkAdminStatus: handleCheckAdminStatus,
     relaunchAsAdmin: handleRelaunchAsAdmin,
+    openInstallFolder: handleOpenInstallFolder,
+    confirmRemoveGameFiles: handleConfirmRemoveGameFiles,
+    cancelRemoveGameFiles: handleCancelRemoveGameFiles,
+    removeGameFiles: handleRemoveGameFiles,
     clearError: handleClearError,
     clearSuccess: handleClearSuccess,
     reset,

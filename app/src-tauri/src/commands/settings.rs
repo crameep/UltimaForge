@@ -622,6 +622,107 @@ pub async fn relaunch_as_admin() -> Result<(), String> {
     }
 }
 
+/// Opens the game installation folder in the system file manager.
+#[tauri::command]
+pub async fn open_install_folder(state: State<'_, AppState>) -> Result<(), String> {
+    let config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+    let path = config.install_path.ok_or("No install path configured")?;
+
+    if !path.exists() {
+        return Err(format!("Install folder does not exist: {}", path.display()));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    Ok(())
+}
+
+/// Removes all game files from the installation directory and resets installation state.
+///
+/// Refuses to operate on dangerous paths (drive roots, Windows system dirs).
+/// Clears install_path, install_complete, and current_version from the persisted config.
+#[tauri::command]
+pub async fn remove_game_files(state: State<'_, AppState>) -> Result<SaveResponse, String> {
+    let config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+    let path = config.install_path.clone().ok_or("No install path configured")?;
+
+    // Safety: refuse dangerous paths
+    let path_lower = path.to_string_lossy().to_lowercase();
+    let dangerous_patterns = [
+        "c:\\windows", "c:/windows",
+        "c:\\program files", "c:/program files",
+        "c:\\program files (x86)", "c:/program files (x86)",
+        "c:\\system", "c:/system",
+    ];
+    let is_drive_root = path_lower.len() <= 3
+        && path_lower.chars().nth(1) == Some(':');
+    if path_lower == "/" || is_drive_root {
+        return Err(format!("Refusing to remove root/drive path: {}", path.display()));
+    }
+    for pattern in &dangerous_patterns {
+        if path_lower.starts_with(pattern) {
+            return Err(format!("Refusing to remove system path: {}", path.display()));
+        }
+    }
+
+    if path.exists() {
+        info!("Removing game files at {}", path.display());
+        fs::remove_dir_all(&path)
+            .map_err(|e| format!("Failed to remove game files: {}", e))?;
+        info!("Game files removed successfully");
+    } else {
+        info!("Install path {} does not exist, clearing config only", path.display());
+    }
+
+    // Clear install fields from persisted config
+    let mut updated_config = config;
+    updated_config.install_path = None;
+    updated_config.install_complete = false;
+    updated_config.current_version = None;
+    state.set_launcher_config(updated_config.clone());
+
+    // Reset in-memory phase to NeedsInstall
+    state.clear_installation();
+
+    // Save updated config to disk
+    let brand_config = state.brand_config();
+    let config_path = brand_config
+        .as_ref()
+        .map(|b| default_config_path(&b.product.server_name))
+        .unwrap_or_else(|| default_config_path("UltimaForge"));
+
+    match updated_config.save(&config_path) {
+        Ok(()) => {
+            info!("Config saved after game file removal");
+            Ok(SaveResponse { success: true, error: None })
+        }
+        Err(e) => {
+            error!("Failed to save config after game file removal: {}", e);
+            Ok(SaveResponse { success: false, error: Some(e.to_string()) })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

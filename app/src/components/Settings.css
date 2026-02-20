@@ -115,6 +115,39 @@
   font-style: italic;
 }
 
+/* Path row: value + folder button side by side */
+.settings-info-path-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--spacing-xs);
+}
+
+.settings-info-path-row .settings-info-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-folder-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--spacing-sm);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.settings-folder-btn:hover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 /* ========================================
    TOGGLE ITEMS
    ======================================== */
@@ -524,6 +557,79 @@
 
 .settings-action-button.repairing .settings-action-icon {
   color: var(--color-warning);
+}
+
+/* Danger action button styling */
+.settings-action-button.danger {
+  border-color: var(--color-error);
+}
+
+.settings-action-button.danger:hover:not(:disabled) {
+  background-color: var(--color-error-light);
+  border-color: var(--color-error);
+}
+
+.settings-action-button.danger .settings-action-label {
+  color: var(--color-error);
+}
+
+.settings-action-button.danger .settings-action-icon {
+  color: var(--color-error);
+}
+
+/* Remove game files confirmation panel */
+.settings-remove-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--color-error-light);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+}
+
+.settings-remove-confirm-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  line-height: var(--line-height-relaxed);
+}
+
+.settings-remove-confirm-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.settings-remove-cancel-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-remove-cancel-btn:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.settings-remove-confirm-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-error);
+  color: var(--color-background);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-remove-confirm-btn:hover {
+  filter: brightness(1.1);
 }
 
 /* ========================================

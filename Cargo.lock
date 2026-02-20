@@ -1529,7 +1529,7 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "host-server"
-version = "0.0.1"
+version = "0.0.7"
 dependencies = [
  "axum",
  "clap",
@@ -2971,7 +2971,7 @@ dependencies = [
 
 [[package]]
 name = "publish-cli"
-version = "0.0.1"
+version = "0.0.7"
 dependencies = [
  "chrono",
  "clap",
@@ -4225,6 +4225,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-process"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d55511a7bf6cd70c8767b02c97bf8134fa434daf3926cfc1be0a0f94132d165a"
+dependencies = [
+ "tauri",
+ "tauri-plugin",
+]
+
+[[package]]
 name = "tauri-plugin-updater"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4804,7 +4814,7 @@ checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 
 [[package]]
 name = "ultimaforge"
-version = "0.0.1"
+version = "0.0.7"
 dependencies = [
  "chrono",
  "ed25519-dalek",
@@ -4819,6 +4829,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
+ "tauri-plugin-process",
  "tauri-plugin-updater",
  "tempfile",
  "thiserror 1.0.69",

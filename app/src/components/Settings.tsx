@@ -74,12 +74,13 @@ function ActionButton({
   icon: string;
   disabled?: boolean;
   loading?: boolean;
-  variant?: "default" | "repairing";
+  variant?: "default" | "repairing" | "danger";
   onClick: () => void;
 }) {
   const buttonClass = [
     "settings-action-button",
     variant === "repairing" ? "repairing" : "",
+    variant === "danger" ? "danger" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -227,7 +228,7 @@ export function Settings({ onBack }: SettingsProps) {
 
   // Track if any maintenance operation is running (for mutual exclusion)
   const isAnyOperationRunning =
-    state.isVerifying || state.isClearing || state.isRepairing;
+    state.isVerifying || state.isClearing || state.isRepairing || state.isRemoving;
 
   return (
     <div className="settings">
@@ -282,13 +283,24 @@ export function Settings({ onBack }: SettingsProps) {
 
           <div className="settings-info-item">
             <span className="settings-info-label">Install Path</span>
-            <span
-              className={`settings-info-value ${
-                !state.installPath ? "empty" : ""
-              }`}
-            >
-              {state.installPath || "Not installed"}
-            </span>
+            <div className="settings-info-path-row">
+              <span
+                className={`settings-info-value ${
+                  !state.installPath ? "empty" : ""
+                }`}
+              >
+                {state.installPath || "Not installed"}
+              </span>
+              {state.installPath && (
+                <button
+                  className="settings-folder-btn"
+                  title="Open folder"
+                  onClick={actions.openInstallFolder}
+                >
+                  &#128193;
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="settings-info-item">
@@ -391,6 +403,39 @@ export function Settings({ onBack }: SettingsProps) {
               }
               onClick={actions.repairInstallation}
             />
+
+            {!state.isConfirmingRemove ? (
+              <ActionButton
+                label="Remove Game Files"
+                description="Delete all installed game files from disk"
+                icon="🗑"
+                loading={state.isRemoving}
+                variant="danger"
+                disabled={isAnyOperationRunning || !state.installPath}
+                onClick={actions.confirmRemoveGameFiles}
+              />
+            ) : (
+              <div className="settings-remove-confirm">
+                <span className="settings-remove-confirm-text">
+                  This will permanently delete all game files from{" "}
+                  <strong>{state.installPath}</strong>. Are you sure?
+                </span>
+                <div className="settings-remove-confirm-actions">
+                  <button
+                    className="settings-remove-cancel-btn"
+                    onClick={actions.cancelRemoveGameFiles}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="settings-remove-confirm-btn"
+                    onClick={actions.removeGameFiles}
+                  >
+                    Yes, Remove Files
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Verify Progress */}

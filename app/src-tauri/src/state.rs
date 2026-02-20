@@ -226,6 +226,15 @@ impl AppState {
         self.inner.lock().unwrap().install_path = Some(path);
     }
 
+    /// Clears all installation state and transitions to NeedsInstall.
+    /// Used after game files are removed.
+    pub fn clear_installation(&self) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.install_path = None;
+        inner.current_version = None;
+        inner.phase = AppPhase::NeedsInstall;
+    }
+
     /// Returns the current installed version.
     pub fn current_version(&self) -> Option<String> {
         self.inner.lock().unwrap().current_version.clone()

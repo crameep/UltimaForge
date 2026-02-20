@@ -132,6 +132,8 @@ pub fn run() {
             commands::settings::get_recommended_install_path,
             commands::settings::is_running_as_admin,
             commands::settings::relaunch_as_admin,
+            commands::settings::open_install_folder,
+            commands::settings::remove_game_files,
         ]);
 
     app_result

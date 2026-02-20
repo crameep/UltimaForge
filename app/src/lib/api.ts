@@ -275,6 +275,20 @@ export async function relaunchAsAdmin(): Promise<void> {
   return invoke<void>("relaunch_as_admin");
 }
 
+/**
+ * Opens the game installation folder in the system file manager.
+ */
+export async function openInstallFolder(): Promise<void> {
+  return invoke<void>("open_install_folder");
+}
+
+/**
+ * Removes all game files from the installation directory and resets install state.
+ */
+export async function removeGameFiles(): Promise<SaveResponse> {
+  return invoke<SaveResponse>("remove_game_files");
+}
+
 // ============================================================================
 // Event Listeners
 // ============================================================================
