@@ -438,6 +438,7 @@ impl Default for LauncherConfig {
             close_on_launch: true,
             check_updates_on_startup: true,
             config_version: 1,
+            client_executable: None,
         }
     }
 }
