@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { getVersion } from "@tauri-apps/api/app";
+import { isTauri } from "@tauri-apps/api/core";
 import { Layout } from "./components/Layout";
 import { InstallWizard } from "./components/InstallWizard";
 import { UpdateProgress, useUpdate } from "./components/UpdateProgress";
@@ -29,6 +31,7 @@ function App() {
   const [phase, setPhase] = useState<AppPhase>("Initializing");
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [currentView, setCurrentView] = useState<AppView>("home");
+  const [appVersion, setAppVersion] = useState<string>("");
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
@@ -42,6 +45,13 @@ function App() {
   // Navigation handlers
   const navigateToSettings = () => setCurrentView("settings");
   const navigateToHome = () => setCurrentView("home");
+
+  // Fetch real app version on mount
+  useEffect(() => {
+    if (isTauri()) {
+      getVersion().then(v => setAppVersion(`v${v}`)).catch(() => {});
+    }
+  }, []);
 
   // Check installation status on mount
   useEffect(() => {
@@ -237,7 +247,7 @@ function App() {
       <Layout
         phase={phase}
         statusMessage={statusMessage}
-        version="v0.1.0"
+        version={appVersion}
       >
         <InstallWizard
           serverName={brandInfo?.display_name || "UltimaForge"}
@@ -253,7 +263,7 @@ function App() {
       <Layout
         phase={phase}
         statusMessage="Detecting installation..."
-        version="v0.1.0"
+        version={appVersion}
       >
         <div className="main-content">
           <div className="hero-section">
@@ -271,7 +281,7 @@ function App() {
       <Layout
         phase={phase}
         statusMessage={statusMessage}
-        version="v0.1.0"
+        version={appVersion}
       >
         <div className="main-content">
           <UpdateProgress
@@ -289,7 +299,7 @@ function App() {
       <Layout
         phase={phase}
         statusMessage="Checking for updates..."
-        version="v0.1.0"
+        version={appVersion}
       >
         <div className="main-content">
           <div className="hero-section">
@@ -307,7 +317,7 @@ function App() {
       <Layout
         phase={phase}
         statusMessage={statusMessage}
-        version="v0.1.0"
+        version={appVersion}
         onHomeClick={navigateToHome}
         onSettingsClick={navigateToSettings}
       >
@@ -321,7 +331,7 @@ function App() {
     <Layout
       phase={phase}
       statusMessage={statusMessage}
-      version="v0.1.0"
+      version={appVersion}
       onHomeClick={navigateToHome}
       onSettingsClick={navigateToSettings}
     >

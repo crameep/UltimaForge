@@ -348,10 +348,15 @@ async function main() {
     console.log("\nLauncher-only mode: skipping game update publish.");
   }
 
+  const tauriConfPath = path.join(appDir, "src-tauri", "tauri.conf.json");
+  const tauriVersion = fs.existsSync(tauriConfPath)
+    ? (readJsonIfExists(tauriConfPath, {})?.version ?? "")
+    : "";
   const launcherVersion =
     (args["launcher-version"] || "").trim() ||
     cache.launcherVersion ||
     gameVersion ||
+    tauriVersion ||
     "1.0.0";
   const bundleDir = path.join(
     repoRoot,
