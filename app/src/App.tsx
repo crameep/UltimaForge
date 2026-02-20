@@ -63,7 +63,10 @@ function App() {
         }
 
         if (shouldCheckLauncherUpdates) {
-          await checkForLauncherUpdate({ interactive: true });
+          // Non-interactive: errors and "up to date" are silent on startup.
+          // A launcher update will be picked up on the next manual check or
+          // next launch; we don't want a blocking dialog before the UI loads.
+          await checkForLauncherUpdate({ interactive: false });
         }
 
         const status = await checkNeedsInstall();
