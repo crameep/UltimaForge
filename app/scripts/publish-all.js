@@ -201,7 +201,7 @@ function validateKeyCanSign(keyEnvVar, password, cwd) {
   }
 }
 
-function findLatestInstaller(bundleDir) {
+function findLatestInstaller(bundleDir, version) {
   if (!fs.existsSync(bundleDir)) {
     return "";
   }
@@ -211,7 +211,7 @@ function findLatestInstaller(bundleDir) {
   for (const entry of entries) {
     const fullPath = path.join(bundleDir, entry.name);
     if (entry.isDirectory()) {
-      const candidate = findLatestInstaller(fullPath);
+      const candidate = findLatestInstaller(fullPath, version);
       if (candidate) {
         installers.push(candidate);
       }
@@ -229,6 +229,19 @@ function findLatestInstaller(bundleDir) {
     return "";
   }
 
+  // Prefer the installer whose filename contains the version string — more
+  // reliable than mtime on Windows/WSL2 NTFS filesystems where timestamps
+  // are often unreliable after cross-filesystem copies.
+  if (version) {
+    const versionMatch = installers.find((p) =>
+      path.basename(p).includes(`_${version}_`)
+    );
+    if (versionMatch) {
+      return versionMatch;
+    }
+  }
+
+  // Fallback: mtime sort, prefer .exe over .msi
   installers.sort((a, b) => {
     const aStat = fs.statSync(a);
     const bStat = fs.statSync(b);
@@ -438,7 +451,8 @@ async function main() {
   }
 
   const detectedLauncherBinary =
-    findLatestInstaller(bundleDir) || findLatestInstaller(altBundleDir);
+    findLatestInstaller(bundleDir, launcherVersion) ||
+    findLatestInstaller(altBundleDir, launcherVersion);
   if (shouldBuildLauncher && detectedLauncherBinary) {
     const sigCandidate = `${detectedLauncherBinary}.sig`;
     if (!fs.existsSync(sigCandidate)) {
