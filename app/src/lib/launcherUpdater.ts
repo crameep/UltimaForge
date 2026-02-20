@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 
 export type LauncherUpdateCheck = {
   updateAvailable: boolean;
@@ -64,6 +65,7 @@ export async function checkForLauncherUpdate(
 
       if (shouldInstall) {
         await update.downloadAndInstall();
+        await relaunch();
       }
     }
 
