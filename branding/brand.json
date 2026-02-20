@@ -1,8 +1,8 @@
 {
   "product": {
-    "displayName": "Unchained File Server",
-    "serverName": "UnchainedFileServer",
-    "description": "Test configuration for E2E testing",
+    "displayName": "Unchained",
+    "serverName": "Unchained",
+    "description": "Get Shreked, Try again...",
     "supportEmail": "support@example.com",
     "website": "https://example.com",
     "discord": "https://discord.gg/example"
@@ -20,10 +20,10 @@
     "logoUrl": "/branding/sidebar-logo.png",
     "sidebarBackground": "/branding/sidebar-texture.png",
     "showPatchNotes": true,
-    "windowTitle": "Unchained File Server",
+    "windowTitle": "Unchained",
     "heroTitle": "Welcome to Unchained",
     "heroSubtitle": "Your adventure begins here",
-    "sidebarSubtitle": "Free Shard Launcher",
+    "sidebarSubtitle": "Launcher",
     "sidebarLinks": [
       {
         "label": "Home",
@@ -56,7 +56,7 @@
       "razor_enhanced",
       "razor"
     ],
-    "default_assistant": "razor_enhanced",
+    "default_assistant": "razor",
     "default_server": "live"
   },
   "brandVersion": "1.0"

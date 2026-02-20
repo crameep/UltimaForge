@@ -86,7 +86,7 @@ export function StatusBar({
     <footer className="statusbar">
       <div className="statusbar-left">
         <span className={`statusbar-indicator ${statusClass}`} />
-        <span className="statusbar-message">{displayMessage}</span>
+        <span className={`statusbar-message ${statusClass}`}>{displayMessage}</span>
       </div>
       <div className="statusbar-right">
         <span className="statusbar-version">{version}</span>

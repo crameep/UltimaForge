@@ -21,6 +21,27 @@
   flex-direction: column;
   overflow: hidden;
   background-color: var(--color-background);
+  position: relative;
+}
+
+/* Dark gradient scrim so text stays readable over background images */
+.layout-main.has-background::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0.25) 40%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.layout-main.has-background .layout-content {
+  position: relative;
+  z-index: 1;
 }
 
 .layout-content {

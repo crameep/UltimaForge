@@ -63,6 +63,18 @@
   color: var(--color-text-secondary);
 }
 
+.statusbar-message.status-error {
+  color: var(--color-error);
+}
+
+.statusbar-message.status-warning {
+  color: var(--color-warning);
+}
+
+.statusbar-message.status-success {
+  color: var(--color-text-secondary);
+}
+
 .statusbar-version {
   color: var(--color-text-muted);
   font-family: var(--font-family-mono);

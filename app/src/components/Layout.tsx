@@ -80,7 +80,7 @@ export function Layout({
           onClick: link.label === "Home" ? onHomeClick : link.label === "Settings" ? onSettingsClick : undefined,
         })) : links}
       />
-      <main className="layout-main" style={mainStyle}>
+      <main className={`layout-main${brandInfo?.background_image ? " has-background" : ""}`} style={mainStyle}>
         <div className="layout-content">{children}</div>
       </main>
       <StatusBar
