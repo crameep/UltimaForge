@@ -74,6 +74,7 @@ export function Layout({
           icon: link.icon,
           href: link.url,
           url: link.url,
+          onClick: link.label === "Home" ? onHomeClick : link.label === "Settings" ? onSettingsClick : undefined,
         })) : links}
       />
       <main className="layout-main" style={mainStyle}>
