@@ -2,14 +2,20 @@
  * UltimaForge Theme Variables
  *
  * This file defines the core design tokens for the launcher UI.
- * Colors can be customized via brand.json at build time.
+ * Colors are overridden at runtime by applyThemeColors() from brand.json:
+ *   brand.secondary → --color-primary   (action/accent: buttons, links)
+ *   brand.primary   → --color-surface   (identity/surface: panels, sidebar)
+ *   brand.background → --color-background
+ *   brand.text      → --color-text
+ *
+ * Values here are fallback defaults (shown in dev before brand loads).
  *
  * Color Palette:
- * - Primary: Blue accent for interactive elements
+ * - Primary: Crimson accent for interactive elements (matches brand secondary)
  * - Success: Green for ready/success states
  * - Warning: Amber for caution states
  * - Error: Red for error states
- * - Surface colors: Dark grays for backgrounds
+ * - Surface colors: Dark navy for backgrounds
  */
 
 :root {
@@ -17,11 +23,11 @@
      COLOR PALETTE
      ======================================== */
 
-  /* Primary colors - main brand/accent color */
-  --color-primary: #3b82f6;
-  --color-primary-hover: #2563eb;
-  --color-primary-active: #1d4ed8;
-  --color-primary-light: rgba(59, 130, 246, 0.15);
+  /* Primary colors - action/accent color (set from brand.json secondary at runtime) */
+  --color-primary: #e94560;
+  --color-primary-hover: #c73651;
+  --color-primary-active: #a52c42;
+  --color-primary-light: rgba(233, 69, 96, 0.15);
 
   /* Status colors */
   --color-success: #22c55e;
@@ -64,6 +70,8 @@
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
                  Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
                  'Helvetica Neue', sans-serif;
+  /* Display font for headings — Cinzel gives a Roman/inscribed character fitting a UO launcher */
+  --font-family-display: 'Cinzel', Georgia, 'Times New Roman', serif;
   --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code',
                       Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
 
@@ -128,7 +136,7 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5),
                0 10px 10px -5px rgba(0, 0, 0, 0.3);
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.4);
+  --shadow-glow: 0 0 20px rgba(233, 69, 96, 0.4);
 
   /* ========================================
      TRANSITIONS

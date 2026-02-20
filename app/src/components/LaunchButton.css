@@ -68,9 +68,12 @@
   padding: var(--btn-padding-y-lg) var(--btn-padding-x-lg);
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--color-text);
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-  border: none;
+  border: 1px solid var(--color-primary-light);
   border-radius: var(--radius-xl);
   cursor: pointer;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
@@ -79,7 +82,9 @@
 
 .launch-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-xl), 0 0 30px rgba(59, 130, 246, 0.6);
+  box-shadow: var(--shadow-xl),
+              0 0 0 1px var(--color-primary),
+              0 0 35px var(--color-primary-light);
 }
 
 .launch-button:active:not(:disabled) {

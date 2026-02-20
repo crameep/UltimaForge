@@ -1,6 +1,9 @@
 /* Import theme variables */
 @import './styles/theme.css';
 
+/* Display font — Roman inscribed character for headings */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+
 /* Base styles */
 * {
   margin: 0;
@@ -42,6 +45,12 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   color: var(--color-text);
+}
+
+/* Display headings use the inscribed/serif font for character */
+h1, h2, h3 {
+  font-family: var(--font-family-display);
+  letter-spacing: 0.04em;
 }
 
 h1 { font-size: var(--font-size-4xl); }
@@ -102,4 +111,35 @@ a:hover {
 img, a {
   -webkit-user-drag: none;
   user-select: none;
+}
+
+/* Subtle radial atmosphere behind main content — bleeds the accent color
+   upward like a distant light source. Intensity is intentionally low (4%). */
+#root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 50% at 60% 0%,
+    var(--color-primary-light) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Entrance animation — main content panels slide up on mount */
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.layout-content > * {
+  animation: panel-enter 280ms ease forwards;
 }

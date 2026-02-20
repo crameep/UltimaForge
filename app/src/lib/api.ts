@@ -405,14 +405,60 @@ export async function getFullStatus(): Promise<{
 }
 
 /**
+ * Converts a hex color to rgba() with the given alpha.
+ */
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Lightens or darkens a hex color by adjusting each channel.
+ * Positive amount = darker, negative = lighter.
+ */
+function adjustHex(hex: string, amount: number): string {
+  const h = hex.replace("#", "");
+  const r = Math.min(255, Math.max(0, parseInt(h.slice(0, 2), 16) - amount));
+  const g = Math.min(255, Math.max(0, parseInt(h.slice(2, 4), 16) - amount));
+  const b = Math.min(255, Math.max(0, parseInt(h.slice(4, 6), 16) - amount));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+/**
  * Applies theme colors to CSS custom properties.
  *
- * @param colors - Theme colors to apply.
+ * Brand color semantics:
+ *   secondary → --color-primary   (action/accent color: buttons, links, active states)
+ *   primary   → --color-surface   (identity/surface color: panels, sidebar background)
+ *   background → --color-background
+ *   text      → --color-text
+ *
+ * Derived colors (hover, active, light, glow) are computed from the accent color
+ * so the full design system updates automatically from brand.json.
+ *
+ * @param colors - Theme colors from brand.json.
  */
 export function applyThemeColors(colors: ThemeColors): void {
   const root = document.documentElement;
-  root.style.setProperty("--color-primary", colors.primary);
-  root.style.setProperty("--color-secondary", colors.secondary);
+  const accent = colors.secondary; // crimson / action color
+  const surface = colors.primary;  // dark navy / surface color
+
+  // Action / accent color and its derived variants
+  root.style.setProperty("--color-primary", accent);
+  root.style.setProperty("--color-primary-hover", adjustHex(accent, 20));
+  root.style.setProperty("--color-primary-active", adjustHex(accent, 40));
+  root.style.setProperty("--color-primary-light", hexToRgba(accent, 0.15));
+  root.style.setProperty("--shadow-glow", `0 0 20px ${hexToRgba(accent, 0.4)}`);
+
+  // Surface / identity color
+  root.style.setProperty("--color-surface", surface);
+  root.style.setProperty("--color-surface-hover", adjustHex(surface, -11));
+  root.style.setProperty("--color-surface-active", adjustHex(surface, -19));
+
+  // Base colors
   root.style.setProperty("--color-background", colors.background);
   root.style.setProperty("--color-text", colors.text);
 }
