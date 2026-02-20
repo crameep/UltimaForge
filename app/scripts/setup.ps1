@@ -131,10 +131,17 @@ function Install-Scoop {
 
     Write-Status "Installing Scoop package manager..." -Type "Info"
 
+    # Set execution policy for current user if not already permissive enough.
+    # Ignore errors - setup.bat already launches with -ExecutionPolicy Bypass
+    # so the process policy is fine regardless.
     try {
-        # Set execution policy for current user
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction SilentlyContinue
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction Ignore
+    }
+    catch {
+        # Ignore - the process already runs under Bypass
+    }
 
+    try {
         # Install Scoop
         Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 
