@@ -228,7 +228,7 @@ pub async fn start_install(
 
             // Update launcher config
             let mut launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
-            launcher_config.set_installed(install_path, &version);
+            launcher_config.set_installed(install_path.clone(), &version);
             if let Some(cuo_config) = &brand_config.cuo {
                 launcher_config.selected_server = ServerChoice::Live;
                 launcher_config.selected_assistant = cuo_config.default_assistant.clone();

@@ -7,6 +7,7 @@
 
 import type { UseLaunchActions, UseLaunchState } from "../hooks/useLaunch";
 import type { LaunchGameRequest } from "../lib/types";
+import type { ReactNode } from "react";
 import "./LaunchButton.css";
 
 /**
@@ -37,6 +38,8 @@ interface LaunchButtonProps {
   clientCount?: number;
   /** Callback when client count changes */
   onClientCountChange?: (count: number) => void;
+  /** Optional controls shown between the Play button and client count */
+  controlsBelowButton?: ReactNode;
 }
 
 /**
@@ -78,6 +81,7 @@ export function LaunchButton({
   launchActions,
   clientCount,
   onClientCountChange,
+  controlsBelowButton,
 }: LaunchButtonProps) {
   const handleClick = async () => {
     // If update is available, trigger update first
@@ -160,6 +164,8 @@ export function LaunchButton({
         </button>
 
       </div>
+
+      {controlsBelowButton}
 
       {onClientCountChange && (
         <div className="client-count-spinner">

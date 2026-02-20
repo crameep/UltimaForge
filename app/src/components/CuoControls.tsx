@@ -55,7 +55,6 @@ export function CuoControls({
 
       {showAssistantDropdown ? (
         <div className="cuo-control-row">
-          <label className="cuo-control-label">Assistant</label>
           <select
             className="cuo-control-select"
             value={selectedAssistant}
@@ -72,7 +71,6 @@ export function CuoControls({
       ) : (
         config.available_assistants.length === 1 && (
           <div className="cuo-control-row">
-            <label className="cuo-control-label">Assistant</label>
             <span className="cuo-control-value">
               {ASSISTANT_LABELS[config.available_assistants[0]]}
             </span>

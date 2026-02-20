@@ -384,16 +384,6 @@ function App() {
         )}
 
         <div className="action-section">
-          {launchState.cuoConfig && (
-            <CuoControls
-              config={launchState.cuoConfig}
-              selectedServer={launchState.selectedServer}
-              selectedAssistant={launchState.selectedAssistant}
-              onServerChange={launchActions.setSelectedServer}
-              onAssistantChange={launchActions.setSelectedAssistant}
-              disabled={launchState.isLaunching || updateState.isUpdating}
-            />
-          )}
           <LaunchButton
             disabled={phase === "CheckingUpdates"}
             updateAvailable={updateState.updateAvailable}
@@ -405,6 +395,18 @@ function App() {
             launchActions={launchActions}
             clientCount={launchState.clientCount}
             onClientCountChange={launchActions.setClientCount}
+            controlsBelowButton={
+              launchState.cuoConfig ? (
+                <CuoControls
+                  config={launchState.cuoConfig}
+                  selectedServer={launchState.selectedServer}
+                  selectedAssistant={launchState.selectedAssistant}
+                  onServerChange={launchActions.setSelectedServer}
+                  onAssistantChange={launchActions.setSelectedAssistant}
+                  disabled={launchState.isLaunching || updateState.isUpdating}
+                />
+              ) : undefined
+            }
           />
 
           {phase === "UpdateAvailable" && !updateState.checkResult && (
