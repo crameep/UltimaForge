@@ -111,15 +111,15 @@ function tryRsync(rsync, user, host, port, keyPath, localDir, remotePath) {
     bin = rsync.bin;
     // On Windows, native rsync (cwrsync) is Cygwin-based and chokes on
     // Windows paths like "G:\foo" — the drive letter + colon looks like
-    // a remote host spec. Convert to /cygdrive/g/foo style paths.
-    const isWin = process.platform === "win32";
-    const srcDir = isWin ? toCygwinPath(localDir) : localDir;
-    const sshKey = isWin ? toCygwinPath(keyPath) : keyPath;
+    // a remote host spec. Convert source to /cygdrive/g/foo style.
+    // The SSH key path is kept as a Windows path because -e ssh invokes
+    // Windows OpenSSH (ssh.exe) which doesn't understand cygwin paths.
+    const srcDir = process.platform === "win32" ? toCygwinPath(localDir) : localDir;
     args = [
       "-avz",
       "--delete",
       "-e",
-      `ssh -i "${sshKey}" -o StrictHostKeyChecking=accept-new -p ${port}`,
+      `ssh -i "${keyPath}" -o StrictHostKeyChecking=accept-new -p ${port}`,
       srcDir + "/",
       `${user}@${host}:${remotePath}/`,
     ];
