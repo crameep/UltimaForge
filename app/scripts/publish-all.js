@@ -312,9 +312,7 @@ async function main() {
   }
 
   const defaultUpdatesDir = path.join(repoRoot, "server-data", "publish");
-  const updatesDir = resolvePath(
-    args["updates-dir"] || cache.updatesDir || defaultUpdatesDir
-  );
+  const updatesDir = resolvePath(args["updates-dir"] || defaultUpdatesDir);
   ensureDir(updatesDir);
 
   const earlyCache = {
@@ -322,7 +320,6 @@ async function main() {
     gameKey: gameKey || cache.gameKey,
     gameVersion: gameVersion || cache.gameVersion,
     gameExecutable: gameExecutable || cache.gameExecutable,
-    updatesDir,
   };
   try {
     fs.writeFileSync(cachePath, JSON.stringify(earlyCache, null, 2), "utf8");
@@ -504,7 +501,6 @@ async function main() {
     gameKey,
     gameVersion,
     gameExecutable,
-    updatesDir,
     launcherBinary,
     launcherTarget,
     launcherArch,
