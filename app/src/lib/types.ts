@@ -455,6 +455,8 @@ export const TauriEvents = {
   UPDATE_PROGRESS: "update-progress",
   /** Verify progress event */
   VERIFY_PROGRESS: "verify-progress",
+  /** Emitted when a client process exits; payload is the new running count */
+  CLIENT_COUNT_CHANGED: "client-count-changed",
 } as const;
 
 /**

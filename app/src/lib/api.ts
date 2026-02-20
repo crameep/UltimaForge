@@ -322,6 +322,23 @@ export async function onVerifyProgress(
 }
 
 /**
+ * Listens for client count change events.
+ *
+ * Fired by the backend whenever a client process exits. The payload is the
+ * number of client instances still running (0 means all clients have closed).
+ *
+ * @param callback - Function to call with the new running count.
+ * @returns Function to call to stop listening.
+ */
+export async function onClientCountChanged(
+  callback: (runningClients: number) => void
+): Promise<UnlistenFn> {
+  return listen<number>(TauriEvents.CLIENT_COUNT_CHANGED, (event) => {
+    callback(event.payload);
+  });
+}
+
+/**
  * Generic event listener for any Tauri event.
  *
  * @param eventName - Name of the event to listen for.

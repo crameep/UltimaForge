@@ -12,6 +12,7 @@ import {
   launchGame,
   validateClient,
   gameClosed,
+  onClientCountChanged,
 } from "../lib/api";
 
 import type {
@@ -71,7 +72,7 @@ export interface UseLaunchActions {
   setSelectedServer: (server: ServerChoice) => void;
   /** Update selected assistant */
   setSelectedAssistant: (assistant: AssistantKind) => void;
-  /** Update client count (1-5) */
+  /** Update client count (1-3) */
   setClientCount: (count: number) => void;
 }
 
@@ -105,6 +106,21 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
         }
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+
+    onClientCountChanged((remaining) => {
+      setRunningClients(remaining);
+      setIsGameRunning(remaining > 0);
+    }).then((fn) => {
+      unlisten = fn;
+    }).catch(() => {});
+
+    return () => {
+      if (unlisten) unlisten();
+    };
   }, []);
 
   /**

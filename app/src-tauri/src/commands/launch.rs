@@ -10,7 +10,7 @@ use crate::cuo_settings::write_cuo_settings;
 use crate::launcher::{ClientLauncher, LaunchConfig};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::time::{sleep, Duration};
 use tracing::{error, info, warn};
 
@@ -188,7 +188,8 @@ pub async fn launch_game(
                 std::thread::spawn(move || {
                     let _ = child.wait();
                     let app_state = handle.state::<AppState>();
-                    app_state.decrement_running_clients();
+                    let remaining = app_state.decrement_running_clients();
+                    let _ = handle.emit("client-count-changed", remaining);
                 });
             }
             Err(e) => {

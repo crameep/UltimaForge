@@ -399,9 +399,7 @@ function App() {
               launchState.cuoConfig ? (
                 <CuoControls
                   config={launchState.cuoConfig}
-                  selectedServer={launchState.selectedServer}
                   selectedAssistant={launchState.selectedAssistant}
-                  onServerChange={launchActions.setSelectedServer}
                   onAssistantChange={launchActions.setSelectedAssistant}
                   disabled={launchState.isLaunching || updateState.isUpdating}
                 />
