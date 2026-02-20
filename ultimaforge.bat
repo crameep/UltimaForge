@@ -771,6 +771,19 @@ echo.
 echo This will sync your published files to your VPS.
 echo Run Option E first to publish, then Option I to deploy.
 echo.
+
+REM Refresh user PATH so rsync installed by Scoop/cwrsync is visible
+for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('PATH','User')"`) do set "PATH=%%p;%PATH%"
+
+REM Also add common rsync install locations directly
+if exist "%USERPROFILE%\scoop\shims\rsync.exe" set "PATH=%USERPROFILE%\scoop\shims;%PATH%"
+for /d %%d in ("%ProgramFiles%\cwRsync*") do (
+    if exist "%%d\bin\rsync.exe" set "PATH=%%d\bin;%PATH%"
+)
+for /d %%d in ("%ProgramFiles(x86)%\cwRsync*") do (
+    if exist "%%d\bin\rsync.exe" set "PATH=%%d\bin;%PATH%"
+)
+
 node app\scripts\deploy.js
 
 echo.
