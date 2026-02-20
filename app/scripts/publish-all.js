@@ -268,7 +268,7 @@ async function main() {
   const defaultUpdateUrl = brand?.updateUrl ?? "http://localhost:8080";
 
   const defaultGameSource = path.join(repoRoot, "server-data", "client");
-  const defaultGameKey = path.join(repoRoot, "server-data", "keys", "private.key");
+  const defaultGameKey = path.join(resolvedKeysDir, "private.key");
 
   let gameSource = "";
   let gameKey = "";
@@ -289,12 +289,9 @@ async function main() {
       args["game-key"] || cache.gameKey || defaultGameKey,
       true
     );
-    gameVersion = await promptForValue(
-      rl,
-      "Game version",
-      args["game-version"] || cache.gameVersion || "",
-      true
-    );
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
+    gameVersion = (args["game-version"] || "").trim() || today;
+    console.log(`Game version: ${gameVersion} (override with --game-version <ver>)`);
     gameExecutable = await promptForValue(
       rl,
       "Game executable (relative to source)",
