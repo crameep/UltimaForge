@@ -1,8 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM UltimaForge All-in-One Development Tool
-REM This batch file handles all development tasks
+REM UltimaForge Server Owner Tools
+REM This batch file handles all server owner tasks
 
 REM Check for command-line argument (non-interactive mode)
 if not "%~1"=="" (
@@ -18,88 +18,157 @@ REM ============================================================================
 REM DISPATCH - Non-interactive mode routing
 REM ============================================================================
 :DISPATCH
-if /i "%choice%"=="0" goto INSTALL_PREREQS
-if /i "%choice%"=="1" goto QUICK_START
-if /i "%choice%"=="2" goto SYNC_BRANDING
-if /i "%choice%"=="3" goto NPM_INSTALL
-if /i "%choice%"=="4" goto GEN_MANIFEST
-if /i "%choice%"=="5" goto START_SERVER
-if /i "%choice%"=="6" goto START_LAUNCHER
-if /i "%choice%"=="7" goto BUILD
-if /i "%choice%"=="8" goto CLEAN
-if /i "%choice%"=="9" goto TEST
+REM New main menu mappings (server owner steps 1-7)
+if /i "%choice%"=="1" goto INSTALL_PREREQS
+if /i "%choice%"=="2" goto SERVER_OWNER_WIZARD
+if /i "%choice%"=="3" goto GENERATE_ICONS
+if /i "%choice%"=="4" goto BUILD
+if /i "%choice%"=="5" goto SETUP_VPS
+if /i "%choice%"=="6" goto PUBLISH_ALL
+if /i "%choice%"=="7" goto DEPLOY_VPS
+if /i "%choice%"=="D" goto DEV_MENU
+if /i "%choice%"=="X" goto END
+
+REM Legacy letter mappings (backward compatibility)
 if /i "%choice%"=="A" goto PUBLISH_UPDATE
 if /i "%choice%"=="B" goto GENERATE_ICONS
 if /i "%choice%"=="C" goto PUBLISH_LAUNCHER_UPDATE
-if /i "%choice%"=="D" goto SERVER_OWNER_WIZARD
 if /i "%choice%"=="E" goto PUBLISH_ALL
 if /i "%choice%"=="F" goto DEV_ALL
 if /i "%choice%"=="G" goto PUBLISH_LAUNCHER_ONLY
 if /i "%choice%"=="H" goto SETUP_VPS
 if /i "%choice%"=="I" goto DEPLOY_VPS
-if /i "%choice%"=="X" goto END
 
 echo Invalid choice: %choice%
 exit /b 1
 
+REM ============================================================================
+REM MAIN MENU
+REM ============================================================================
 :MENU
 cls
-echo.
-echo ========================================
-echo    UltimaForge Development Tool
-echo ========================================
-echo.
-echo What would you like to do?
-echo.
-echo  [0] Install Prerequisites (first-time setup)
-echo  [1] Quick Start (Sync + Server + Launcher)
-echo  [2] Sync Branding Only
-echo  [3] Install Dependencies (npm install)
-echo  [4] Generate Test Manifest (v1.0.0)
-echo  [5] Start Test Server Only
-echo  [6] Start Launcher Only
-echo  [7] Build Production
-echo  [8] Clean Everything
-echo  [9] Run All Tests
-echo  [A] Publish New Test Version (for update testing)
-echo  [B] Generate App Icons from Branding
-echo  [C] Publish Launcher Update Metadata
-echo  [D] Server Owner Wizard (branding + keys)
-echo  [E] Publish All (game + launcher)
-echo  [F] Dev All-in-One (server + launcher)
-echo  [G] Publish Launcher Only (fast)
-echo  [H] Setup VPS (first-time)
-echo  [I] Deploy to VPS
-echo  [X] Exit
-echo.
-echo ========================================
-echo.
-set /p choice="Enter your choice (0-9, A-I, X): "
+call :CHECK_STATUS
 
-if /i "%choice%"=="0" goto INSTALL_PREREQS
-if /i "%choice%"=="1" goto QUICK_START
-if /i "%choice%"=="2" goto SYNC_BRANDING
-if /i "%choice%"=="3" goto NPM_INSTALL
-if /i "%choice%"=="4" goto GEN_MANIFEST
-if /i "%choice%"=="5" goto START_SERVER
-if /i "%choice%"=="6" goto START_LAUNCHER
-if /i "%choice%"=="7" goto BUILD
-if /i "%choice%"=="8" goto CLEAN
-if /i "%choice%"=="9" goto TEST
-if /i "%choice%"=="A" goto PUBLISH_UPDATE
-if /i "%choice%"=="B" goto GENERATE_ICONS
-if /i "%choice%"=="C" goto PUBLISH_LAUNCHER_UPDATE
-if /i "%choice%"=="D" goto SERVER_OWNER_WIZARD
-if /i "%choice%"=="E" goto PUBLISH_ALL
-if /i "%choice%"=="F" goto DEV_ALL
-if /i "%choice%"=="G" goto PUBLISH_LAUNCHER_ONLY
-if /i "%choice%"=="H" goto SETUP_VPS
-if /i "%choice%"=="I" goto DEPLOY_VPS
+if "%PREREQS_OK%"=="1" (set "S1=[DONE]") else (set "S1=[...]")
+if "%BRANDING_OK%"=="1" (set "S2=[DONE]") else (set "S2=[...]")
+if "%ICONS_OK%"=="1" (set "S3=[DONE]") else (set "S3=[...]")
+if "%BUILD_OK%"=="1" (set "S4=[DONE]") else (set "S4=[...]")
+if "%VPS_OK%"=="1" (set "S5=[DONE]") else (set "S5=[...]")
+
+echo.
+echo ========================================
+echo    UltimaForge - Server Owner Tools
+echo ========================================
+echo.
+echo   FIRST TIME SETUP
+echo.
+echo   [1] Install Prerequisites          %S1%
+echo   [2] Configure Branding ^& Keys      %S2%
+echo   [3] Generate App Icons             %S3%
+echo   [4] Build Launcher                 %S4%
+echo   [5] Setup VPS (optional)           %S5%
+echo.
+echo   ONGOING
+echo.
+echo   [6] Publish Game Update
+echo   [7] Deploy to VPS
+echo.
+echo   [D] Developer Tools
+echo   [X] Exit
+echo.
+echo ========================================
+echo.
+set /p choice="Enter your choice: "
+
+if /i "%choice%"=="1" goto INSTALL_PREREQS
+if /i "%choice%"=="2" goto SERVER_OWNER_WIZARD
+if /i "%choice%"=="3" goto GENERATE_ICONS
+if /i "%choice%"=="4" goto BUILD
+if /i "%choice%"=="5" goto SETUP_VPS
+if /i "%choice%"=="6" goto PUBLISH_CHOICE
+if /i "%choice%"=="7" goto DEPLOY_VPS
+if /i "%choice%"=="D" goto DEV_MENU
 if /i "%choice%"=="X" goto END
 
 echo Invalid choice. Please try again.
 timeout /t 2 >nul
 goto MENU
+
+REM ============================================================================
+REM CHECK STATUS - Sets status variables for menu display
+REM ============================================================================
+:CHECK_STATUS
+set "PREREQS_OK=0"
+set "BRANDING_OK=0"
+set "ICONS_OK=0"
+set "BUILD_OK=0"
+set "VPS_OK=0"
+
+where node >nul 2>nul
+if not errorlevel 1 (
+    where cargo >nul 2>nul
+    if not errorlevel 1 set "PREREQS_OK=1"
+)
+
+if exist "keys\private.key" (
+    if exist "keys\tauri-updater\tauri.key" set "BRANDING_OK=1"
+)
+
+if exist "app\src-tauri\icons\icon.ico" set "ICONS_OK=1"
+
+dir /b "app\src-tauri\target\release\*.exe" >nul 2>nul
+if not errorlevel 1 set "BUILD_OK=1"
+
+if exist "server-data\deploy.json" set "VPS_OK=1"
+
+exit /b 0
+
+REM ============================================================================
+REM DEVELOPER TOOLS SUBMENU
+REM ============================================================================
+:DEV_MENU
+cls
+echo.
+echo ========================================
+echo    Developer Tools
+echo ========================================
+echo.
+echo   [1] Quick Start (Sync + Server + Launcher)
+echo   [2] Sync Branding Assets
+echo   [3] Install npm Dependencies
+echo   [4] Generate Test Manifest (v1.0.0)
+echo   [5] Start Test Server
+echo   [6] Start Launcher (Dev Mode)
+echo   [7] Dev All-in-One
+echo   [8] Clean Everything
+echo   [9] Run All Tests
+echo   [A] Publish New Test Version
+echo   [B] Publish Launcher Update Metadata
+echo   [C] Build Production (manual)
+echo.
+echo   [M] Back to Main Menu
+echo.
+echo ========================================
+echo.
+set /p dev_choice="Enter your choice: "
+
+if /i "%dev_choice%"=="1" goto QUICK_START
+if /i "%dev_choice%"=="2" goto SYNC_BRANDING
+if /i "%dev_choice%"=="3" goto NPM_INSTALL
+if /i "%dev_choice%"=="4" goto GEN_MANIFEST
+if /i "%dev_choice%"=="5" goto START_SERVER
+if /i "%dev_choice%"=="6" goto START_LAUNCHER
+if /i "%dev_choice%"=="7" goto DEV_ALL
+if /i "%dev_choice%"=="8" goto CLEAN
+if /i "%dev_choice%"=="9" goto TEST
+if /i "%dev_choice%"=="A" goto PUBLISH_UPDATE
+if /i "%dev_choice%"=="B" goto PUBLISH_LAUNCHER_UPDATE
+if /i "%dev_choice%"=="C" goto BUILD
+if /i "%dev_choice%"=="M" goto MENU
+
+echo Invalid choice. Please try again.
+timeout /t 2 >nul
+goto DEV_MENU
 
 REM ============================================================================
 REM INSTALL PREREQUISITES
@@ -497,11 +566,11 @@ echo.
 echo [5/5] Building Tauri application...
 echo This will take several minutes...
 cd app
-if exist "..\\keys\\tauri-updater\\tauri.key" (
-    echo Using Tauri updater signing key from keys\\tauri-updater\\tauri.key
-    set "TAURI_SIGNING_PRIVATE_KEY_PATH=..\\keys\\tauri-updater\\tauri.key"
-    if exist "..\\keys\\tauri-updater\\password.txt" (
-        for /f "usebackq delims=" %%p in ("..\\keys\\tauri-updater\\password.txt") do set "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=%%p"
+if exist "..\keys\tauri-updater\tauri.key" (
+    echo Loading Tauri updater signing key...
+    for /f "delims=" %%k in ('node scripts\print-signing-key.js "..\keys\tauri-updater\tauri.key"') do set "TAURI_SIGNING_PRIVATE_KEY=%%k"
+    if exist "..\keys\tauri-updater\password.txt" (
+        for /f "usebackq delims=" %%p in ("..\keys\tauri-updater\password.txt") do set "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=%%p"
     )
 )
 call npm run tauri build
@@ -700,6 +769,30 @@ pause >nul
 goto MENU
 
 REM ============================================================================
+REM PUBLISH CHOICE - Sub-choice for game update publishing
+REM ============================================================================
+:PUBLISH_CHOICE
+cls
+echo.
+echo ========================================
+echo    Publish Game Update
+echo ========================================
+echo.
+echo   Publish what?
+echo   [1] Full (game + launcher) - default
+echo   [2] Launcher only (fast, skips game files)
+echo.
+set "pub_choice="
+set /p pub_choice="Enter choice (or Enter for Full): "
+
+if "%pub_choice%"=="" goto PUBLISH_ALL
+if "%pub_choice%"=="1" goto PUBLISH_ALL
+if "%pub_choice%"=="2" goto PUBLISH_LAUNCHER_ONLY
+
+echo Invalid choice. Using Full publish...
+goto PUBLISH_ALL
+
+REM ============================================================================
 REM PUBLISH ALL (GAME + LAUNCHER)
 REM ============================================================================
 :PUBLISH_ALL
@@ -731,7 +824,7 @@ echo.
 echo This will build and publish launcher updates only.
 echo (Skips game update manifest/blob generation.)
 echo.
-node app\scripts\publish-all.js --launcher-only true
+node app\scripts\publish-all.js --launcher-only true --auto-bump patch
 
 echo.
 echo Press any key to return to menu...
@@ -896,7 +989,7 @@ echo   - Desktop shortcut
 echo   - Add/Remove Programs
 echo   - NSIS Installer screens
 echo.
-echo Next: Build production (option 7) to create installer
+echo Next: Build launcher (step 4) to create installer
 echo.
 echo Press any key to return to menu...
 pause >nul

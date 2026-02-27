@@ -113,8 +113,8 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 echo "[1/7] Updating package index..."
 apt-get update -y -qq
-echo "[2/7] Installing Caddy dependencies..."
-apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl gnupg
+echo "[2/7] Installing Caddy dependencies and rsync..."
+apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl gnupg rsync
 echo "[3/7] Adding Caddy apt repository..."
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \\
   | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg 2>/dev/null

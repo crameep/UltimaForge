@@ -252,6 +252,46 @@ function findLatestInstaller(bundleDir, version) {
   return preferred || installers[0];
 }
 
+function bumpVersion(current, segment = "patch") {
+  const parts = current.split(".").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) {
+    throw new Error(`Cannot auto-bump malformed version: ${current}`);
+  }
+  if (segment === "major") { parts[0]++; parts[1] = 0; parts[2] = 0; }
+  else if (segment === "minor") { parts[1]++; parts[2] = 0; }
+  else { parts[2]++; }
+  return parts.join(".");
+}
+
+function applyVersionBump(version) {
+  const cargoTomlPath = path.join(repoRoot, "Cargo.toml");
+  const cargoContents = fs.readFileSync(cargoTomlPath, "utf8");
+  fs.writeFileSync(
+    cargoTomlPath,
+    cargoContents.replace(
+      /(\[workspace\.package\][\s\S]*?version\s*=\s*")([^"]+)(")/,
+      `$1${version}$3`
+    ),
+    "utf8"
+  );
+
+  const tauriConfigPath = path.join(appDir, "src-tauri", "tauri.conf.json");
+  const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf8"));
+  fs.writeFileSync(tauriConfigPath, JSON.stringify({ ...tauriConfig, version }, null, 2), "utf8");
+
+  const packageJsonPath = path.join(appDir, "package.json");
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  fs.writeFileSync(packageJsonPath, JSON.stringify({ ...packageJson, version }, null, 2), "utf8");
+
+  const packageLockPath = path.join(appDir, "package-lock.json");
+  if (fs.existsSync(packageLockPath)) {
+    const lock = JSON.parse(fs.readFileSync(packageLockPath, "utf8"));
+    const updated = { ...lock, version };
+    if (updated.packages?.[""]?.version) updated.packages[""].version = version;
+    fs.writeFileSync(packageLockPath, JSON.stringify(updated, null, 2), "utf8");
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const rl = readline.createInterface({
@@ -262,6 +302,16 @@ async function main() {
   const cachePath = path.join(repoRoot, ".publish-all-cache.json");
   const cache = readJsonIfExists(cachePath, {});
   const launcherOnly = (args["launcher-only"] || "").trim() === "true";
+
+  const autoBump = (args["auto-bump"] || "").trim();
+  if (autoBump) {
+    const tauriConfigPath = path.join(appDir, "src-tauri", "tauri.conf.json");
+    const currentVersion = readJsonIfExists(tauriConfigPath, {})?.version ?? "0.0.0";
+    const segment = ["major", "minor", "patch"].includes(autoBump) ? autoBump : "patch";
+    const newVersion = bumpVersion(currentVersion, segment);
+    applyVersionBump(newVersion);
+    console.log(`Version bumped: ${currentVersion} → ${newVersion}`);
+  }
 
   const brandPath = path.join(repoRoot, "branding", "brand.json");
   const brand = fs.existsSync(brandPath) ? readJson(brandPath) : null;

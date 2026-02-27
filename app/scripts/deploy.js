@@ -51,12 +51,30 @@ function toCygwinPath(winPath) {
  *   null                           - not found anywhere
  */
 function findRsync() {
-  // 1. Native rsync on PATH (works on Linux/Mac; also works on Windows if
-  //    the user has a working rsync in their PATH)
-  const probe = spawnSync("rsync", ["--version"], { stdio: "ignore" });
-  if (!probe.error) return { bin: "rsync", wsl: false };
+  // On Linux/Mac: native rsync on PATH is always correct.
+  if (process.platform !== "win32") {
+    const probe = spawnSync("rsync", ["--version"], { stdio: "ignore" });
+    if (!probe.error) return { bin: "rsync", wsl: false };
+    return null;
+  }
 
-  // 2. Common Windows install locations (Scoop shims, cwRsync)
+  // On Windows: prefer WSL rsync over native/cwrsync.
+  //
+  // Native "rsync" on the Windows PATH is often the WSL interop shim
+  // (C:\Windows\System32\rsync), which expects Linux paths — but we'd
+  // pass it Cygwin paths, causing protocol error code 12. cwrsync bundles
+  // its own Cygwin SSH that also mishandles Windows key paths.
+  //
+  // WSL rsync is the most reliable choice on Windows: the tryRsync() WSL
+  // path converts both the source dir and SSH key to /mnt/... paths.
+
+  // 1. WSL rsync (preferred on Windows)
+  const wslProbe = spawnSync("wsl", ["which", "rsync"], { stdio: "pipe" });
+  if (!wslProbe.error && wslProbe.status === 0 && wslProbe.stdout.toString().trim()) {
+    return { bin: "wsl", wsl: true };
+  }
+
+  // 2. Known cwrsync / Scoop install locations (no WSL available)
   const home = process.env.USERPROFILE || "";
   const progFiles = process.env.ProgramFiles || "C:\\Program Files";
   const progFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
@@ -82,29 +100,29 @@ function findRsync() {
     if (fs.existsSync(candidate)) return { bin: candidate, wsl: false };
   }
 
-  // 3. WSL fallback — only if WSL is available (not required)
-  const wslProbe = spawnSync("wsl", ["which", "rsync"], { stdio: "pipe" });
-  if (!wslProbe.error && wslProbe.status === 0 && wslProbe.stdout.toString().trim()) {
-    return { bin: "wsl", wsl: true };
-  }
-
   return null;
 }
 
 function tryRsync(rsync, user, host, port, keyPath, localDir, remotePath) {
   let bin, args;
 
+  // -q suppresses SSH banner/MOTD output. Without it, a remote shell that
+  // prints anything to stdout on login (DigitalOcean MOTD, /etc/profile.d/
+  // scripts, etc.) corrupts the rsync protocol stream, causing error code 12.
+  const sshOpts = `-i "${keyPath}" -o StrictHostKeyChecking=accept-new -q -p ${port}`;
+
   if (rsync.wsl) {
     // Run rsync inside WSL, converting Windows paths to /mnt/... paths
     const wslLocalDir = toWslPath(localDir);
     const wslKeyPath = toWslPath(keyPath);
+    const wslSshOpts = `-i "${wslKeyPath}" -o StrictHostKeyChecking=accept-new -q -p ${port}`;
     bin = "wsl";
     args = [
       "rsync",
       "-avz",
       "--delete",
       "-e",
-      `ssh -i "${wslKeyPath}" -o StrictHostKeyChecking=accept-new -p ${port}`,
+      `ssh ${wslSshOpts}`,
       `${wslLocalDir}/`,
       `${user}@${host}:${remotePath}/`,
     ];
@@ -120,7 +138,7 @@ function tryRsync(rsync, user, host, port, keyPath, localDir, remotePath) {
       "-avz",
       "--delete",
       "-e",
-      `ssh -i "${keyPath}" -o StrictHostKeyChecking=accept-new -p ${port}`,
+      `ssh ${sshOpts}`,
       srcDir + "/",
       `${user}@${host}:${remotePath}/`,
     ];
@@ -128,6 +146,13 @@ function tryRsync(rsync, user, host, port, keyPath, localDir, remotePath) {
 
   const result = spawnSync(bin, args, { stdio: "inherit" });
   if (result.status !== 0) {
+    if (result.status === 12) {
+      exitWithError(
+        "rsync protocol error (code 12).\n" +
+        "rsync is likely not installed on the server.\n" +
+        `Fix: ssh ${user}@${host} "apt-get install -y rsync"`
+      );
+    }
     exitWithError("rsync failed. Check the output above.");
   }
   return true;
@@ -172,6 +197,60 @@ function tryScp(user, host, port, keyPath, localDir, remotePath) {
     exitWithError("scp failed. Check the output above.");
   }
   return true;
+}
+
+/**
+ * Returns true if SSH key auth succeeds without a password prompt.
+ */
+function testSshKeyAuth(user, host, port, keyPath) {
+  const result = spawnSync(
+    "ssh",
+    [
+      "-i", keyPath,
+      "-o", "BatchMode=yes",
+      "-o", "StrictHostKeyChecking=accept-new",
+      "-o", "ConnectTimeout=10",
+      "-p", String(port),
+      `${user}@${host}`,
+      "echo OK",
+    ],
+    { stdio: ["ignore", "pipe", "pipe"] }
+  );
+  const out = result.stdout ? result.stdout.toString().trim() : "";
+  return result.status === 0 && out === "OK";
+}
+
+/**
+ * Appends the deploy public key to authorized_keys on the server.
+ * Prompts for the server password (one-time setup).
+ * Returns { ok: true } or { ok: false, reason: string }.
+ */
+function installDeployKey(user, host, port, pubKeyPath) {
+  const pubKey = fs.readFileSync(pubKeyPath, "utf8").trim();
+  console.log("You will be prompted for your server password (this is the last time).");
+  // Capture stdout+stderr so we can detect the failure reason, but also
+  // print them so the user sees the server's diagnostic output.
+  const result = spawnSync(
+    "ssh",
+    [
+      "-o", "StrictHostKeyChecking=accept-new",
+      "-o", "ConnectTimeout=15",
+      "-p", String(port),
+      `${user}@${host}`,
+      `mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '${pubKey}' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && echo "Key installed"`,
+    ],
+    { stdio: ["inherit", "pipe", "pipe"] }
+  );
+  const stdout = result.stdout ? result.stdout.toString() : "";
+  const stderr = result.stderr ? result.stderr.toString() : "";
+  if (stdout) process.stdout.write(stdout);
+  if (stderr) process.stderr.write(stderr);
+  if (result.status === 0) return { ok: true };
+  const combined = stdout + stderr;
+  if (combined.includes("No space left on device") || combined.includes("no space")) {
+    return { ok: false, reason: "disk_full" };
+  }
+  return { ok: false, reason: "unknown" };
 }
 
 if (!fs.existsSync(deployConfigPath)) {
@@ -223,6 +302,45 @@ console.log("   Deploying to VPS");
 console.log("========================================");
 console.log(`\nTarget: ${user}@${host}:${remotePath}`);
 console.log(`Update URL: ${displayUrl}`);
+
+// Verify SSH key auth works before running rsync/scp.
+// If it doesn't, auto-install the deploy key (ssh-copy-id equivalent).
+const deployKeyPubPath = deployKeyPath + ".pub";
+console.log("\nChecking SSH key auth...");
+if (!testSshKeyAuth(user, host, port, deployKeyPath)) {
+  if (!fs.existsSync(deployKeyPubPath)) {
+    exitWithError(
+      "SSH key auth failed and deploy-key.pub not found.\n" +
+      "Re-run Option 5 (Setup VPS) to generate a new deploy keypair."
+    );
+  }
+  console.log("Deploy key not yet authorized on server.");
+  console.log("Installing deploy key on server (one-time setup)...");
+  const installed = installDeployKey(user, host, port, deployKeyPubPath);
+  if (!installed.ok) {
+    if (installed.reason === "disk_full") {
+      exitWithError(
+        "Server is out of disk space — the deploy key could not be saved.\n" +
+        "Free up space on the server, then try again:\n" +
+        `  ssh ${user}@${host} -p ${port} "journalctl --vacuum-size=50M && apt-get clean && df -h"`
+      );
+    }
+    exitWithError(
+      "Failed to install deploy key.\n" +
+      "Check that the server password is correct and SSH is accessible."
+    );
+  }
+  if (!testSshKeyAuth(user, host, port, deployKeyPath)) {
+    exitWithError(
+      "Deploy key was installed but key auth still fails.\n" +
+      "Check server SSH config: PasswordAuthentication and AuthorizedKeysFile settings."
+    );
+  }
+  console.log("Deploy key installed. Future deploys will not require a password.");
+} else {
+  console.log("SSH key auth: OK");
+}
+
 console.log("\nSyncing files...\n");
 
 const rsync = findRsync();

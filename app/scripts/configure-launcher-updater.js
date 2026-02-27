@@ -447,6 +447,42 @@ async function main() {
   }
 
   tauriConfig.plugins.updater.pubkey = publicKey;
+
+  // Update the endpoint URL from brand.json so production builds point at the
+  // server owner's actual VPS, not the localhost test server.
+  const brandJsonPaths = [
+    path.join(repoRoot, "branding", "brand.json"),
+    path.join(appDir, "public", "branding", "brand.json"),
+  ];
+  let updateUrl = "";
+  for (const brandPath of brandJsonPaths) {
+    if (fs.existsSync(brandPath)) {
+      try {
+        const brand = readJson(brandPath);
+        if (brand.updateUrl) {
+          updateUrl = brand.updateUrl.replace(/\/$/, "");
+          break;
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
+  }
+
+  if (updateUrl) {
+    const endpoint = `${updateUrl}/launcher/{{target}}-{{arch}}.json`;
+    tauriConfig.plugins.updater.endpoints = [endpoint];
+    if (updateUrl.startsWith("http://")) {
+      tauriConfig.plugins.updater.dangerousInsecureTransportProtocol = true;
+    } else {
+      delete tauriConfig.plugins.updater.dangerousInsecureTransportProtocol;
+    }
+    console.log(`\nUpdated updater endpoint: ${endpoint}`);
+  } else {
+    console.log("\nNote: Could not read updateUrl from brand.json.");
+    console.log("Updater endpoint not changed — update it manually in src-tauri/tauri.conf.json.");
+  }
+
   writeJson(tauriConfigPath, tauriConfig);
 
   const valid = validateFinalKeyState(privateKeyPath, privateKeyPasswordPath);

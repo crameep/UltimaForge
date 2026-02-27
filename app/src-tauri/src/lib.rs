@@ -97,6 +97,16 @@ pub fn run() {
 
             // Store state in app using state management
             app.manage(app_state);
+
+            // After a self-update the NSIS installer can relaunch the app
+            // minimized or hidden. Show, restore, and focus the window so
+            // players don't have to find it in the taskbar.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

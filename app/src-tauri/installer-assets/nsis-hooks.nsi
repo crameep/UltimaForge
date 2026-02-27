@@ -5,7 +5,7 @@
 ;
 ; CUSTOMIZE: Update SERVER_NAME below to match brand.json > product.serverName
 
-!define SERVER_NAME "UnchainedFileServer"
+!define SERVER_NAME "Unchained"
 
 ; ============================================================================
 ; customUninstall

@@ -211,11 +211,10 @@ pub async fn launcher_update_handler(
             content,
         )
             .into_response(),
-        Err(_) => (
-            StatusCode::NOT_FOUND,
-            "launcher update metadata not found",
-        )
-            .into_response(),
+        // Tauri's updater plugin treats 204 as "no update available".
+        // Returning 404 here would cause the launcher to show "failed to check
+        // for updates" instead of the correct "up to date" state.
+        Err(_) => StatusCode::NO_CONTENT.into_response(),
     }
 }
 

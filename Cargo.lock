@@ -1529,7 +1529,7 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "host-server"
-version = "0.0.7"
+version = "0.1.1"
 dependencies = [
  "axum",
  "clap",
@@ -2971,7 +2971,7 @@ dependencies = [
 
 [[package]]
 name = "publish-cli"
-version = "0.0.7"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "clap",
@@ -4814,7 +4814,7 @@ checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 
 [[package]]
 name = "ultimaforge"
-version = "0.0.7"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "ed25519-dalek",
