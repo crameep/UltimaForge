@@ -99,10 +99,12 @@ pub fn run() {
             // the launcher was closed. sysinfo lets us set is_game_running
             // correctly before the UI loads, so the update button is disabled
             // even when the launcher restarts mid-session.
-            {
+            let detected_exe: Option<String> = {
                 use sysinfo::{ProcessesToUpdate, System};
-                if let Some(ref lconfig) = app_state.launcher_config() {
-                    if let Some(ref exe_name) = lconfig.client_executable {
+                app_state.launcher_config()
+                    .as_ref()
+                    .and_then(|c| c.client_executable.clone())
+                    .and_then(|exe_name| {
                         let exe_lower = exe_name.to_lowercase();
                         let mut sys = System::new();
                         sys.refresh_processes(ProcessesToUpdate::All, false);
@@ -112,13 +114,39 @@ pub fn run() {
                         if running {
                             info!("Detected game process '{}' already running on startup", exe_name);
                             app_state.set_game_running(true);
+                            Some(exe_lower)
+                        } else {
+                            None
                         }
-                    }
-                }
-            }
+                    })
+            };
 
             // Store state in app using state management
             app.manage(app_state);
+
+            // If the game was already running when the launcher started, spawn
+            // a background thread to poll for process exit so the launcher
+            // transitions back to Ready when the player eventually closes the
+            // game — without this the GameRunning state would stick forever.
+            if let Some(exe_lower) = detected_exe {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    use sysinfo::{ProcessesToUpdate, System};
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(2));
+                        let mut sys = System::new();
+                        sys.refresh_processes(ProcessesToUpdate::All, false);
+                        let still_running = sys.processes().values().any(|p| {
+                            p.name().to_string_lossy().to_lowercase() == exe_lower
+                        });
+                        if !still_running {
+                            info!("Game process '{}' exited, clearing GameRunning state", exe_lower);
+                            handle.state::<AppState>().set_running_clients(0);
+                            break;
+                        }
+                    }
+                });
+            }
 
             // After a self-update the NSIS installer can relaunch the app
             // minimized or hidden. Show, restore, and focus the window so
