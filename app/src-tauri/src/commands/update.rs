@@ -193,6 +193,11 @@ pub async fn start_update(
         return Err("Cannot update while installation is in progress".to_string());
     }
 
+    // Check if the game is running - updating open game files causes corruption
+    if state.is_game_running() {
+        return Err("Close the game client before updating.".to_string());
+    }
+
     // Get required configuration
     let brand_config = state
         .brand_config()

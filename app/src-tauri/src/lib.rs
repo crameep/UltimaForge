@@ -95,6 +95,28 @@ pub fn run() {
                 }
             };
 
+            // Scan running processes to detect if the game was left open when
+            // the launcher was closed. sysinfo lets us set is_game_running
+            // correctly before the UI loads, so the update button is disabled
+            // even when the launcher restarts mid-session.
+            {
+                use sysinfo::{ProcessesToUpdate, System};
+                if let Some(ref lconfig) = app_state.launcher_config() {
+                    if let Some(ref exe_name) = lconfig.client_executable {
+                        let exe_lower = exe_name.to_lowercase();
+                        let mut sys = System::new();
+                        sys.refresh_processes(ProcessesToUpdate::All, false);
+                        let running = sys.processes().values().any(|p| {
+                            p.name().to_string_lossy().to_lowercase() == exe_lower
+                        });
+                        if running {
+                            info!("Detected game process '{}' already running on startup", exe_name);
+                            app_state.set_game_running(true);
+                        }
+                    }
+                }
+            }
+
             // Store state in app using state management
             app.manage(app_state);
 

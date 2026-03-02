@@ -999,6 +999,26 @@ impl Updater {
         progress.total_files = files_to_update.len();
         progress.total_bytes = files_to_update.iter().map(|f| f.size).sum();
 
+        // Pre-flight: check the game exe isn't locked before doing any file
+        // work. If the player left the game running and closed the launcher,
+        // the process scan on startup may not have caught it (e.g. launched
+        // externally). Opening the exe for write fails on Windows when it's
+        // in use, giving a clear error before we waste bandwidth or corrupt
+        // the backup.
+        let exe_path = self.install_path.join(&manifest.client_executable);
+        if exe_path.exists() {
+            match OpenOptions::new().write(true).create(false).open(&exe_path) {
+                Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+                    log.log_session_end(false);
+                    return Err(UpdateError::FileLocked {
+                        path: manifest.client_executable.clone(),
+                    });
+                }
+                Ok(f) => drop(f), // file is writable — immediately release
+                Err(_) => {}      // other errors (missing, etc.) — not our problem
+            }
+        }
+
         // Step 2: Download to staging
         progress.state = UpdateState::Downloading;
         progress_callback(&progress);
