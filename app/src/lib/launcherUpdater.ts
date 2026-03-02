@@ -13,6 +13,8 @@ export type LauncherUpdateCheck = {
 
 type LauncherUpdateOptions = {
   interactive?: boolean;
+  /** Silent check, but show install dialog if an update is found. */
+  promptIfAvailable?: boolean;
 };
 
 function buildPromptMessage(version?: string, notes?: string, date?: string) {
@@ -33,7 +35,7 @@ function buildPromptMessage(version?: string, notes?: string, date?: string) {
 export async function checkForLauncherUpdate(
   options: LauncherUpdateOptions = {}
 ): Promise<LauncherUpdateCheck> {
-  const { interactive = false } = options;
+  const { interactive = false, promptIfAvailable = false } = options;
 
   if (!isTauri()) {
     return { updateAvailable: false };
@@ -56,7 +58,7 @@ export async function checkForLauncherUpdate(
     const date = update.date ?? "";
     const prompt = buildPromptMessage(update.version, notes, date);
 
-    if (interactive) {
+    if (interactive || promptIfAvailable) {
       const shouldInstall = await confirm(prompt, {
         title: "Launcher Update Available",
         okLabel: "Update and Restart",
