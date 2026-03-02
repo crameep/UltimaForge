@@ -141,7 +141,7 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
 
       return result.is_valid;
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to validate client";
+      const msg = typeof error === "string" ? error : error instanceof Error ? error.message : "Failed to validate client";
       setErrorMessage(msg);
       setIsValid(false);
       return false;
@@ -177,7 +177,7 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
 
       return result;
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to launch game";
+      const msg = typeof error === "string" ? error : error instanceof Error ? error.message : "Failed to launch game";
       setErrorMessage(msg);
 
       const errorResult: LaunchResponse = {
