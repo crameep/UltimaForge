@@ -114,6 +114,23 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Bug fix: Removed updateActions from deps - should only run once on mount
 
+  // Keep client version in sync with the update check result (populated at startup)
+  // and after a successful update (isComplete). This is more reliable than the
+  // one-shot settings fetch at startup which runs before the update check.
+  useEffect(() => {
+    if (updateState.checkResult?.current_version) {
+      setClientVersion(updateState.checkResult.current_version);
+    }
+  }, [updateState.checkResult?.current_version]);
+
+  useEffect(() => {
+    if (updateState.isComplete) {
+      getSettings()
+        .then((s) => { if (s.current_version) setClientVersion(s.current_version); })
+        .catch(() => {});
+    }
+  }, [updateState.isComplete]);
+
   // Sync update state with app phase
   useEffect(() => {
     if (updateState.isUpdating) {
