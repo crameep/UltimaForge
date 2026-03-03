@@ -804,7 +804,7 @@ echo ========================================
 echo.
 echo This will publish game updates and launcher update metadata.
 echo.
-node app\scripts\publish-all.js
+node app\scripts\publish-all.js --auto-bump patch
 
 echo.
 echo Press any key to return to menu...
