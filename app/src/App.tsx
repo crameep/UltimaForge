@@ -34,6 +34,7 @@ function App() {
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [currentView, setCurrentView] = useState<AppView>("home");
   const [appVersion, setAppVersion] = useState<string>("");
+  const [clientVersion, setClientVersion] = useState<string | null>(null);
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
@@ -65,6 +66,7 @@ function App() {
           const settings = await getSettings();
           shouldCheckLauncherUpdates =
             settings.settings?.check_updates_on_startup ?? true;
+          if (settings.current_version) setClientVersion(settings.current_version);
         } catch (settingsError) {
           // Settings fetch failed - default to checking updates (safe default)
           // Log warning but don't block app startup
@@ -179,6 +181,7 @@ function App() {
 
     try {
       const settingsResponse = await getSettings();
+      if (settingsResponse.current_version) setClientVersion(settingsResponse.current_version);
       const autoLaunchEnabled = settingsResponse.settings?.auto_launch ?? false;
 
       if (autoLaunchEnabled) {
@@ -260,7 +263,7 @@ function App() {
         phase={phase}
         statusMessage={statusMessage}
         version={appVersion}
-        clientVersion={updateState.checkResult?.current_version}
+        clientVersion={clientVersion}
         runningClients={launchState.runningClients}
       >
         <InstallWizard
@@ -278,7 +281,7 @@ function App() {
         phase={phase}
         statusMessage="Detecting installation..."
         version={appVersion}
-        clientVersion={updateState.checkResult?.current_version}
+        clientVersion={clientVersion}
         runningClients={launchState.runningClients}
       >
         <div className="main-content">
@@ -298,7 +301,7 @@ function App() {
         phase={phase}
         statusMessage={statusMessage}
         version={appVersion}
-        clientVersion={updateState.checkResult?.current_version}
+        clientVersion={clientVersion}
         runningClients={launchState.runningClients}
       >
         <div className="main-content">
@@ -318,7 +321,7 @@ function App() {
         phase={phase}
         statusMessage="Checking for updates..."
         version={appVersion}
-        clientVersion={updateState.checkResult?.current_version}
+        clientVersion={clientVersion}
         runningClients={launchState.runningClients}
       >
         <div className="main-content">
@@ -338,7 +341,7 @@ function App() {
         phase={phase}
         statusMessage={statusMessage}
         version={appVersion}
-        clientVersion={updateState.checkResult?.current_version}
+        clientVersion={clientVersion}
         onHomeClick={navigateToHome}
         onSettingsClick={navigateToSettings}
         runningClients={launchState.runningClients}
