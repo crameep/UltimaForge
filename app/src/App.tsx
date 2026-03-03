@@ -377,16 +377,6 @@ function App() {
           </p>
         </div>
 
-        {/* Show update banner if update is available */}
-        {updateState.updateAvailable && updateState.checkResult && (
-          <UpdateProgress
-            showBanner={true}
-            checkResult={updateState.checkResult}
-            onComplete={handleUpdateComplete}
-            onDismiss={handleUpdateDismiss}
-          />
-        )}
-
         {/* Show patch notes when available */}
         {updateState.checkResult?.patch_notes_url && (
           <PatchNotes
