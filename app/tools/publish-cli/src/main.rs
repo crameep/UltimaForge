@@ -262,6 +262,15 @@ fn main() {
             println!("Publishing v{} from: {}", version, source);
             println!();
 
+            // Write a version sentinel file so every version bump produces a
+            // hash change, guaranteeing the launcher detects an update even
+            // when no other game files have changed.
+            let sentinel_path = std::path::Path::new(&source).join("_uf_version.txt");
+            if let Err(e) = std::fs::write(&sentinel_path, version.as_bytes()) {
+                eprintln!("  ✗ Failed to write version sentinel: {}", e);
+                std::process::exit(1);
+            }
+
             // Step 1: Generate manifest
             println!("Step 1/3: Generating manifest...");
             let manifest_result = match manifest::generate_manifest(&source, &manifest_path, &version, &executable) {
