@@ -14,6 +14,8 @@ import "./Settings.css";
 interface SettingsProps {
   /** Callback when user wants to go back to main view */
   onBack?: () => void;
+  /** Called when a launcher update is found so the parent can show the modal */
+  onLauncherUpdateAvailable?: (update: import("../lib/launcherUpdater").LauncherUpdateCheck) => void;
 }
 
 /**
@@ -168,7 +170,7 @@ function AdminBanner({
 /**
  * Main Settings component.
  */
-export function Settings({ onBack }: SettingsProps) {
+export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
   const [state, actions] = useSettings();
   const [launcherUpdateMessage, setLauncherUpdateMessage] = useState<{
     type: "success" | "error";
@@ -193,6 +195,8 @@ export function Settings({ onBack }: SettingsProps) {
         type: "success",
         message: "Launcher is up to date.",
       });
+    } else if (onLauncherUpdateAvailable) {
+      onLauncherUpdateAvailable(result);
     } else {
       const versionText = result.version ? ` (v${result.version})` : "";
       setLauncherUpdateMessage({

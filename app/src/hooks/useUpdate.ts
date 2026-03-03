@@ -194,7 +194,7 @@ function useUpdateInternal(): [UseUpdateState, UseUpdateActions] {
       }
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Update failed"
+        typeof error === "string" ? error : error instanceof Error ? error.message : "Update failed"
       );
       setIsUpdating(false);
     }

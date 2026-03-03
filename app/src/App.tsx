@@ -8,11 +8,12 @@ import { CuoControls } from "./components/CuoControls";
 import { LaunchButton } from "./components/LaunchButton";
 import { PatchNotes } from "./components/PatchNotes";
 import { Settings } from "./components/Settings";
+import { LauncherUpdateModal } from "./components/LauncherUpdateModal";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
 import { useLaunch } from "./hooks/useLaunch";
 import { getSettings } from "./lib/api";
-import { checkForLauncherUpdate } from "./lib/launcherUpdater";
+import { checkForLauncherUpdate, type LauncherUpdateCheck } from "./lib/launcherUpdater";
 import "./App.css";
 
 type AppPhase =
@@ -35,6 +36,7 @@ function App() {
   const [currentView, setCurrentView] = useState<AppView>("home");
   const [appVersion, setAppVersion] = useState<string>("");
   const [clientVersion, setClientVersion] = useState<string | null>(null);
+  const [pendingLauncherUpdate, setPendingLauncherUpdate] = useState<LauncherUpdateCheck | null>(null);
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
@@ -94,7 +96,10 @@ function App() {
           // Check for launcher update after the UI is ready so the dialog
           // doesn't block startup. Silent if no update; prompts if one is found.
           if (shouldCheckLauncherUpdates) {
-            await checkForLauncherUpdate({ promptIfAvailable: true });
+            const launcherUpdate = await checkForLauncherUpdate({ promptIfAvailable: true });
+            if (launcherUpdate.updateAvailable) {
+              setPendingLauncherUpdate(launcherUpdate);
+            }
           }
         }
       } catch (error) {
@@ -346,13 +351,14 @@ function App() {
         onSettingsClick={navigateToSettings}
         runningClients={launchState.runningClients}
       >
-        <Settings onBack={navigateToHome} />
+        <Settings onBack={navigateToHome} onLauncherUpdateAvailable={setPendingLauncherUpdate} />
       </Layout>
     );
   }
 
   // Main application view (Ready state)
   return (
+    <>
     <Layout
       phase={phase}
       statusMessage={statusMessage}
@@ -428,6 +434,16 @@ function App() {
         </div>
       </div>
     </Layout>
+    {pendingLauncherUpdate?.install && (
+      <LauncherUpdateModal
+        version={pendingLauncherUpdate.version}
+        notes={pendingLauncherUpdate.notes}
+        date={pendingLauncherUpdate.date}
+        onInstall={pendingLauncherUpdate.install}
+        onDismiss={() => setPendingLauncherUpdate(null)}
+      />
+    )}
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { confirm, message } from "@tauri-apps/plugin-dialog";
+import { message } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
@@ -9,33 +9,20 @@ export type LauncherUpdateCheck = {
   notes?: string;
   date?: string;
   error?: string;
+  /** Call to download, install, and relaunch. Only present when updateAvailable is true. */
+  install?: () => Promise<void>;
 };
 
 type LauncherUpdateOptions = {
   interactive?: boolean;
-  /** Silent check, but show install dialog if an update is found. */
+  /** Silent check, but surface update info for the UI to display a modal. */
   promptIfAvailable?: boolean;
 };
-
-function buildPromptMessage(version?: string, notes?: string, date?: string) {
-  const lines = [
-    "A launcher update is available.",
-    version ? `Version: ${version}` : "",
-    date ? `Published: ${date}` : "",
-    "",
-    notes ? "Release notes:" : "",
-    notes || "",
-    "",
-    "Install now and restart?",
-  ].filter(Boolean);
-
-  return lines.join("\n");
-}
 
 export async function checkForLauncherUpdate(
   options: LauncherUpdateOptions = {}
 ): Promise<LauncherUpdateCheck> {
-  const { interactive = false, promptIfAvailable = false } = options;
+  const { interactive = false } = options;
 
   if (!isTauri()) {
     return { updateAvailable: false };
@@ -54,32 +41,23 @@ export async function checkForLauncherUpdate(
       return { updateAvailable: false };
     }
 
-    const notes = update.body ?? "";
-    const date = update.date ?? "";
-    const prompt = buildPromptMessage(update.version, notes, date);
-
-    if (interactive || promptIfAvailable) {
-      const shouldInstall = await confirm(prompt, {
-        title: "Launcher Update Available",
-        okLabel: "Update and Restart",
-        cancelLabel: "Later",
-      });
-
-      if (shouldInstall) {
-        await update.downloadAndInstall();
-        await relaunch();
-      }
-    }
+    const install = async () => {
+      await update.downloadAndInstall();
+      await relaunch();
+    };
 
     return {
       updateAvailable: true,
       version: update.version,
-      notes,
-      date,
+      notes: update.body ?? "",
+      date: update.date ?? "",
+      install,
     };
   } catch (error) {
     const messageText =
-      error instanceof Error ? error.message : "Failed to check for updates";
+      typeof error === "string" ? error
+      : error instanceof Error ? error.message
+      : "Failed to check for updates";
 
     if (interactive) {
       await message(messageText, {
