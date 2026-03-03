@@ -20,6 +20,8 @@ interface LayoutProps {
   statusMessage?: string;
   /** Current version string */
   version?: string;
+  /** Installed game client version */
+  clientVersion?: string | null;
   /** Number of running clients */
   runningClients?: number;
   /** Custom sidebar navigation links */
@@ -39,6 +41,7 @@ export function Layout({
   phase = "Ready",
   statusMessage,
   version,
+  clientVersion,
   sidebarLinks,
   onSettingsClick,
   onHomeClick,
@@ -87,6 +90,7 @@ export function Layout({
         phase={phase}
         message={statusMessage}
         version={version}
+        clientVersion={clientVersion}
         runningClients={runningClients}
       />
     </div>

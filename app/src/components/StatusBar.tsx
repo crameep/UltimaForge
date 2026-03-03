@@ -18,6 +18,8 @@ interface StatusBarProps {
   message?: string;
   /** Application version */
   version?: string;
+  /** Installed game client version */
+  clientVersion?: string | null;
   /** Number of running clients */
   runningClients?: number;
 }
@@ -30,6 +32,7 @@ export function StatusBar({
   phase = "Ready",
   message,
   version = "v0.1.0",
+  clientVersion,
   runningClients = 0,
 }: StatusBarProps) {
   // Get status indicator color based on phase
@@ -89,6 +92,11 @@ export function StatusBar({
         <span className={`statusbar-message ${statusClass}`}>{displayMessage}</span>
       </div>
       <div className="statusbar-right">
+        {clientVersion && (
+          <span className="statusbar-version statusbar-client-version">
+            Client {clientVersion}
+          </span>
+        )}
         <span className="statusbar-version">{version}</span>
       </div>
     </footer>

@@ -260,6 +260,7 @@ function App() {
         phase={phase}
         statusMessage={statusMessage}
         version={appVersion}
+        clientVersion={updateState.checkResult?.current_version}
         runningClients={launchState.runningClients}
       >
         <InstallWizard
@@ -277,6 +278,7 @@ function App() {
         phase={phase}
         statusMessage="Detecting installation..."
         version={appVersion}
+        clientVersion={updateState.checkResult?.current_version}
         runningClients={launchState.runningClients}
       >
         <div className="main-content">
@@ -296,6 +298,7 @@ function App() {
         phase={phase}
         statusMessage={statusMessage}
         version={appVersion}
+        clientVersion={updateState.checkResult?.current_version}
         runningClients={launchState.runningClients}
       >
         <div className="main-content">
@@ -315,6 +318,7 @@ function App() {
         phase={phase}
         statusMessage="Checking for updates..."
         version={appVersion}
+        clientVersion={updateState.checkResult?.current_version}
         runningClients={launchState.runningClients}
       >
         <div className="main-content">
@@ -334,6 +338,7 @@ function App() {
         phase={phase}
         statusMessage={statusMessage}
         version={appVersion}
+        clientVersion={updateState.checkResult?.current_version}
         onHomeClick={navigateToHome}
         onSettingsClick={navigateToSettings}
         runningClients={launchState.runningClients}
