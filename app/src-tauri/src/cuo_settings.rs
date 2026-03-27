@@ -5,9 +5,11 @@
 
 use crate::config::{AssistantKind, CuoConfig, ServerChoice};
 use serde_json::Value;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tracing::info;
+
+const UO_DATA_FILE_HINTS: &[&str] = &["art.mul", "artidx.mul", "map0.mul", "staidx0.mul", "statics0.mul"];
 
 #[derive(Debug, Error)]
 pub enum CuoSettingsError {
@@ -54,7 +56,7 @@ pub fn write_cuo_settings(
     };
 
     let plugin_root = cuo_data_root.unwrap_or(install_path);
-    let plugins = assistant_plugins(plugin_root, assistant)?;
+    let plugins = assistant_plugins(plugin_root, assistant, cuo_data_root.is_some())?;
 
     let obj = json
         .as_object_mut()
@@ -62,7 +64,7 @@ pub fn write_cuo_settings(
     obj.insert("ip".into(), Value::String(server.ip.clone()));
     obj.insert("port".into(), Value::Number(server.port.into()));
     let uo_path_value = if cuo_data_root.is_some() {
-        install_path.join("Files").display().to_string()
+        resolve_uo_data_directory(install_path).display().to_string()
     } else {
         ".\\Files".to_string()
     };
@@ -80,10 +82,42 @@ pub fn write_cuo_settings(
     Ok(())
 }
 
+pub fn resolve_uo_data_directory(install_path: &Path) -> PathBuf {
+    let files_dir = install_path.join("Files");
+    let root_hits = count_uo_data_hints(install_path);
+    let files_hits = if files_dir.is_dir() {
+        count_uo_data_hints(&files_dir)
+    } else {
+        0
+    };
+
+    if files_hits > root_hits {
+        return files_dir;
+    }
+
+    if root_hits > 0 {
+        return install_path.to_path_buf();
+    }
+
+    if files_dir.is_dir() {
+        return files_dir;
+    }
+
+    install_path.to_path_buf()
+}
+
+fn count_uo_data_hints(path: &Path) -> usize {
+    UO_DATA_FILE_HINTS
+        .iter()
+        .filter(|name| path.join(name).is_file())
+        .count()
+}
+
 /// Returns the plugins array value for the given assistant.
 fn assistant_plugins(
     install_path: &Path,
     assistant: &AssistantKind,
+    prefer_root_plugins: bool,
 ) -> Result<Vec<Value>, CuoSettingsError> {
     let path_value = |rel: &Path| -> Result<Value, CuoSettingsError> {
         let p = install_path.join(rel);
@@ -92,21 +126,37 @@ fn assistant_plugins(
         ))
     };
 
+    let plugin_path_value = |assistant_dir: &str, executable: &str| -> Result<Value, CuoSettingsError> {
+        let preferred = if prefer_root_plugins {
+            [
+                Path::new("Plugins").join(assistant_dir).join(executable),
+                Path::new("Data")
+                    .join("Plugins")
+                    .join(assistant_dir)
+                    .join(executable),
+            ]
+        } else {
+            [
+                Path::new("Data")
+                    .join("Plugins")
+                    .join(assistant_dir)
+                    .join(executable),
+                Path::new("Plugins").join(assistant_dir).join(executable),
+            ]
+        };
+
+        for rel in &preferred {
+            if install_path.join(rel).exists() {
+                return path_value(rel.as_path());
+            }
+        }
+
+        path_value(preferred[0].as_path())
+    };
+
     match assistant {
-        AssistantKind::RazorEnhanced => Ok(vec![path_value(
-            Path::new("Data")
-                .join("Plugins")
-                .join("RazorEnhanced")
-                .join("RazorEnhanced.exe")
-                .as_path(),
-        )?]),
-        AssistantKind::Razor => Ok(vec![path_value(
-            Path::new("Data")
-                .join("Plugins")
-                .join("Razor")
-                .join("Razor.exe")
-                .as_path(),
-        )?]),
+        AssistantKind::RazorEnhanced => Ok(vec![plugin_path_value("RazorEnhanced", "RazorEnhanced.exe")?]),
+        AssistantKind::Razor => Ok(vec![plugin_path_value("Razor", "Razor.exe")?]),
         AssistantKind::None => Ok(vec![]),
     }
 }
@@ -252,6 +302,8 @@ mod tests {
         let data_dir = TempDir::new().unwrap();
         let config = test_cuo_config();
 
+        std::fs::write(install_dir.path().join("art.mul"), b"1").unwrap();
+
         write_cuo_settings(
             install_dir.path(),
             Some(data_dir.path()),
@@ -266,11 +318,94 @@ mod tests {
 
         assert_eq!(
             json["ultimaonlinedirectory"],
-            install_dir.path().join("Files").display().to_string()
+            install_dir.path().display().to_string()
         );
-        assert!(json["plugins"][0]
-            .as_str()
-            .unwrap()
-            .contains("Plugins"));
+
+        let expected_plugin = data_dir
+            .path()
+            .join("Plugins")
+            .join("Razor")
+            .join("Razor.exe")
+            .display()
+            .to_string();
+        assert_eq!(json["plugins"][0], expected_plugin);
+    }
+
+    #[test]
+    fn test_install_path_defaults_to_data_plugins_layout() {
+        let install_dir = TempDir::new().unwrap();
+        let config = test_cuo_config();
+
+        write_cuo_settings(
+            install_dir.path(),
+            None,
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::Razor,
+        )
+        .expect("Should write settings to install root");
+
+        let text = std::fs::read_to_string(install_dir.path().join("settings.json")).unwrap();
+        let json: Value = serde_json::from_str(&text).unwrap();
+
+        let expected_plugin = install_dir
+            .path()
+            .join("Data")
+            .join("Plugins")
+            .join("Razor")
+            .join("Razor.exe")
+            .display()
+            .to_string();
+        assert_eq!(json["plugins"][0], expected_plugin);
+    }
+
+    #[test]
+    fn test_install_path_uses_existing_flat_plugins_layout() {
+        let install_dir = TempDir::new().unwrap();
+        let config = test_cuo_config();
+
+        let flat_plugin = install_dir
+            .path()
+            .join("Plugins")
+            .join("Razor")
+            .join("Razor.exe");
+        std::fs::create_dir_all(flat_plugin.parent().unwrap()).unwrap();
+        std::fs::write(&flat_plugin, b"plugin").unwrap();
+
+        write_cuo_settings(
+            install_dir.path(),
+            None,
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::Razor,
+        )
+        .expect("Should use existing plugin path");
+
+        let text = std::fs::read_to_string(install_dir.path().join("settings.json")).unwrap();
+        let json: Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(json["plugins"][0], flat_plugin.display().to_string());
+    }
+
+    #[test]
+    fn test_resolve_uo_data_directory_prefers_root_when_files_empty() {
+        let install_dir = TempDir::new().unwrap();
+        std::fs::create_dir_all(install_dir.path().join("Files")).unwrap();
+        std::fs::write(install_dir.path().join("art.mul"), b"1").unwrap();
+
+        assert_eq!(
+            resolve_uo_data_directory(install_dir.path()),
+            install_dir.path().to_path_buf()
+        );
+    }
+
+    #[test]
+    fn test_resolve_uo_data_directory_prefers_files_when_populated() {
+        let install_dir = TempDir::new().unwrap();
+        let files_dir = install_dir.path().join("Files");
+        std::fs::create_dir_all(&files_dir).unwrap();
+        std::fs::write(files_dir.join("art.mul"), b"1").unwrap();
+
+        assert_eq!(resolve_uo_data_directory(install_dir.path()), files_dir);
     }
 }

@@ -6,7 +6,7 @@
 //! - Handling launch options
 
 use crate::config::{default_config_path, AssistantKind, ServerChoice};
-use crate::cuo_settings::write_cuo_settings;
+use crate::cuo_settings::{resolve_uo_data_directory, write_cuo_settings};
 use crate::launcher::{ClientLauncher, LaunchConfig};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
@@ -150,6 +150,7 @@ pub async fn launch_game(
     // Create launcher
     let mut launch_args = request.args.clone();
     if let Some(cuo_data_root) = launcher_config.cuo_data_path.as_ref() {
+        let uo_data_path = resolve_uo_data_directory(&install_path);
         let settings_path = cuo_data_root.join("settings.json");
         let profiles_path = cuo_data_root.join("Profiles");
         launch_args.push("-settings".to_string());
@@ -157,7 +158,7 @@ pub async fn launch_game(
         launch_args.push("-profilespath".to_string());
         launch_args.push(profiles_path.display().to_string());
         launch_args.push("-uopath".to_string());
-        launch_args.push(install_path.join("Files").display().to_string());
+        launch_args.push(uo_data_path.display().to_string());
     }
 
     let mut config = LaunchConfig::new(&executable);

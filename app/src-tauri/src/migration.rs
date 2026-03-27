@@ -247,10 +247,31 @@ fn copy_first_existing_dir(
 ) -> io::Result<()> {
     for candidate in candidates {
         if candidate.exists() && candidate.is_dir() {
+            if !dir_contains_files_recursive(candidate)? {
+                continue;
+            }
+
             return copy_dir_contents_if_missing(candidate, target, copied_entries);
         }
     }
     Ok(())
+}
+
+fn dir_contains_files_recursive(path: &Path) -> io::Result<bool> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+
+        if file_type.is_file() {
+            return Ok(true);
+        }
+
+        if file_type.is_dir() && dir_contains_files_recursive(&entry.path())? {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }
 
 fn collect_first_existing_dir_copy(
@@ -450,5 +471,61 @@ mod tests {
             .entries_to_copy
             .iter()
             .any(|p| p.to_lowercase().ends_with("settings.json")));
+    }
+
+    #[test]
+    fn test_copy_first_existing_dir_skips_empty_candidate() {
+        let root = TempDir::new().unwrap();
+        let target = TempDir::new().unwrap();
+        let mut copied = Vec::new();
+
+        let empty = root.path().join("Profiles");
+        std::fs::create_dir_all(&empty).unwrap();
+
+        let fallback = root.path().join("Data").join("Profiles");
+        std::fs::create_dir_all(&fallback).unwrap();
+        std::fs::write(fallback.join("profile.json"), b"{}\n").unwrap();
+
+        copy_first_existing_dir(&[empty, fallback], target.path(), &mut copied).unwrap();
+
+        assert!(target.path().join("profile.json").exists());
+        assert_eq!(copied.len(), 1);
+    }
+
+    #[test]
+    fn test_migrate_from_install_path_uses_data_fallback_when_root_dirs_empty() {
+        let source = TempDir::new().unwrap();
+        let brand = test_brand_config();
+        let mut launcher = LauncherConfig::new();
+
+        // Minimal detection footprint: executable + 3 data files
+        std::fs::write(source.path().join("ClassicUO.exe"), b"exe").unwrap();
+        std::fs::write(source.path().join("art.mul"), b"1").unwrap();
+        std::fs::write(source.path().join("artidx.mul"), b"1").unwrap();
+        std::fs::write(source.path().join("map0.mul"), b"1").unwrap();
+
+        std::fs::write(source.path().join("settings.json"), b"{}\n").unwrap();
+        std::fs::create_dir_all(source.path().join("Profiles")).unwrap();
+        std::fs::create_dir_all(source.path().join("Plugins")).unwrap();
+
+        let data_profiles = source.path().join("Data").join("Profiles");
+        std::fs::create_dir_all(&data_profiles).unwrap();
+        std::fs::write(data_profiles.join("profile.json"), b"{}\n").unwrap();
+
+        let data_plugins = source.path().join("Data").join("Plugins").join("Razor");
+        std::fs::create_dir_all(&data_plugins).unwrap();
+        std::fs::write(data_plugins.join("Razor.exe"), b"plugin").unwrap();
+
+        let outcome = migrate_from_install_path(&brand, &mut launcher, source.path()).unwrap();
+        let target_root = outcome.cuo_data_path.expect("Expected CUO data path");
+
+        assert!(target_root.join("Profiles").join("profile.json").exists());
+        assert!(
+            target_root
+                .join("Plugins")
+                .join("Razor")
+                .join("Razor.exe")
+                .exists()
+        );
     }
 }
