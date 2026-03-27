@@ -236,6 +236,7 @@ pub async fn start_install(
 
                 if let Err(e) = write_cuo_settings(
                     &install_path,
+                    launcher_config.cuo_data_path.as_deref(),
                     cuo_config,
                     &ServerChoice::Live,
                     &cuo_config.default_assistant,

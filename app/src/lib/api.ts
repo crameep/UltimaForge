@@ -21,6 +21,8 @@ import type {
   PathValidationResult,
   SaveResponse,
   SaveSettingsRequest,
+  MigrationResponse,
+  MigrationPreviewResponse,
   ThemeColors,
   UpdateCheckResponse,
   UpdateProgress,
@@ -172,6 +174,35 @@ export async function gameClosed(): Promise<void> {
  */
 export async function getSettings(): Promise<GetSettingsResponse> {
   return invoke<GetSettingsResponse>("get_settings");
+}
+
+/**
+ * Gets migration status and branding auto-migration settings.
+ */
+export async function getMigrationStatus(): Promise<MigrationResponse> {
+  return invoke<MigrationResponse>("get_migration_status");
+}
+
+/**
+ * Runs legacy migration from a user-selected source directory.
+ */
+export async function migrateLegacyInstall(
+  sourcePath: string
+): Promise<MigrationResponse> {
+  return invoke<MigrationResponse>("migrate_legacy_install", {
+    request: { source_path: sourcePath },
+  });
+}
+
+/**
+ * Builds a dry-run preview for a legacy migration path.
+ */
+export async function previewLegacyMigration(
+  sourcePath: string
+): Promise<MigrationPreviewResponse> {
+  return invoke<MigrationPreviewResponse>("preview_legacy_migration", {
+    request: { source_path: sourcePath },
+  });
 }
 
 /**

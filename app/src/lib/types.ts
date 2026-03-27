@@ -344,6 +344,56 @@ export interface GetSettingsResponse {
 }
 
 /**
+ * Migration status/operation response.
+ */
+export interface MigrationResponse {
+  /** Whether the operation was successful */
+  success: boolean;
+  /** Error message if failed */
+  error: string | null;
+  /** Whether migration has completed */
+  migration_completed: boolean;
+  /** Source path used for migration */
+  migrated_from: string | null;
+  /** Current install path */
+  install_path: string | null;
+  /** Optional per-user CUO data path */
+  cuo_data_path: string | null;
+  /** Auto-detect path from branding config */
+  auto_detect_path: string | null;
+  /** Whether branding enables auto-migrate on first launch */
+  auto_migrate_on_first_launch: boolean;
+  /** Files copied during migration */
+  copied_entries: string[];
+}
+
+/**
+ * Legacy migration dry-run preview response.
+ */
+export interface MigrationPreviewResponse {
+  /** Whether preview succeeded */
+  success: boolean;
+  /** Error message when preview fails */
+  error: string | null;
+  /** Source path being previewed */
+  source_path: string | null;
+  /** Whether source appears to be a valid install */
+  valid_installation: boolean;
+  /** Detection confidence label */
+  confidence: string | null;
+  /** Detected executables */
+  found_executables: string[];
+  /** Detected data files */
+  found_data_files: string[];
+  /** Missing expected files */
+  missing_files: string[];
+  /** Per-user destination path for CUO data */
+  cuo_data_target: string | null;
+  /** Destination entries that would be copied */
+  entries_to_copy: string[];
+}
+
+/**
  * Request for saving settings.
  */
 export interface SaveSettingsRequest {

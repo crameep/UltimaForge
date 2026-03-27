@@ -6,14 +6,19 @@
 //! - Managing user preferences
 //! - Saving brand configuration for setup wizard
 
-use crate::config::{default_config_path, game_path_sidecar, BrandConfig, LauncherConfig, ThemeColors};
+use crate::config::{
+    default_config_path, game_path_sidecar, BrandConfig, LauncherConfig, ThemeColors,
+};
+use crate::migration::{
+    migrate_from_install_path, preview_migration_from_install_path, resolve_auto_detect_path,
+};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::Emitter;
 use tauri::State;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// User-editable settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,6 +68,61 @@ pub struct SaveResponse {
     pub success: bool,
     /// Error message if failed.
     pub error: Option<String>,
+}
+
+/// Request payload for manual legacy migration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MigrateLegacyRequest {
+    /// Source installation directory selected by the user.
+    pub source_path: String,
+}
+
+/// Response for migration status and operations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MigrationResponse {
+    /// Whether the operation succeeded.
+    pub success: bool,
+    /// Optional error message.
+    pub error: Option<String>,
+    /// Whether migration previously completed.
+    pub migration_completed: bool,
+    /// Migrated source path, if any.
+    pub migrated_from: Option<String>,
+    /// Current install path after migration.
+    pub install_path: Option<String>,
+    /// Optional per-user CUO data path.
+    pub cuo_data_path: Option<String>,
+    /// Auto-detect migration path resolved from branding.
+    pub auto_detect_path: Option<String>,
+    /// Whether auto-migrate is enabled in branding.
+    pub auto_migrate_on_first_launch: bool,
+    /// Files copied while migrating mutable data.
+    pub copied_entries: Vec<String>,
+}
+
+/// Response for migration dry-run previews.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MigrationPreviewResponse {
+    /// Whether preview generation succeeded.
+    pub success: bool,
+    /// Optional error message.
+    pub error: Option<String>,
+    /// Source path being previewed.
+    pub source_path: Option<String>,
+    /// Whether the source looks like a valid installation.
+    pub valid_installation: bool,
+    /// Detection confidence label.
+    pub confidence: Option<String>,
+    /// Detected executables.
+    pub found_executables: Vec<String>,
+    /// Detected data files.
+    pub found_data_files: Vec<String>,
+    /// Missing expected files.
+    pub missing_files: Vec<String>,
+    /// Destination CUO data path, if applicable.
+    pub cuo_data_target: Option<String>,
+    /// Destination file paths that would be copied.
+    pub entries_to_copy: Vec<String>,
 }
 
 // ============================================================================
@@ -123,6 +183,18 @@ pub struct UiConfigInput {
     pub window_title: Option<String>,
 }
 
+/// Migration configuration input from frontend (camelCase).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MigrationConfigInput {
+    /// Optional path template to scan on first launch.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_detect_path: Option<String>,
+    /// Whether to auto-migrate once on first launch.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_migrate_on_first_launch: Option<bool>,
+}
+
 /// Brand configuration input from frontend (camelCase).
 ///
 /// This matches the TypeScript BrandConfig interface in SetupWizard.tsx.
@@ -138,6 +210,9 @@ pub struct BrandConfigInput {
     /// UI configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui: Option<UiConfigInput>,
+    /// Optional migration configuration.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub migration: Option<MigrationConfigInput>,
     /// Brand configuration version.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brand_version: Option<String>,
@@ -235,6 +310,184 @@ pub async fn get_settings(state: State<'_, AppState>) -> Result<GetSettingsRespo
         install_path: launcher_config.install_path.map(|p| p.display().to_string()),
         current_version: launcher_config.current_version,
         install_complete: launcher_config.install_complete,
+    })
+}
+
+/// Returns current migration status and branding auto-migrate settings.
+#[tauri::command]
+pub async fn get_migration_status(state: State<'_, AppState>) -> Result<MigrationResponse, String> {
+    let launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+    let brand_config = state.brand_config();
+
+    let (auto_detect_path, auto_migrate_on_first_launch) = if let Some(brand) = brand_config.as_ref()
+    {
+        if let Some(migration) = brand.migration.as_ref() {
+            (
+                resolve_auto_detect_path(migration, brand).map(|p| p.display().to_string()),
+                migration.auto_migrate_on_first_launch,
+            )
+        } else {
+            (None, false)
+        }
+    } else {
+        (None, false)
+    };
+
+    Ok(MigrationResponse {
+        success: true,
+        error: None,
+        migration_completed: launcher_config.migration_completed,
+        migrated_from: launcher_config
+            .migrated_from
+            .as_ref()
+            .map(|p| p.display().to_string()),
+        install_path: launcher_config
+            .install_path
+            .as_ref()
+            .map(|p| p.display().to_string()),
+        cuo_data_path: launcher_config
+            .cuo_data_path
+            .as_ref()
+            .map(|p| p.display().to_string()),
+        auto_detect_path,
+        auto_migrate_on_first_launch,
+        copied_entries: Vec::new(),
+    })
+}
+
+/// Manually migrates a legacy installation selected by the user.
+#[tauri::command]
+pub async fn migrate_legacy_install(
+    request: MigrateLegacyRequest,
+    state: State<'_, AppState>,
+) -> Result<MigrationResponse, String> {
+    let brand_config = state
+        .brand_config()
+        .ok_or("Brand configuration not available")?;
+
+    let source_path = PathBuf::from(request.source_path.trim());
+    let mut launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+
+    let outcome = match migrate_from_install_path(&brand_config, &mut launcher_config, &source_path) {
+        Ok(outcome) => outcome,
+        Err(e) => {
+            return Ok(MigrationResponse {
+                success: false,
+                error: Some(e),
+                migration_completed: launcher_config.migration_completed,
+                migrated_from: launcher_config
+                    .migrated_from
+                    .as_ref()
+                    .map(|p| p.display().to_string()),
+                install_path: launcher_config
+                    .install_path
+                    .as_ref()
+                    .map(|p| p.display().to_string()),
+                cuo_data_path: launcher_config
+                    .cuo_data_path
+                    .as_ref()
+                    .map(|p| p.display().to_string()),
+                auto_detect_path: None,
+                auto_migrate_on_first_launch: false,
+                copied_entries: Vec::new(),
+            });
+        }
+    };
+
+    let config_path = default_config_path(&brand_config.product.server_name);
+    if let Err(e) = launcher_config.save(&config_path) {
+        warn!("Failed to save launcher config after migration: {}", e);
+        return Ok(MigrationResponse {
+            success: false,
+            error: Some(format!("Migration completed but saving config failed: {}", e)),
+            migration_completed: launcher_config.migration_completed,
+            migrated_from: launcher_config
+                .migrated_from
+                .as_ref()
+                .map(|p| p.display().to_string()),
+            install_path: launcher_config
+                .install_path
+                .as_ref()
+                .map(|p| p.display().to_string()),
+            cuo_data_path: launcher_config
+                .cuo_data_path
+                .as_ref()
+                .map(|p| p.display().to_string()),
+            auto_detect_path: None,
+            auto_migrate_on_first_launch: false,
+            copied_entries: outcome.copied_entries,
+        });
+    }
+
+    let sidecar = game_path_sidecar(&brand_config.product.server_name);
+    if let Err(e) = fs::write(&sidecar, outcome.source_path.to_string_lossy().as_bytes()) {
+        warn!("Failed to write game_path.txt sidecar after migration: {}", e);
+    }
+
+    state.set_launcher_config(launcher_config.clone());
+    state.set_install_path(outcome.source_path.clone());
+    state.set_phase(crate::state::AppPhase::CheckingUpdates);
+
+    Ok(MigrationResponse {
+        success: true,
+        error: None,
+        migration_completed: launcher_config.migration_completed,
+        migrated_from: launcher_config
+            .migrated_from
+            .as_ref()
+            .map(|p| p.display().to_string()),
+        install_path: launcher_config
+            .install_path
+            .as_ref()
+            .map(|p| p.display().to_string()),
+        cuo_data_path: outcome.cuo_data_path.map(|p| p.display().to_string()),
+        auto_detect_path: None,
+        auto_migrate_on_first_launch: false,
+        copied_entries: outcome.copied_entries,
+    })
+}
+
+/// Generates a dry-run preview for a legacy migration source directory.
+#[tauri::command]
+pub async fn preview_legacy_migration(
+    request: MigrateLegacyRequest,
+    state: State<'_, AppState>,
+) -> Result<MigrationPreviewResponse, String> {
+    let brand_config = state
+        .brand_config()
+        .ok_or("Brand configuration not available")?;
+
+    let source_path = PathBuf::from(request.source_path.trim());
+
+    let preview = match preview_migration_from_install_path(&brand_config, &source_path) {
+        Ok(preview) => preview,
+        Err(e) => {
+            return Ok(MigrationPreviewResponse {
+                success: false,
+                error: Some(e),
+                source_path: Some(source_path.display().to_string()),
+                valid_installation: false,
+                confidence: None,
+                found_executables: Vec::new(),
+                found_data_files: Vec::new(),
+                missing_files: Vec::new(),
+                cuo_data_target: None,
+                entries_to_copy: Vec::new(),
+            });
+        }
+    };
+
+    Ok(MigrationPreviewResponse {
+        success: true,
+        error: None,
+        source_path: Some(preview.source_path.display().to_string()),
+        valid_installation: preview.valid_installation,
+        confidence: Some(preview.confidence),
+        found_executables: preview.found_executables,
+        found_data_files: preview.found_data_files,
+        missing_files: preview.missing_files,
+        cuo_data_target: preview.cuo_data_target.map(|p| p.display().to_string()),
+        entries_to_copy: preview.entries_to_copy,
     })
 }
 

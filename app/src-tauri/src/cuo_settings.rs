@@ -25,11 +25,18 @@ pub enum CuoSettingsError {
 /// fields, and writes it back. All other fields are preserved unchanged.
 pub fn write_cuo_settings(
     install_path: &Path,
+    cuo_data_root: Option<&Path>,
     cuo_config: &CuoConfig,
     server_choice: &ServerChoice,
     assistant: &AssistantKind,
 ) -> Result<(), CuoSettingsError> {
-    let settings_path = install_path.join("settings.json");
+    let settings_path = cuo_data_root
+        .map(|root| root.join("settings.json"))
+        .unwrap_or_else(|| install_path.join("settings.json"));
+
+    if let Some(parent) = settings_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
 
     let mut json: Value = if settings_path.exists() {
         let text = std::fs::read_to_string(&settings_path)?;
@@ -46,14 +53,20 @@ pub fn write_cuo_settings(
         ServerChoice::Live => &cuo_config.live_server,
     };
 
-    let plugins = assistant_plugins(install_path, assistant)?;
+    let plugin_root = cuo_data_root.unwrap_or(install_path);
+    let plugins = assistant_plugins(plugin_root, assistant)?;
 
     let obj = json
         .as_object_mut()
         .ok_or(CuoSettingsError::InvalidPath)?;
     obj.insert("ip".into(), Value::String(server.ip.clone()));
     obj.insert("port".into(), Value::Number(server.port.into()));
-    obj.insert("ultimaonlinedirectory".into(), Value::String(".\\Files".into()));
+    let uo_path_value = if cuo_data_root.is_some() {
+        install_path.join("Files").display().to_string()
+    } else {
+        ".\\Files".to_string()
+    };
+    obj.insert("ultimaonlinedirectory".into(), Value::String(uo_path_value));
     obj.insert(
         "clientversion".into(),
         Value::String(cuo_config.client_version.clone()),
@@ -128,8 +141,14 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config = test_cuo_config();
 
-        write_cuo_settings(dir.path(), &config, &ServerChoice::Live, &AssistantKind::RazorEnhanced)
-            .expect("Should create settings.json");
+        write_cuo_settings(
+            dir.path(),
+            None,
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::RazorEnhanced,
+        )
+        .expect("Should create settings.json");
 
         let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
         let json: Value = serde_json::from_str(&text).unwrap();
@@ -163,7 +182,13 @@ mod tests {
         .unwrap();
 
         let config = test_cuo_config();
-        write_cuo_settings(dir.path(), &config, &ServerChoice::Live, &AssistantKind::Razor)
+        write_cuo_settings(
+            dir.path(),
+            None,
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::Razor,
+        )
             .expect("Should patch");
 
         let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
@@ -186,7 +211,13 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config = test_cuo_config();
 
-        write_cuo_settings(dir.path(), &config, &ServerChoice::Test, &AssistantKind::None)
+        write_cuo_settings(
+            dir.path(),
+            None,
+            &config,
+            &ServerChoice::Test,
+            &AssistantKind::None,
+        )
             .expect("Should write");
 
         let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
@@ -201,11 +232,45 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config = test_cuo_config();
 
-        write_cuo_settings(dir.path(), &config, &ServerChoice::Live, &AssistantKind::None)
+        write_cuo_settings(
+            dir.path(),
+            None,
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::None,
+        )
             .expect("Should write");
 
         let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
         let json: Value = serde_json::from_str(&text).unwrap();
         assert_eq!(json["plugins"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_writes_to_custom_data_root() {
+        let install_dir = TempDir::new().unwrap();
+        let data_dir = TempDir::new().unwrap();
+        let config = test_cuo_config();
+
+        write_cuo_settings(
+            install_dir.path(),
+            Some(data_dir.path()),
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::Razor,
+        )
+        .expect("Should write settings to custom root");
+
+        let text = std::fs::read_to_string(data_dir.path().join("settings.json")).unwrap();
+        let json: Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(
+            json["ultimaonlinedirectory"],
+            install_dir.path().join("Files").display().to_string()
+        );
+        assert!(json["plugins"][0]
+            .as_str()
+            .unwrap()
+            .contains("Plugins"));
     }
 }

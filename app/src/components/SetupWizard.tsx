@@ -33,6 +33,10 @@ interface BrandConfig {
     showPatchNotes?: boolean;
     windowTitle?: string;
   };
+  migration?: {
+    autoDetectPath?: string;
+    autoMigrateOnFirstLaunch?: boolean;
+  };
   brandVersion?: string;
 }
 
@@ -239,6 +243,55 @@ function BrandingStep({
           onChange={(e) => updateProduct("description", e.target.value)}
           placeholder="A brief description of your server"
         />
+      </div>
+
+      <div className="wizard-field">
+        <label className="wizard-label" htmlFor="autoMigrateOnFirstLaunch">
+          Legacy Migration (optional)
+        </label>
+        <label className="wizard-checkbox-row">
+          <input
+            id="autoMigrateOnFirstLaunch"
+            type="checkbox"
+            checked={config.migration?.autoMigrateOnFirstLaunch ?? false}
+            onChange={(e) =>
+              onChange({
+                ...config,
+                migration: {
+                  ...config.migration,
+                  autoMigrateOnFirstLaunch: e.target.checked,
+                },
+              })
+            }
+          />
+          <span>Attempt automatic migration on first launch</span>
+        </label>
+        <input
+          id="autoDetectPath"
+          type="text"
+          className={`wizard-input ${errors.autoDetectPath ? "invalid" : ""}`}
+          value={config.migration?.autoDetectPath || ""}
+          onChange={(e) =>
+            onChange({
+              ...config,
+              migration: {
+                ...config.migration,
+                autoDetectPath: e.target.value,
+              },
+            })
+          }
+          placeholder="%PROGRAMFILES%\\OldLauncher\\ClassicUO"
+        />
+        {errors.autoDetectPath && (
+          <div className="wizard-validation invalid">
+            <span className="wizard-validation-icon">&#10007;</span>
+            <span>{errors.autoDetectPath}</span>
+          </div>
+        )}
+        <p className="wizard-hint">
+          Folder to scan on first launch. Supports `%ENV_VAR%` and
+          {" {serverName} "}placeholders.
+        </p>
       </div>
 
       <div className="wizard-actions">
@@ -468,6 +521,20 @@ function ReviewStep({
           </div>
         )}
         <div className="wizard-summary-item">
+          <span className="wizard-summary-label">Auto Migration</span>
+          <span className="wizard-summary-value">
+            {config.migration?.autoMigrateOnFirstLaunch ? "Enabled" : "Disabled"}
+          </span>
+        </div>
+        {config.migration?.autoDetectPath && (
+          <div className="wizard-summary-item">
+            <span className="wizard-summary-label">Auto-Detect Path</span>
+            <span className="wizard-summary-value">
+              {config.migration.autoDetectPath}
+            </span>
+          </div>
+        )}
+        <div className="wizard-summary-item">
           <span className="wizard-summary-label">Public Key</span>
           <span className="wizard-summary-value wizard-key-truncated">
             {config.publicKey.substring(0, 16)}...{config.publicKey.substring(48)}
@@ -636,6 +703,14 @@ function validateConfig(config: BrandConfig): Record<string, string> {
     errors.updateUrl = "Update URL must start with http:// or https://";
   }
 
+  if (config.migration?.autoMigrateOnFirstLaunch) {
+    const detectPath = config.migration.autoDetectPath?.trim() || "";
+    if (!detectPath) {
+      errors.autoDetectPath =
+        "Auto-detect path is required when auto-migration is enabled";
+    }
+  }
+
   return errors;
 }
 
@@ -662,6 +737,10 @@ function createDefaultConfig(initial?: Partial<BrandConfig>): BrandConfig {
         text: "#ffffff",
       },
       showPatchNotes: true,
+    },
+    migration: initial?.migration || {
+      autoDetectPath: "",
+      autoMigrateOnFirstLaunch: false,
     },
     brandVersion: initial?.brandVersion || "1.0",
   };

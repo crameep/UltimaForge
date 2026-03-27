@@ -6,9 +6,13 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 
 import {
   getSettings,
+  getMigrationStatus,
+  migrateLegacyInstall,
+  previewLegacyMigration,
   saveSettings,
   verifyInstallation,
   clearCache,
@@ -24,6 +28,7 @@ import type {
   UserSettings,
   VerifyResponse,
   InstallProgress,
+  MigrationResponse,
 } from "../lib/types";
 
 /**
@@ -44,6 +49,8 @@ export interface UseSettingsState {
   isConfirmingRemove: boolean;
   /** Whether game file removal is in progress */
   isRemoving: boolean;
+  /** Whether legacy migration is in progress */
+  isMigrating: boolean;
   /** Whether running with admin privileges */
   isAdmin: boolean;
   /** Current user settings */
@@ -62,6 +69,8 @@ export interface UseSettingsState {
   verifyResult: VerifyResponse | null;
   /** Verification progress */
   verifyProgress: InstallProgress | null;
+  /** Legacy migration status */
+  migrationStatus: MigrationResponse | null;
 }
 
 /**
@@ -95,6 +104,10 @@ export interface UseSettingsActions {
   cancelRemoveGameFiles: () => void;
   /** Remove all game files and reset installation state */
   removeGameFiles: () => Promise<void>;
+  /** Manual legacy migration from a selected install folder */
+  migrateLegacyInstall: () => Promise<boolean>;
+  /** Refresh migration status */
+  refreshMigrationStatus: () => Promise<void>;
   /** Clear error message */
   clearError: () => void;
   /** Clear success message */
@@ -126,6 +139,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   const [isRepairing, setIsRepairing] = useState(false);
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   // Admin state
   const [isAdmin, setIsAdmin] = useState(false);
@@ -143,6 +157,8 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   // Verification
   const [verifyResult, setVerifyResult] = useState<VerifyResponse | null>(null);
   const [verifyProgress, setVerifyProgress] = useState<InstallProgress | null>(null);
+  const [migrationStatus, setMigrationStatus] =
+    useState<MigrationResponse | null>(null);
 
   // Subscribe to verify progress events
   useEffect(() => {
@@ -183,6 +199,19 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
       setSettings(defaultSettings);
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Load migration status from backend.
+   */
+  const handleLoadMigrationStatus = useCallback(async () => {
+    try {
+      const status = await getMigrationStatus();
+      setMigrationStatus(status);
+    } catch {
+      // Keep migration UI optional if backend status fails
+      setMigrationStatus(null);
     }
   }, []);
 
@@ -446,6 +475,97 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   }, []);
 
   /**
+   * Manually migrate a legacy installation from a selected directory.
+   */
+  const handleMigrateLegacyInstall = useCallback(async (): Promise<boolean> => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    let selectedPath: string | null = null;
+    try {
+      const selection = await open({
+        directory: true,
+        multiple: false,
+        title: "Select Existing Game Installation",
+      });
+      if (!selection || typeof selection !== "string") {
+        return false;
+      }
+      selectedPath = selection;
+    } catch {
+      return false;
+    }
+
+    setIsMigrating(true);
+    try {
+      const preview = await previewLegacyMigration(selectedPath);
+      if (!preview.success) {
+        setErrorMessage(preview.error || "Migration preview failed");
+        await handleLoadMigrationStatus();
+        return false;
+      }
+
+      if (!preview.valid_installation) {
+        const missingInfo =
+          preview.missing_files.length > 0
+            ? ` Missing files: ${preview.missing_files.slice(0, 5).join(", ")}`
+            : "";
+        setErrorMessage(
+          `No valid installation detected at the selected folder.${missingInfo}`
+        );
+        return false;
+      }
+
+      const previewLines = [
+        `Source: ${preview.source_path ?? selectedPath}`,
+        `Confidence: ${preview.confidence ?? "Unknown"}`,
+        `Files to copy: ${preview.entries_to_copy.length}`,
+      ];
+      if (preview.cuo_data_target) {
+        previewLines.push(`Destination: ${preview.cuo_data_target}`);
+      }
+      if (preview.entries_to_copy.length > 0) {
+        const sample = preview.entries_to_copy.slice(0, 3).join("\n");
+        previewLines.push(`\nSample:\n${sample}`);
+      }
+
+      const confirmed = window.confirm(
+        `${previewLines.join("\n")}\n\nContinue with migration?`
+      );
+      if (!confirmed) {
+        return false;
+      }
+
+      const result = await migrateLegacyInstall(selectedPath);
+      if (!result.success) {
+        setErrorMessage(result.error || "Migration failed");
+        await handleLoadMigrationStatus();
+        return false;
+      }
+
+      await handleLoadSettings();
+      await handleLoadMigrationStatus();
+
+      const copiedCount = result.copied_entries.length;
+      if (copiedCount > 0) {
+        setSuccessMessage(
+          `Migration complete. Imported install and copied ${copiedCount} data file${copiedCount === 1 ? "" : "s"}.`
+        );
+      } else {
+        setSuccessMessage("Migration complete. Existing installation is now linked.");
+      }
+
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Migration failed";
+      setErrorMessage(msg);
+      return false;
+    } finally {
+      setIsMigrating(false);
+    }
+  }, [handleLoadMigrationStatus, handleLoadSettings]);
+
+  /**
    * Clear error message.
    */
   const handleClearError = useCallback(() => {
@@ -470,6 +590,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     setIsRepairing(false);
     setIsConfirmingRemove(false);
     setIsRemoving(false);
+    setIsMigrating(false);
     setIsAdmin(false);
     setSettings(null);
     setInstallPath(null);
@@ -479,13 +600,15 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     setSuccessMessage(null);
     setVerifyResult(null);
     setVerifyProgress(null);
+    setMigrationStatus(null);
   }, []);
 
   // Load settings and check admin status on mount
   useEffect(() => {
     handleLoadSettings();
+    handleLoadMigrationStatus();
     handleCheckAdminStatus();
-  }, [handleLoadSettings, handleCheckAdminStatus]);
+  }, [handleLoadSettings, handleLoadMigrationStatus, handleCheckAdminStatus]);
 
   // Assemble state object
   const state: UseSettingsState = {
@@ -496,6 +619,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     isRepairing,
     isConfirmingRemove,
     isRemoving,
+    isMigrating,
     isAdmin,
     settings,
     installPath,
@@ -505,6 +629,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     successMessage,
     verifyResult,
     verifyProgress,
+    migrationStatus,
   };
 
   // Assemble actions object
@@ -521,6 +646,8 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     confirmRemoveGameFiles: handleConfirmRemoveGameFiles,
     cancelRemoveGameFiles: handleCancelRemoveGameFiles,
     removeGameFiles: handleRemoveGameFiles,
+    migrateLegacyInstall: handleMigrateLegacyInstall,
+    refreshMigrationStatus: handleLoadMigrationStatus,
     clearError: handleClearError,
     clearSuccess: handleClearSuccess,
     reset,

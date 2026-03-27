@@ -12,6 +12,7 @@ pub mod hash;
 pub mod installer;
 pub mod launcher;
 pub mod manifest;
+pub mod migration;
 pub mod signature;
 pub mod state;
 pub mod updater;
@@ -20,7 +21,8 @@ pub mod updater;
 #[cfg(test)]
 mod security_tests;
 
-use config::{default_config_path, BrandConfig, LauncherConfig};
+use config::{default_config_path, game_path_sidecar, BrandConfig, LauncherConfig};
+use migration::try_auto_migrate;
 use state::AppState;
 use tauri::Manager;
 use tracing::{error, info, warn};
@@ -83,6 +85,35 @@ pub fn run() {
                             LauncherConfig::new()
                         }
                     };
+
+                    let mut launcher_config = launcher_config;
+
+                    match try_auto_migrate(&brand_config, &mut launcher_config) {
+                        Ok(Some(outcome)) => {
+                            if let Err(e) = launcher_config.save(&config_path) {
+                                warn!("Auto-migration succeeded but config save failed: {}", e);
+                            } else {
+                                let sidecar = game_path_sidecar(&brand_config.product.server_name);
+                                if let Err(e) = std::fs::write(
+                                    &sidecar,
+                                    outcome.source_path.to_string_lossy().as_bytes(),
+                                ) {
+                                    warn!(
+                                        "Auto-migration succeeded but sidecar write failed: {}",
+                                        e
+                                    );
+                                }
+                                info!(
+                                    "Auto-migrated legacy install from {}",
+                                    outcome.source_path.display()
+                                );
+                            }
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            warn!("Auto-migration skipped due to error: {}", e);
+                        }
+                    }
 
                     // Create state and initialize with both configs
                     let state = AppState::new();
@@ -180,6 +211,9 @@ pub fn run() {
             commands::launch::game_closed,
             // Settings commands
             commands::settings::get_settings,
+            commands::settings::get_migration_status,
+            commands::settings::preview_legacy_migration,
+            commands::settings::migrate_legacy_install,
             commands::settings::save_settings,
             commands::settings::get_brand_config,
             commands::settings::get_cuo_config,

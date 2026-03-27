@@ -275,6 +275,19 @@ pub struct CuoConfig {
     pub default_server: ServerChoice,
 }
 
+/// Optional migration behavior for importing existing launcher/game installs.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MigrationConfig {
+    /// Directory template to scan on first launch.
+    /// Supports `%ENV_VAR%` and `{serverName}` placeholders.
+    #[serde(rename = "autoDetectPath", default)]
+    pub auto_detect_path: Option<String>,
+
+    /// Whether to attempt automatic migration on first launch.
+    #[serde(rename = "autoMigrateOnFirstLaunch", default)]
+    pub auto_migrate_on_first_launch: bool,
+}
+
 /// Brand configuration embedded at build time.
 ///
 /// This structure mirrors the `branding/brand.json` file that server owners
@@ -317,6 +330,10 @@ pub struct BrandConfig {
     /// Optional ClassicUO client configuration.
     #[serde(default)]
     pub cuo: Option<CuoConfig>,
+
+    /// Optional migration configuration for legacy installs.
+    #[serde(default)]
+    pub migration: Option<MigrationConfig>,
 
     /// Version of this branding configuration format.
     #[serde(rename = "brandVersion", default = "default_brand_version")]
@@ -388,6 +405,23 @@ impl BrandConfig {
                 field: "publicKey".to_string(),
                 reason: "must be hexadecimal characters only".to_string(),
             });
+        }
+
+        // Validate optional migration settings.
+        if let Some(migration) = &self.migration {
+            if migration.auto_migrate_on_first_launch {
+                let has_path = migration
+                    .auto_detect_path
+                    .as_ref()
+                    .map(|p| !p.trim().is_empty())
+                    .unwrap_or(false);
+                if !has_path {
+                    return Err(ConfigError::InvalidValue {
+                        field: "migration.autoDetectPath".to_string(),
+                        reason: "required when autoMigrateOnFirstLaunch is true".to_string(),
+                    });
+                }
+            }
         }
 
         // Validate color formats if provided
@@ -490,6 +524,18 @@ pub struct LauncherConfig {
     #[serde(rename = "clientCount", default = "default_client_count")]
     pub client_count: u8,
 
+    /// Optional per-user ClassicUO mutable data path (settings/profiles/plugins).
+    #[serde(rename = "cuoDataPath", default)]
+    pub cuo_data_path: Option<PathBuf>,
+
+    /// Whether legacy migration has already completed.
+    #[serde(rename = "migrationCompleted", default)]
+    pub migration_completed: bool,
+
+    /// Source install path used for the completed migration.
+    #[serde(rename = "migratedFrom", default)]
+    pub migrated_from: Option<PathBuf>,
+
     /// Version of this configuration format.
     #[serde(rename = "configVersion", default = "default_config_version")]
     pub config_version: u32,
@@ -525,6 +571,9 @@ impl Default for LauncherConfig {
             selected_server: ServerChoice::Live,
             selected_assistant: AssistantKind::RazorEnhanced,
             client_count: 1,
+            cuo_data_path: None,
+            migration_completed: false,
+            migrated_from: None,
         }
     }
 }
@@ -617,7 +666,8 @@ impl LauncherConfig {
     pub fn set_from_detection(&mut self, path: PathBuf) {
         self.install_path = Some(path);
         self.install_complete = true;
-        // current_version remains None - will be fetched from manifest during update check
+        self.current_version = None;
+        // current_version will be fetched from manifest during update check
     }
 
     /// Updates the current version after a successful update.
@@ -643,8 +693,12 @@ pub const BRAND_CONFIG_FILE: &str = "brand.json";
 /// On Linux: `~/.config/ultimaforge/{server_name}/launcher.json`
 /// On macOS: `~/Library/Application Support/UltimaForge/{server_name}/launcher.json`
 pub fn default_config_path(server_name: &str) -> PathBuf {
-    let base = dirs_config_path();
-    base.join(server_name).join(LAUNCHER_CONFIG_FILE)
+    server_data_dir(server_name).join(LAUNCHER_CONFIG_FILE)
+}
+
+/// Returns the per-server data directory used by the launcher.
+pub fn server_data_dir(server_name: &str) -> PathBuf {
+    dirs_config_path().join(server_name)
 }
 
 /// Returns the path for the game install path sidecar file.
@@ -655,8 +709,7 @@ pub fn default_config_path(server_name: &str) -> PathBuf {
 ///
 /// On Windows: `%APPDATA%\UltimaForge\{server_name}\game_path.txt`
 pub fn game_path_sidecar(server_name: &str) -> PathBuf {
-    let base = dirs_config_path();
-    base.join(server_name).join("game_path.txt")
+    server_data_dir(server_name).join("game_path.txt")
 }
 
 /// Returns the platform-specific config directory base path.
@@ -825,6 +878,7 @@ impl BrandConfigBuilder {
                 sidebar_links: None,
             },
             cuo: None,
+            migration: None,
             brand_version: "1.0".to_string(),
         };
 

@@ -232,7 +232,11 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
 
   // Track if any maintenance operation is running (for mutual exclusion)
   const isAnyOperationRunning =
-    state.isVerifying || state.isClearing || state.isRepairing || state.isRemoving;
+    state.isVerifying ||
+    state.isClearing ||
+    state.isRepairing ||
+    state.isRemoving ||
+    state.isMigrating;
 
   return (
     <div className="settings">
@@ -317,6 +321,24 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
               {state.currentVersion || "Unknown"}
             </span>
           </div>
+
+          <div className="settings-info-item">
+            <span className="settings-info-label">Legacy Migration</span>
+            <span className="settings-info-value">
+              {state.migrationStatus?.migration_completed
+                ? `Completed${state.migrationStatus.migrated_from ? ` from ${state.migrationStatus.migrated_from}` : ""}`
+                : "Not completed"}
+            </span>
+          </div>
+
+          {state.migrationStatus?.auto_detect_path && (
+            <div className="settings-info-item">
+              <span className="settings-info-label">Auto-Detect Path</span>
+              <span className="settings-info-value">
+                {state.migrationStatus.auto_detect_path}
+              </span>
+            </div>
+          )}
         </section>
 
         {/* User Preferences */}
@@ -406,6 +428,15 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
                 !state.installPath
               }
               onClick={actions.repairInstallation}
+            />
+
+            <ActionButton
+              label="Migrate Legacy Install"
+              description="Import an existing ClassicUO install and profile data"
+              icon={state.isMigrating ? "\u21BB" : "\u2B06"}
+              loading={state.isMigrating}
+              disabled={isAnyOperationRunning}
+              onClick={actions.migrateLegacyInstall}
             />
 
             {!state.isConfirmingRemove ? (

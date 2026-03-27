@@ -148,8 +148,20 @@ pub async fn launch_game(
     let client_count = request.client_count.clamp(1, 3) as usize;
 
     // Create launcher
+    let mut launch_args = request.args.clone();
+    if let Some(cuo_data_root) = launcher_config.cuo_data_path.as_ref() {
+        let settings_path = cuo_data_root.join("settings.json");
+        let profiles_path = cuo_data_root.join("Profiles");
+        launch_args.push("-settings".to_string());
+        launch_args.push(settings_path.display().to_string());
+        launch_args.push("-profilespath".to_string());
+        launch_args.push(profiles_path.display().to_string());
+        launch_args.push("-uopath".to_string());
+        launch_args.push(install_path.join("Files").display().to_string());
+    }
+
     let mut config = LaunchConfig::new(&executable);
-    config = config.with_args(request.args.clone());
+    config = config.with_args(launch_args);
 
     let launcher = ClientLauncher::with_config(&install_path, config.clone());
 
@@ -179,6 +191,7 @@ pub async fn launch_game(
     if let Some(cuo_config) = &brand_config.cuo {
         if let Err(e) = write_cuo_settings(
             &install_path,
+            launcher_config.cuo_data_path.as_deref(),
             cuo_config,
             &request.server_choice,
             &request.assistant_choice,
