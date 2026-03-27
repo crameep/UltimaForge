@@ -281,6 +281,10 @@ fn collect_first_existing_dir_copy(
 ) -> io::Result<()> {
     for candidate in candidates {
         if candidate.exists() && candidate.is_dir() {
+            if !dir_contains_files_recursive(candidate)? {
+                continue;
+            }
+
             return collect_dir_copy_if_missing(candidate, target, entries_to_copy);
         }
     }
@@ -527,5 +531,45 @@ mod tests {
                 .join("Razor.exe")
                 .exists()
         );
+    }
+
+    #[test]
+    fn test_preview_migration_uses_data_fallback_when_root_dirs_empty() {
+        let source = TempDir::new().unwrap();
+        let brand = test_brand_config();
+
+        std::fs::write(source.path().join("ClassicUO.exe"), b"exe").unwrap();
+        std::fs::write(source.path().join("art.mul"), b"1").unwrap();
+        std::fs::write(source.path().join("artidx.mul"), b"1").unwrap();
+        std::fs::write(source.path().join("map0.mul"), b"1").unwrap();
+
+        std::fs::create_dir_all(source.path().join("Profiles")).unwrap();
+        std::fs::create_dir_all(source.path().join("Plugins")).unwrap();
+
+        let data_profiles = source.path().join("Data").join("Profiles");
+        std::fs::create_dir_all(&data_profiles).unwrap();
+        std::fs::write(data_profiles.join("preview-profile.json"), b"{}\n").unwrap();
+
+        let data_plugins = source.path().join("Data").join("Plugins").join("Razor");
+        std::fs::create_dir_all(&data_plugins).unwrap();
+        std::fs::write(data_plugins.join("Razor.exe"), b"plugin").unwrap();
+
+        let preview = preview_migration_from_install_path(&brand, source.path()).unwrap();
+
+        assert!(preview.valid_installation);
+        assert!(preview
+            .entries_to_copy
+            .iter()
+            .any(|p| {
+                p.ends_with("Profiles/preview-profile.json")
+                    || p.ends_with("Profiles\\preview-profile.json")
+            }));
+        assert!(preview
+            .entries_to_copy
+            .iter()
+            .any(|p| {
+                p.ends_with("Plugins/Razor/Razor.exe")
+                    || p.ends_with("Plugins\\Razor\\Razor.exe")
+            }));
     }
 }
