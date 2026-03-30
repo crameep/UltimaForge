@@ -408,4 +408,29 @@ mod tests {
 
         assert_eq!(resolve_uo_data_directory(install_dir.path()), files_dir);
     }
+
+    #[test]
+    fn test_custom_data_root_uses_files_uo_directory_when_populated() {
+        let install_dir = TempDir::new().unwrap();
+        let data_dir = TempDir::new().unwrap();
+        let config = test_cuo_config();
+
+        let files_dir = install_dir.path().join("Files");
+        std::fs::create_dir_all(&files_dir).unwrap();
+        std::fs::write(files_dir.join("art.mul"), b"1").unwrap();
+
+        write_cuo_settings(
+            install_dir.path(),
+            Some(data_dir.path()),
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::Razor,
+        )
+        .expect("Should write settings for migrated install with Files data root");
+
+        let text = std::fs::read_to_string(data_dir.path().join("settings.json")).unwrap();
+        let json: Value = serde_json::from_str(&text).unwrap();
+
+        assert_eq!(json["ultimaonlinedirectory"], files_dir.display().to_string());
+    }
 }

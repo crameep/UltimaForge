@@ -29,6 +29,7 @@
 //! ```
 
 use crate::config::BrandConfig;
+use crate::cuo_settings::resolve_uo_data_directory;
 use crate::downloader::{Downloader, DownloaderConfig};
 use crate::error::{InstallError, UpdateError};
 use crate::hash::verify_file_hash;
@@ -1224,6 +1225,8 @@ pub fn detect_existing_installation(path: &Path) -> DetectionResult {
         missing_files: Vec::new(),
     };
 
+    let data_root = resolve_uo_data_directory(path);
+
     // Check for executables
     for exe in DETECTION_EXECUTABLES {
         let exe_path = path.join(exe);
@@ -1235,7 +1238,7 @@ pub fn detect_existing_installation(path: &Path) -> DetectionResult {
 
     // Check for data files
     for data_file in DETECTION_DATA_FILES {
-        let data_path = path.join(data_file);
+        let data_path = data_root.join(data_file);
         if data_path.exists() && data_path.is_file() {
             debug!("Found data file: {}", data_file);
             result.found_data_files.push(data_file.to_string());
@@ -1790,6 +1793,27 @@ mod tests {
         // Create ALL data files
         for data_file in DETECTION_DATA_FILES {
             fs::write(temp_dir.path().join(data_file), "fake data").unwrap();
+        }
+
+        let result = detect_existing_installation(temp_dir.path());
+        assert!(result.detected);
+        assert_eq!(result.confidence, DetectionConfidence::High);
+        assert!(result.is_valid_installation());
+        assert!(result.found_executables.contains(&"ClassicUO.exe".to_string()));
+        assert_eq!(result.found_data_files.len(), DETECTION_DATA_FILES.len());
+        assert!(result.missing_files.is_empty());
+    }
+
+    #[test]
+    fn test_detect_existing_installation_uses_files_data_root() {
+        let temp_dir = TempDir::new().unwrap();
+        let files_dir = temp_dir.path().join("Files");
+        fs::create_dir_all(&files_dir).unwrap();
+
+        fs::write(temp_dir.path().join("ClassicUO.exe"), "fake exe").unwrap();
+
+        for data_file in DETECTION_DATA_FILES {
+            fs::write(files_dir.join(data_file), "fake data").unwrap();
         }
 
         let result = detect_existing_installation(temp_dir.path());
