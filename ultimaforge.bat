@@ -374,10 +374,10 @@ echo    Installing npm Dependencies
 echo ========================================
 echo.
 
-cd app
+cd /d "%~dp0app"
 call npm install
 set RESULT=%errorlevel%
-cd ..
+cd /d "%~dp0"
 
 if %RESULT% neq 0 (
     echo.
@@ -399,17 +399,17 @@ echo    Repairing npm Dependencies
 echo ========================================
 echo.
 
-if exist "app\node_modules" (
-    rmdir /s /q "app\node_modules"
+if exist "%~dp0app\node_modules" (
+    rmdir /s /q "%~dp0app\node_modules"
 )
-if exist "app\package-lock.json" (
-    del /f /q "app\package-lock.json"
+if exist "%~dp0app\package-lock.json" (
+    del /f /q "%~dp0app\package-lock.json"
 )
 
-cd app
+cd /d "%~dp0app"
 call npm install
 set RESULT=%errorlevel%
-cd ..
+cd /d "%~dp0"
 
 if %RESULT% neq 0 (
     echo.
@@ -513,9 +513,9 @@ echo.
 echo Starting Tauri dev server...
 echo.
 
-cd app
+cd /d "%~dp0app"
 npm run tauri dev
-cd ..
+cd /d "%~dp0"
 
 echo.
 echo Launcher stopped.
@@ -536,10 +536,10 @@ echo ========================================
 echo.
 
 echo [1/5] Syncing branding to config...
-cd app
+cd /d "%~dp0app"
 node sync-branding-config.js
 set RESULT=%errorlevel%
-cd ..
+cd /d "%~dp0"
 
 if %RESULT% neq 0 (
     echo ERROR: Failed to sync branding config
@@ -560,12 +560,12 @@ if not exist "app\node_modules" (
 )
 
 REM Auto-fix optional dependency issues (Rollup/Tauri native bindings)
-cd app
+cd /d "%~dp0app"
 node -e "require('@rollup/rollup-win32-x64-msvc')" >nul 2>nul
 set ROLLUP_OK=%errorlevel%
 node -e "require('@tauri-apps/cli-win32-x64-msvc')" >nul 2>nul
 set TAURI_OK=%errorlevel%
-cd ..
+cd /d "%~dp0"
 
 if not "%ROLLUP_OK%"=="0" (
     echo.
@@ -582,10 +582,10 @@ if not "%TAURI_OK%"=="0" (
 
 echo.
 echo [4/5] Building frontend...
-cd app
+cd /d "%~dp0app"
 call npm run build
 set RESULT=%errorlevel%
-cd ..
+cd /d "%~dp0"
 
 if %RESULT% neq 0 (
     echo ERROR: Frontend build failed
@@ -595,7 +595,7 @@ if %RESULT% neq 0 (
 echo.
 echo [5/5] Building Tauri application...
 echo This will take several minutes...
-cd app
+cd /d "%~dp0app"
 if exist "..\keys\tauri-updater\tauri.key" (
     echo Loading Tauri updater signing key...
     for /f "delims=" %%k in ('node scripts\print-signing-key.js "..\keys\tauri-updater\tauri.key"') do set "TAURI_SIGNING_PRIVATE_KEY=%%k"
@@ -605,7 +605,7 @@ if exist "..\keys\tauri-updater\tauri.key" (
 )
 call npm run tauri build
 set RESULT=%errorlevel%
-cd ..
+cd /d "%~dp0"
 
 if %RESULT% neq 0 (
     echo ERROR: Tauri build failed
@@ -782,7 +782,7 @@ echo ========================================
 echo.
 echo This will guide you through branding setup and key generation.
 echo.
-node app\scripts\server-owner-wizard.js
+node "%~dp0app\scripts\server-owner-wizard.js"
 echo.
 echo ========================================
 echo    Launcher Updater Key Setup
@@ -791,7 +791,7 @@ echo.
 echo This will generate or configure the Tauri updater keypair
 echo and embed the public key into the launcher config.
 echo.
-node app\scripts\configure-launcher-updater.js
+node "%~dp0app\scripts\configure-launcher-updater.js"
 
 echo.
 echo Press any key to return to menu...
@@ -840,7 +840,7 @@ echo.
 echo This will publish game file updates only.
 echo (Skips launcher build and launcher metadata.)
 echo.
-node app\scripts\publish-all.js --game-only true --auto-bump patch --auto-fix-deps true
+node "%~dp0app\scripts\publish-all.js" --game-only true --auto-bump patch --auto-fix-deps true
 
 echo.
 echo Press any key to return to menu...
@@ -859,7 +859,7 @@ echo ========================================
 echo.
 echo This will publish game updates and launcher update metadata.
 echo.
-node app\scripts\publish-all.js --auto-bump patch --auto-fix-deps true
+node "%~dp0app\scripts\publish-all.js" --auto-bump patch --auto-fix-deps true
 
 echo.
 echo Press any key to return to menu...
@@ -879,7 +879,7 @@ echo.
 echo This will build and publish launcher updates only.
 echo (Skips game update manifest/blob generation.)
 echo.
-node app\scripts\publish-all.js --launcher-only true --auto-bump patch --auto-fix-deps true
+node "%~dp0app\scripts\publish-all.js" --launcher-only true --auto-bump patch --auto-fix-deps true
 
 echo.
 echo Press any key to return to menu...
@@ -1114,7 +1114,7 @@ echo.
 echo This will guide you through setting up a VPS to host game updates.
 echo You will need a VPS (e.g. Digital Ocean) and a domain name pointed at it.
 echo.
-node app\scripts\setup-vps.js
+node "%~dp0app\scripts\setup-vps.js"
 
 echo.
 echo Press any key to return to menu...
@@ -1147,7 +1147,7 @@ for /d %%d in ("%ProgramFiles(x86)%\cwRsync*") do (
     if exist "%%d\bin\rsync.exe" set "PATH=%%d\bin;%PATH%"
 )
 
-node app\scripts\deploy.js
+node "%~dp0app\scripts\deploy.js"
 
 echo.
 echo Press any key to return to menu...
@@ -1166,7 +1166,7 @@ echo ========================================
 echo.
 echo This will start the host server and launcher in a single terminal.
 echo.
-node app\scripts\dev-all-in-one.js
+node "%~dp0app\scripts\dev-all-in-one.js"
 
 echo.
 echo Press any key to return to menu...
@@ -1211,10 +1211,10 @@ powershell -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Drawi
 
 REM Generate proper multi-resolution .ico file
 echo.
-cd app
+cd /d "%~dp0app"
 powershell -ExecutionPolicy Bypass -File "generate-ico.ps1"
 set RESULT=%errorlevel%
-cd ..
+cd /d "%~dp0"
 
 if %RESULT% neq 0 (
     echo.
@@ -1227,9 +1227,9 @@ if %RESULT% neq 0 (
 
 REM Generate installer branding images
 echo.
-cd app
+cd /d "%~dp0app"
 powershell -ExecutionPolicy Bypass -File "generate-installer-images.ps1"
-cd ..
+cd /d "%~dp0"
 
 if errorlevel 1 (
     echo.
@@ -1296,10 +1296,10 @@ echo.
 
 echo [Step 2/2] Running npm tests...
 echo.
-cd app
+cd /d "%~dp0app"
 call npm test
 set NPM_RESULT=%errorlevel%
-cd ..
+cd /d "%~dp0"
 
 if %NPM_RESULT% neq 0 (
     echo.
