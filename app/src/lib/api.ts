@@ -12,15 +12,18 @@ import type {
   AppStatus,
   BrandInfo,
   CuoConfig,
+  DetectionResult,
   GetSettingsResponse,
   InstallProgress,
   InstallResponse,
   InstallStatusResponse,
   LaunchGameRequest,
   LaunchResponse,
+  MigrationProgress,
   PathValidationResult,
   SaveResponse,
   SaveSettingsRequest,
+  ScanMigrationResponse,
   ThemeColors,
   UpdateCheckResponse,
   UpdateProgress,
@@ -78,6 +81,56 @@ export async function startInstall(
  */
 export async function getAppStatus(): Promise<AppStatus> {
   return invoke<AppStatus>("get_app_status");
+}
+
+// ============================================================================
+// Migration Commands
+// ============================================================================
+
+/**
+ * Scans brand-configured paths for existing installations.
+ */
+export async function scanForMigrations(): Promise<ScanMigrationResponse> {
+  return invoke<ScanMigrationResponse>("scan_for_migrations");
+}
+
+/**
+ * Detects an existing installation at a user-specified path.
+ */
+export async function detectAtPath(path: string): Promise<DetectionResult> {
+  return invoke<DetectionResult>("detect_at_path", { path });
+}
+
+/**
+ * Starts a file-copy migration from source to destination.
+ */
+export async function startMigration(
+  sourcePath: string,
+  destinationPath: string
+): Promise<void> {
+  return invoke<void>("start_migration", {
+    request: { source_path: sourcePath, destination_path: destinationPath },
+  });
+}
+
+/**
+ * Adopts an existing installation directory in-place.
+ */
+export async function useInPlace(installPath: string): Promise<void> {
+  return invoke<void>("use_in_place", {
+    request: { install_path: installPath },
+  });
+}
+
+/**
+ * Listens for migration progress events.
+ */
+export async function onMigrationProgress(
+  callback: (progress: MigrationProgress) => void
+): Promise<UnlistenFn> {
+  return listen<MigrationProgress>(TauriEvents.MIGRATION_PROGRESS, (event) => {
+    callback(event.payload);
+  });
 }
 
 // ============================================================================

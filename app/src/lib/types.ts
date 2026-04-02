@@ -14,6 +14,8 @@
  */
 export type AppPhase =
   | "Initializing"
+  | "NeedsMigration"
+  | "Migrating"
   | "NeedsInstall"
   | "Installing"
   | "CheckingUpdates"
@@ -156,6 +158,52 @@ export interface PathValidationResult {
   is_writable: boolean;
   /** Whether the path requires elevation (admin rights) */
   requires_elevation: boolean;
+}
+
+// ============================================================================
+// Migration Types
+// ============================================================================
+
+/**
+ * Result of detecting an existing installation at a path.
+ */
+export interface DetectionResult {
+  /** Whether an installation was detected */
+  detected: boolean;
+  /** Path where installation was detected */
+  install_path: string | null;
+  /** Confidence level: High, Medium, Low, None */
+  confidence: "High" | "Medium" | "Low" | "None";
+  /** Detected version if determinable */
+  detected_version: string | null;
+  /** List of found executable files */
+  found_executables: string[];
+  /** List of found data files */
+  found_data_files: string[];
+  /** List of missing expected files */
+  missing_files: string[];
+}
+
+/**
+ * Response from scanning for migratable installations.
+ */
+export interface ScanMigrationResponse {
+  /** Detected installations with medium+ confidence */
+  detected: DetectionResult[];
+  /** Number of paths that were scanned */
+  paths_scanned: number;
+}
+
+/**
+ * Progress information during file-copy migration.
+ */
+export interface MigrationProgress {
+  /** Number of files copied so far */
+  files_copied: number;
+  /** Total number of files to copy */
+  files_total: number;
+  /** Current file being copied */
+  current_file: string | null;
 }
 
 // ============================================================================
@@ -457,6 +505,8 @@ export const TauriEvents = {
   VERIFY_PROGRESS: "verify-progress",
   /** Emitted when a client process exits; payload is the new running count */
   CLIENT_COUNT_CHANGED: "client-count-changed",
+  /** Migration progress event */
+  MIGRATION_PROGRESS: "migration-progress",
 } as const;
 
 /**
