@@ -202,11 +202,34 @@ function tryScp(user, host, port, keyPath, localDir, remotePath) {
 /**
  * Returns true if SSH key auth succeeds without a password prompt.
  */
+/**
+ * On Windows, SSH refuses keys with loose permissions. Copy the key to
+ * %USERPROFILE%\.ssh\ and lock down permissions with icacls.
+ * Returns the path to use for -i (the secured copy, or the original on non-Windows).
+ */
+function ensureSecureKeyPath(keyPath) {
+  if (process.platform !== "win32") return keyPath;
+  const home = process.env.USERPROFILE || process.env.HOME;
+  if (!home) return keyPath;
+  const sshDir = path.join(home, ".ssh");
+  if (!fs.existsSync(sshDir)) fs.mkdirSync(sshDir, { recursive: true });
+  const securePath = path.join(sshDir, "ultimaforge-deploy-key");
+  try {
+    fs.copyFileSync(keyPath, securePath);
+    // Remove inherited permissions and grant only the current user
+    spawnSync("icacls", [securePath, "/inheritance:r", "/grant:r", `${process.env.USERNAME}:R`], { stdio: "ignore" });
+    return securePath;
+  } catch {
+    return keyPath;
+  }
+}
+
 function testSshKeyAuth(user, host, port, keyPath) {
+  const secureKey = ensureSecureKeyPath(keyPath);
   const result = spawnSync(
     "ssh",
     [
-      "-i", keyPath,
+      "-i", secureKey,
       "-o", "BatchMode=yes",
       "-o", "StrictHostKeyChecking=accept-new",
       "-o", "ConnectTimeout=10",
@@ -217,6 +240,10 @@ function testSshKeyAuth(user, host, port, keyPath) {
     { stdio: ["ignore", "pipe", "pipe"] }
   );
   const out = result.stdout ? result.stdout.toString().trim() : "";
+  const err = result.stderr ? result.stderr.toString().trim() : "";
+  if (result.status !== 0 && err) {
+    console.log(`  SSH key auth debug: ${err}`);
+  }
   return result.status === 0 && out === "OK";
 }
 
@@ -343,15 +370,16 @@ if (!testSshKeyAuth(user, host, port, deployKeyPath)) {
 
 console.log("\nSyncing files...\n");
 
+const securedKeyPath = ensureSecureKeyPath(deployKeyPath);
 const rsync = findRsync();
 if (rsync) {
   const label = rsync.wsl ? "wsl rsync" : rsync.bin !== "rsync" ? rsync.bin : "rsync";
   console.log(`Using ${label}...`);
-  tryRsync(rsync, user, host, port, deployKeyPath, publishDir, remotePath);
+  tryRsync(rsync, user, host, port, securedKeyPath, publishDir, remotePath);
 } else {
   console.log("rsync not found - using scp instead (re-uploads all files).");
   console.log("Run Option 0 (Install Prerequisites) to install rsync for faster deploys.");
-  tryScp(user, host, port, deployKeyPath, publishDir, remotePath);
+  tryScp(user, host, port, securedKeyPath, publishDir, remotePath);
 }
 
 console.log("\n========================================");
