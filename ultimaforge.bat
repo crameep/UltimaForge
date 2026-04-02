@@ -785,17 +785,39 @@ echo ========================================
 echo.
 echo   Publish what?
 echo   [1] Full (game + launcher) - default
-echo   [2] Launcher only (fast, skips game files)
+echo   [2] Game only (fast, skips launcher build)
+echo   [3] Launcher only (fast, skips game files)
 echo.
 set "pub_choice="
 set /p pub_choice="Enter choice (or Enter for Full): "
 
 if "%pub_choice%"=="" goto PUBLISH_ALL
 if "%pub_choice%"=="1" goto PUBLISH_ALL
-if "%pub_choice%"=="2" goto PUBLISH_LAUNCHER_ONLY
+if "%pub_choice%"=="2" goto PUBLISH_GAME_ONLY
+if "%pub_choice%"=="3" goto PUBLISH_LAUNCHER_ONLY
 
 echo Invalid choice. Using Full publish...
 goto PUBLISH_ALL
+
+REM ============================================================================
+REM PUBLISH GAME ONLY (FAST)
+REM ============================================================================
+:PUBLISH_GAME_ONLY
+cls
+echo.
+echo ========================================
+echo    Publish Game Only (Fast)
+echo ========================================
+echo.
+echo This will publish game file updates only.
+echo (Skips launcher build and launcher metadata.)
+echo.
+node app\scripts\publish-all.js --game-only true --auto-bump patch --auto-fix-deps true
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
 
 REM ============================================================================
 REM PUBLISH ALL (GAME + LAUNCHER)

@@ -302,6 +302,7 @@ async function main() {
   const cachePath = path.join(repoRoot, ".publish-all-cache.json");
   const cache = readJsonIfExists(cachePath, {});
   const launcherOnly = (args["launcher-only"] || "").trim() === "true";
+  const gameOnly = (args["game-only"] || "").trim() === "true";
 
   const autoBump = (args["auto-bump"] || "").trim();
   if (autoBump) {
@@ -323,7 +324,7 @@ async function main() {
   let gameSource = "";
   let gameKey = "";
   let gameVersion = "";
-  let gameExecutable = "client.exe";
+  let gameExecutable = "";
   let gamePublicKey = "";
 
   if (!launcherOnly) {
@@ -423,7 +424,7 @@ async function main() {
     "bundle"
   );
   const altBundleDir = path.join(repoRoot, "target", "release", "bundle");
-  const shouldBuildLauncher = (args["launcher-build"] || "").trim() !== "false";
+  const shouldBuildLauncher = !gameOnly && (args["launcher-build"] || "").trim() !== "false";
   if (shouldBuildLauncher) {
     const updaterKeysDir = path.join(resolvedKeysDir, "tauri-updater");
     const updaterKeyPath = path.join(updaterKeysDir, "tauri.key");
@@ -494,6 +495,17 @@ async function main() {
     console.log("\nSkipping launcher build (launcher-build=false).");
   }
 
+  if (gameOnly) {
+    console.log("\nGame-only mode: skipping launcher build and metadata.");
+    rl.close();
+    console.log("\nPublish summary");
+    console.log(`- Game updates output: ${updatesDir}`);
+    console.log("\nSuggested smoke tests:");
+    console.log(`- ${defaultUpdateUrl.replace(/\/$/, "")}/manifest.json`);
+    console.log(`- ${defaultUpdateUrl.replace(/\/$/, "")}/manifest.sig`);
+    return;
+  }
+
   const detectedLauncherBinary =
     findLatestInstaller(bundleDir, launcherVersion) ||
     findLatestInstaller(altBundleDir, launcherVersion);
@@ -547,10 +559,10 @@ async function main() {
   }
 
   const updatedCache = {
-    gameSource,
-    gameKey,
-    gameVersion,
-    gameExecutable,
+    gameSource: gameSource || cache.gameSource,
+    gameKey: gameKey || cache.gameKey,
+    gameVersion: gameVersion || cache.gameVersion,
+    gameExecutable: gameExecutable || cache.gameExecutable,
     launcherBinary,
     launcherTarget,
     launcherArch,
