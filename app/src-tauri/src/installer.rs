@@ -1275,10 +1275,23 @@ pub fn detect_existing_installation(path: &Path) -> DetectionResult {
         }
     }
 
-    // Check for data files
+    // Check for data files in root and common subdirectories
+    let data_search_dirs: Vec<std::path::PathBuf> = {
+        let mut dirs = vec![path.to_path_buf()];
+        // Also check "Files/" subfolder (common manifest layout)
+        let files_subdir = path.join("Files");
+        if files_subdir.is_dir() {
+            dirs.push(files_subdir);
+        }
+        dirs
+    };
+
     for data_file in DETECTION_DATA_FILES {
-        let data_path = path.join(data_file);
-        if data_path.exists() && data_path.is_file() {
+        let found = data_search_dirs.iter().any(|dir| {
+            let data_path = dir.join(data_file);
+            data_path.exists() && data_path.is_file()
+        });
+        if found {
             debug!("Found data file: {}", data_file);
             result.found_data_files.push(data_file.to_string());
         } else {
