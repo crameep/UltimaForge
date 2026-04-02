@@ -109,7 +109,7 @@ pub fn run() {
                                     windows::core::PCWSTR(exe_str.as_ptr()),
                                     windows::core::PCWSTR::null(),
                                     windows::core::PCWSTR::null(),
-                                    windows::Win32::UI::Shell::SW_SHOWNORMAL,
+                                    windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
                                 );
                             }
                             // Exit this non-elevated instance

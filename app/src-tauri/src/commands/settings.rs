@@ -618,7 +618,7 @@ pub async fn relaunch_as_admin() -> Result<(), String> {
                 windows::core::PCWSTR(exe_str.as_ptr()),
                 windows::core::PCWSTR::null(),
                 windows::core::PCWSTR::null(),
-                windows::Win32::UI::Shell::SW_SHOWNORMAL,
+                windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
             )
         };
         if result.0 as usize <= 32 {
