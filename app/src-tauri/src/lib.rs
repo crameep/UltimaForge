@@ -94,18 +94,24 @@ pub fn run() {
                         use crate::installer::Installer;
                         if !Installer::is_running_elevated_static() {
                             info!("Install path requires elevation, relaunching as admin");
-                            use std::process::Command;
                             let exe_path =
                                 std::env::current_exe().expect("Failed to get executable path");
-                            let _ = Command::new("powershell")
-                                .args([
-                                    "-Command",
-                                    &format!(
-                                        "Start-Process -FilePath '{}' -Verb RunAs",
-                                        exe_path.display()
-                                    ),
-                                ])
-                                .spawn();
+                            let exe_str: Vec<u16> = exe_path
+                                .to_string_lossy()
+                                .encode_utf16()
+                                .chain(std::iter::once(0))
+                                .collect();
+                            let verb: Vec<u16> = "runas\0".encode_utf16().collect();
+                            unsafe {
+                                windows::Win32::UI::Shell::ShellExecuteW(
+                                    windows::Win32::Foundation::HWND::default(),
+                                    windows::core::PCWSTR(verb.as_ptr()),
+                                    windows::core::PCWSTR(exe_str.as_ptr()),
+                                    windows::core::PCWSTR::null(),
+                                    windows::core::PCWSTR::null(),
+                                    windows::Win32::UI::Shell::SW_SHOWNORMAL,
+                                );
+                            }
                             // Exit this non-elevated instance
                             std::process::exit(0);
                         }

@@ -6,7 +6,9 @@
 //! - Managing user preferences
 //! - Saving brand configuration for setup wizard
 
-use crate::config::{default_config_path, game_path_sidecar, BrandConfig, LauncherConfig, ThemeColors};
+use crate::config::{
+    default_config_path, game_path_sidecar, BrandConfig, LauncherConfig, ThemeColors,
+};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -224,15 +226,15 @@ impl From<&BrandConfig> for BrandInfo {
 pub async fn get_settings(state: State<'_, AppState>) -> Result<GetSettingsResponse, String> {
     info!("Getting user settings");
 
-    let launcher_config = state
-        .launcher_config()
-        .unwrap_or_else(LauncherConfig::new);
+    let launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
 
     let settings = UserSettings::from(&launcher_config);
 
     Ok(GetSettingsResponse {
         settings,
-        install_path: launcher_config.install_path.map(|p| p.display().to_string()),
+        install_path: launcher_config
+            .install_path
+            .map(|p| p.display().to_string()),
         current_version: launcher_config.current_version,
         install_complete: launcher_config.install_complete,
     })
@@ -247,9 +249,7 @@ pub async fn save_settings(
     info!("Saving user settings");
 
     // Get current config or create new one
-    let mut config = state
-        .launcher_config()
-        .unwrap_or_else(LauncherConfig::new);
+    let mut config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
 
     // Update settings
     config.auto_launch = request.settings.auto_launch;
@@ -339,7 +339,10 @@ pub async fn get_launcher_dir() -> Result<String, String> {
 /// at build time to customize the launcher.
 #[tauri::command]
 pub async fn save_brand_config(config: BrandConfigInput) -> Result<SaveResponse, String> {
-    info!("Saving brand configuration for server: {}", config.product.server_name);
+    info!(
+        "Saving brand configuration for server: {}",
+        config.product.server_name
+    );
 
     let brand_path = Path::new("branding/brand.json");
 
@@ -515,7 +518,9 @@ pub fn is_running_as_admin() -> Result<bool, String> {
     #[cfg(target_os = "windows")]
     {
         use std::mem;
-        use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+        use windows::Win32::Security::{
+            GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+        };
         use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
         unsafe {
@@ -536,7 +541,9 @@ pub fn is_running_as_admin() -> Result<bool, String> {
                 Some(&mut elevation as *mut _ as *mut _),
                 mem::size_of::<TOKEN_ELEVATION>() as u32,
                 &mut size,
-            ).is_err() {
+            )
+            .is_err()
+            {
                 return Ok(false);
             }
 
@@ -584,31 +591,39 @@ pub async fn relaunch_as_admin() -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
-        use std::process::Command;
-
         // Get the current executable path
-        let exe_path = std::env::current_exe()
-            .map_err(|e| format!("Failed to get executable path: {}", e))?;
+        let exe_path =
+            std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
 
         // Check if we're running in dev mode (executable is in target/debug or target/release without being installed)
         let exe_path_str = exe_path.to_string_lossy();
-        let is_dev_mode = exe_path_str.contains("target\\debug") || exe_path_str.contains("target\\release");
+        let is_dev_mode =
+            exe_path_str.contains("target\\debug") || exe_path_str.contains("target\\release");
 
         if is_dev_mode {
             return Err("Elevation requires a production build. Please close this window, right-click the launcher shortcut or executable, select 'Run as administrator', and try again.".to_string());
         }
 
-        // Use Windows shell to launch with elevation
-        let _status = Command::new("powershell")
-            .args([
-                "-Command",
-                &format!(
-                    "Start-Process -FilePath '{}' -Verb RunAs",
-                    exe_path.display()
-                ),
-            ])
-            .spawn()
-            .map_err(|e| format!("Failed to relaunch with elevation: {}", e))?;
+        // Use ShellExecuteW with "runas" verb for silent UAC elevation (no cmd flash)
+        let exe_str: Vec<u16> = exe_path
+            .to_string_lossy()
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+        let verb: Vec<u16> = "runas\0".encode_utf16().collect();
+        let result = unsafe {
+            windows::Win32::UI::Shell::ShellExecuteW(
+                windows::Win32::Foundation::HWND::default(),
+                windows::core::PCWSTR(verb.as_ptr()),
+                windows::core::PCWSTR(exe_str.as_ptr()),
+                windows::core::PCWSTR::null(),
+                windows::core::PCWSTR::null(),
+                windows::Win32::UI::Shell::SW_SHOWNORMAL,
+            )
+        };
+        if result.0 as usize <= 32 {
+            return Err(format!("Failed to relaunch with elevation (code: {:?})", result));
+        }
 
         info!("Elevated instance launched, exiting current instance");
 
@@ -664,34 +679,48 @@ pub async fn open_install_folder(state: State<'_, AppState>) -> Result<(), Strin
 #[tauri::command]
 pub async fn remove_game_files(state: State<'_, AppState>) -> Result<SaveResponse, String> {
     let config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
-    let path = config.install_path.clone().ok_or("No install path configured")?;
+    let path = config
+        .install_path
+        .clone()
+        .ok_or("No install path configured")?;
 
     // Safety: refuse dangerous paths
     let path_lower = path.to_string_lossy().to_lowercase();
     let dangerous_patterns = [
-        "c:\\windows", "c:/windows",
-        "c:\\program files", "c:/program files",
-        "c:\\program files (x86)", "c:/program files (x86)",
-        "c:\\system", "c:/system",
+        "c:\\windows",
+        "c:/windows",
+        "c:\\program files",
+        "c:/program files",
+        "c:\\program files (x86)",
+        "c:/program files (x86)",
+        "c:\\system",
+        "c:/system",
     ];
-    let is_drive_root = path_lower.len() <= 3
-        && path_lower.chars().nth(1) == Some(':');
+    let is_drive_root = path_lower.len() <= 3 && path_lower.chars().nth(1) == Some(':');
     if path_lower == "/" || is_drive_root {
-        return Err(format!("Refusing to remove root/drive path: {}", path.display()));
+        return Err(format!(
+            "Refusing to remove root/drive path: {}",
+            path.display()
+        ));
     }
     for pattern in &dangerous_patterns {
         if path_lower.starts_with(pattern) {
-            return Err(format!("Refusing to remove system path: {}", path.display()));
+            return Err(format!(
+                "Refusing to remove system path: {}",
+                path.display()
+            ));
         }
     }
 
     if path.exists() {
         info!("Removing game files at {}", path.display());
-        fs::remove_dir_all(&path)
-            .map_err(|e| format!("Failed to remove game files: {}", e))?;
+        fs::remove_dir_all(&path).map_err(|e| format!("Failed to remove game files: {}", e))?;
         info!("Game files removed successfully");
     } else {
-        info!("Install path {} does not exist, clearing config only", path.display());
+        info!(
+            "Install path {} does not exist, clearing config only",
+            path.display()
+        );
     }
 
     // Clear install fields from persisted config
@@ -724,11 +753,17 @@ pub async fn remove_game_files(state: State<'_, AppState>) -> Result<SaveRespons
     match updated_config.save(&config_path) {
         Ok(()) => {
             info!("Config saved after game file removal");
-            Ok(SaveResponse { success: true, error: None })
+            Ok(SaveResponse {
+                success: true,
+                error: None,
+            })
         }
         Err(e) => {
             error!("Failed to save config after game file removal: {}", e);
-            Ok(SaveResponse { success: false, error: Some(e.to_string()) })
+            Ok(SaveResponse {
+                success: false,
+                error: Some(e.to_string()),
+            })
         }
     }
 }
