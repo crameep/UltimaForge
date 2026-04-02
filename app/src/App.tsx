@@ -12,7 +12,7 @@ import { LauncherUpdateModal } from "./components/LauncherUpdateModal";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
 import { useLaunch } from "./hooks/useLaunch";
-import { getSettings, scanForMigrations } from "./lib/api";
+import { getSettings, scanForMigrations, useInPlace } from "./lib/api";
 import { MigrationWizard } from "./components/MigrationWizard";
 import { checkForLauncherUpdate, type LauncherUpdateCheck } from "./lib/launcherUpdater";
 import "./App.css";
@@ -221,6 +221,22 @@ function App() {
     setStatusMessage("Installation required");
   };
 
+  const handleMigrateDetected = async (installPath: string) => {
+    // User selected a directory with existing UO files in the install wizard — adopt it
+    try {
+      await useInPlace(installPath);
+      setPhase("CheckingUpdates");
+      setStatusMessage("Checking for updates...");
+      await updateActions.checkForUpdates();
+      setPhase("Ready");
+      setStatusMessage("Installation detected — ready!");
+    } catch (e) {
+      setStatusMessage(
+        `Migration failed: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  };
+
   const handleUpdateComplete = async () => {
     setPhase("Ready");
     setStatusMessage("Update complete!");
@@ -339,6 +355,7 @@ function App() {
         <InstallWizard
           serverName={brandInfo?.display_name || "UltimaForge"}
           onComplete={handleInstallComplete}
+          onMigrateDetected={handleMigrateDetected}
         />
       </Layout>
     );

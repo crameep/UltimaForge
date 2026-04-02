@@ -15,6 +15,7 @@ import {
   onInstallProgress,
   relaunchAsAdmin,
   getRecommendedInstallPath,
+  detectAtPath,
 } from "../lib/api";
 
 import type {
@@ -22,6 +23,7 @@ import type {
   InstallProgress,
   PathValidationResult,
   InstallStatusResponse,
+  DetectionResult,
 } from "../lib/types";
 
 /**
@@ -53,6 +55,8 @@ export interface UseInstallState {
   errorMessage: string | null;
   /** Whether the user has accepted the EULA */
   eulaAccepted: boolean;
+  /** Detection result if selected directory contains existing UO files */
+  detectedInstallation: DetectionResult | null;
 }
 
 /**
@@ -128,6 +132,7 @@ export function useInstall(): [UseInstallState, UseInstallActions] {
   const [progress, setProgress] = useState<InstallProgress | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [eulaAccepted, setEulaAcceptedState] = useState(false);
+  const [detectedInstallation, setDetectedInstallation] = useState<DetectionResult | null>(null);
 
   // Set default install path to %LOCALAPPDATA%\{ServerName} (no elevation needed)
   useEffect(() => {
@@ -203,13 +208,27 @@ export function useInstall(): [UseInstallState, UseInstallActions] {
   const validatePath = useCallback(async (path: string) => {
     if (!path) {
       setPathValidation(null);
+      setDetectedInstallation(null);
       return;
     }
 
     setIsValidating(true);
+    setDetectedInstallation(null);
     try {
       const result = await validateInstallPath(path);
       setPathValidation(result);
+
+      // If directory exists and isn't empty, check for existing UO files
+      if (result.exists && !result.is_empty) {
+        try {
+          const detection = await detectAtPath(path);
+          if (detection.detected) {
+            setDetectedInstallation(detection);
+          }
+        } catch {
+          // Detection failed — not critical, skip
+        }
+      }
     } catch (error) {
       setPathValidation({
         ...defaultValidation,
@@ -399,6 +418,7 @@ export function useInstall(): [UseInstallState, UseInstallActions] {
     progress,
     errorMessage,
     eulaAccepted,
+    detectedInstallation,
   };
 
   // Assemble actions object

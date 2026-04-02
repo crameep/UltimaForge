@@ -18,6 +18,8 @@ interface InstallWizardProps {
   onComplete?: () => void;
   /** Server/product name for display */
   serverName?: string;
+  /** Callback when user wants to migrate a detected installation instead of fresh install */
+  onMigrateDetected?: (installPath: string) => void;
 }
 
 /**
@@ -97,22 +99,26 @@ function DirectoryStep({
   installPath,
   pathValidation,
   isValidating,
+  detectedInstallation,
   onPickDirectory,
   onSetPath,
   onNext,
   onPrev,
   onRelaunchAsAdmin,
   onUseRecommendedPath,
+  onMigrateDetected,
 }: {
   installPath: string;
   pathValidation: ReturnType<typeof useInstall>[0]["pathValidation"];
   isValidating: boolean;
+  detectedInstallation: ReturnType<typeof useInstall>[0]["detectedInstallation"];
   onPickDirectory: () => void;
   onSetPath: (path: string) => void;
   onNext: () => void;
   onPrev: () => void;
   onRelaunchAsAdmin: () => void;
   onUseRecommendedPath: () => void;
+  onMigrateDetected?: (installPath: string) => void;
 }) {
   // Disable only when explicitly invalid. Allow proceeding when:
   // - Path is non-empty AND validation is null (not yet validated)
@@ -189,8 +195,34 @@ function DirectoryStep({
           </div>
         )}
 
-        {/* Non-empty directory warning */}
-        {pathValidation && !pathValidation.is_empty && pathValidation.exists && (
+        {/* Existing UO installation detected */}
+        {detectedInstallation && detectedInstallation.detected && (
+          <div className="wizard-detection">
+            <div className="wizard-detection-header">
+              <span className="wizard-validation-icon">&#128270;</span>
+              <span>
+                Existing UO installation detected ({detectedInstallation.confidence} confidence)
+              </span>
+            </div>
+            <p className="wizard-detection-detail">
+              Found: {detectedInstallation.found_executables.join(", ")}
+              {detectedInstallation.found_data_files.length > 0 &&
+                ` + ${detectedInstallation.found_data_files.length} data files`}
+            </p>
+            {onMigrateDetected && (
+              <button
+                className="wizard-button primary"
+                onClick={() => onMigrateDetected(installPath)}
+                style={{ marginTop: "0.5rem" }}
+              >
+                Use These Files (Migrate)
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Non-empty directory warning (only if no UO installation detected) */}
+        {pathValidation && !pathValidation.is_empty && pathValidation.exists && !detectedInstallation?.detected && (
           <div className="wizard-validation warning">
             <span className="wizard-validation-icon">&#9888;</span>
             <span>
@@ -524,6 +556,7 @@ function getStateText(state: string): string {
 export function InstallWizard({
   onComplete,
   serverName = "UltimaForge",
+  onMigrateDetected,
 }: InstallWizardProps) {
   const [state, actions] = useInstall();
 
@@ -569,12 +602,14 @@ export function InstallWizard({
             installPath={state.installPath}
             pathValidation={state.pathValidation}
             isValidating={state.isValidating}
+            detectedInstallation={state.detectedInstallation}
             onPickDirectory={actions.pickDirectory}
             onSetPath={actions.setInstallPath}
             onNext={actions.nextStep}
             onPrev={actions.prevStep}
             onRelaunchAsAdmin={actions.relaunchAsAdmin}
             onUseRecommendedPath={actions.useRecommendedPath}
+            onMigrateDetected={onMigrateDetected}
           />
         )}
 
