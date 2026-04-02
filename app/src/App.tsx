@@ -12,12 +12,15 @@ import { LauncherUpdateModal } from "./components/LauncherUpdateModal";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
 import { useLaunch } from "./hooks/useLaunch";
-import { getSettings } from "./lib/api";
+import { getSettings, scanForMigrations } from "./lib/api";
+import { MigrationWizard } from "./components/MigrationWizard";
 import { checkForLauncherUpdate, type LauncherUpdateCheck } from "./lib/launcherUpdater";
 import "./App.css";
 
 type AppPhase =
   | "Initializing"
+  | "NeedsMigration"
+  | "Migrating"
   | "NeedsInstall"
   | "Installing"
   | "CheckingUpdates"
@@ -81,6 +84,18 @@ function App() {
 
         const status = await checkNeedsInstall();
         if (status.needs_install || !status.install_complete) {
+          // Before showing install wizard, check for migratable installations
+          try {
+            const migrationScan = await scanForMigrations();
+            if (migrationScan.detected.length > 0) {
+              setPhase("NeedsMigration");
+              setStatusMessage("Existing installation found");
+              return;
+            }
+          } catch {
+            // Migration scan failed — fall through to install wizard
+          }
+
           setPhase("NeedsInstall");
           setStatusMessage("Installation required");
         } else {
@@ -192,6 +207,20 @@ function App() {
     setStatusMessage("Installation complete!");
   };
 
+  const handleMigrationComplete = async () => {
+    // After migration, check for updates (updater fills in any gaps)
+    setPhase("CheckingUpdates");
+    setStatusMessage("Checking for updates...");
+    await updateActions.checkForUpdates();
+    setPhase("Ready");
+    setStatusMessage("Migration complete!");
+  };
+
+  const handleMigrationSkip = () => {
+    setPhase("NeedsInstall");
+    setStatusMessage("Installation required");
+  };
+
   const handleUpdateComplete = async () => {
     setPhase("Ready");
     setStatusMessage("Update complete!");
@@ -277,6 +306,25 @@ function App() {
     setPhase("Ready");
     setStatusMessage("");
   };
+
+  // Show migration wizard when existing installations are found
+  if (phase === "NeedsMigration" || phase === "Migrating") {
+    return (
+      <Layout
+        phase={phase}
+        statusMessage={statusMessage}
+        version={appVersion}
+        clientVersion={clientVersion}
+        runningClients={launchState.runningClients}
+      >
+        <MigrationWizard
+          serverName={brandInfo?.display_name || "UltimaForge"}
+          onComplete={handleMigrationComplete}
+          onSkip={handleMigrationSkip}
+        />
+      </Layout>
+    );
+  }
 
   // Show install wizard when installation is needed
   if (phase === "NeedsInstall" || phase === "Installing") {
