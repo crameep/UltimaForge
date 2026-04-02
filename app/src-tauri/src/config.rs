@@ -297,6 +297,14 @@ pub struct CuoConfig {
 ///   }
 /// }
 /// ```
+/// Migration configuration for detecting existing installations.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MigrationConfig {
+    /// Exact directory paths to scan for existing UO installations.
+    #[serde(rename = "searchPaths", default)]
+    pub search_paths: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BrandConfig {
     /// Product information.
@@ -321,6 +329,10 @@ pub struct BrandConfig {
     /// Version of this branding configuration format.
     #[serde(rename = "brandVersion", default = "default_brand_version")]
     pub brand_version: String,
+
+    /// Optional migration configuration for detecting existing installations.
+    #[serde(default)]
+    pub migration: Option<MigrationConfig>,
 }
 
 fn default_brand_version() -> String {
@@ -826,6 +838,7 @@ impl BrandConfigBuilder {
             },
             cuo: None,
             brand_version: "1.0".to_string(),
+            migration: None,
         };
 
         config.validate()?;
@@ -1477,5 +1490,34 @@ mod tests {
         // HTTP should be allowed (for local testing)
         let config = BrandConfig::parse_str(&json).expect("Should accept http://");
         assert_eq!(config.update_url, "http://localhost:8080");
+    }
+
+    #[test]
+    fn test_migration_config_parsing() {
+        let json = r#"{
+            "product": { "displayName": "Test", "serverName": "Test" },
+            "updateUrl": "http://example.com",
+            "publicKey": "2a26d57c2e53b821c554c28ea6bc3802b18a18f26eaf39e86ce3aaa9b25dc449",
+            "migration": {
+                "searchPaths": ["C:\\Program Files\\MyServer", "C:\\Games\\UO"]
+            }
+        }"#;
+
+        let config: BrandConfig = serde_json::from_str(json).expect("Should parse");
+        let migration = config.migration.expect("Should have migration config");
+        assert_eq!(migration.search_paths.len(), 2);
+        assert_eq!(migration.search_paths[0], "C:\\Program Files\\MyServer");
+    }
+
+    #[test]
+    fn test_migration_config_optional() {
+        let json = r#"{
+            "product": { "displayName": "Test", "serverName": "Test" },
+            "updateUrl": "http://example.com",
+            "publicKey": "2a26d57c2e53b821c554c28ea6bc3802b18a18f26eaf39e86ce3aaa9b25dc449"
+        }"#;
+
+        let config: BrandConfig = serde_json::from_str(json).expect("Should parse");
+        assert!(config.migration.is_none());
     }
 }

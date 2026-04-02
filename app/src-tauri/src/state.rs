@@ -655,6 +655,7 @@ fn format_size(bytes: u64) -> String {
 mod tests {
     use super::*;
     use crate::config::BrandConfigBuilder;
+    use std::sync::Arc;
 
     /// Valid 64-character hex public key for testing.
     const TEST_PUBLIC_KEY: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
