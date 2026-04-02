@@ -1,0 +1,290 @@
+.migration-wizard {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100%;
+  padding: 2rem;
+}
+
+.migration-card {
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.migration-card h2 {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-text);
+  font-size: 1.5rem;
+}
+
+.migration-subtitle {
+  color: var(--color-text);
+  opacity: 0.7;
+  margin-bottom: 1.5rem;
+}
+
+.migration-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: migration-spin 0.8s linear infinite;
+  margin: 2rem auto;
+}
+
+@keyframes migration-spin {
+  to { transform: rotate(360deg); }
+}
+
+.migration-detection-info {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.migration-path {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+  word-break: break-all;
+}
+
+.migration-confidence {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.8;
+}
+
+.confidence-high { color: #4caf50; }
+.confidence-medium { color: #ff9800; }
+.confidence-low { color: #f44336; }
+
+.migration-files,
+.migration-missing {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.7;
+  margin-top: 0.25rem;
+}
+
+.migration-missing-note {
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.migration-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.migration-option {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.migration-option:hover {
+  border-color: var(--color-primary);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.migration-option-recommended {
+  border-color: var(--color-primary);
+}
+
+.migration-option-skip {
+  opacity: 0.7;
+}
+
+.option-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.option-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.option-badge {
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.option-description {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin: 0;
+}
+
+.option-warning {
+  color: #ff9800;
+  font-weight: 500;
+}
+
+.migration-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.migration-btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.migration-btn:hover {
+  opacity: 0.9;
+}
+
+.migration-btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.migration-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+.migration-btn-small {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.migration-dest-input {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.migration-path-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.migration-path-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.migration-note {
+  font-size: 0.8rem;
+  color: var(--color-text);
+  opacity: 0.5;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.migration-progress-bar {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.migration-progress-fill {
+  background: var(--color-primary);
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.migration-progress-text {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.migration-current-file {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  opacity: 0.5;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.migration-error {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.migration-other-results {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.migration-other-results p {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  margin-bottom: 0.5rem;
+}
+
+.migration-alt-source {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  opacity: 0.6;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.migration-alt-source:hover {
+  opacity: 1;
+  border-color: var(--color-primary);
+}
+
+.migration-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
