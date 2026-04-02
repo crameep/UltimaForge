@@ -966,3 +966,22 @@
 .settings-migration-adopt-btn:hover {
   opacity: 0.9;
 }
+
+/* Migrated From section */
+.settings-migrated-from {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 152, 0, 0.08);
+  border: 1px solid rgba(255, 152, 0, 0.2);
+  border-radius: 8px;
+}
+
+.settings-action-btn-danger {
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #f44336;
+}
+
+.settings-action-btn-danger:hover:not(:disabled) {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: #f44336;
+}

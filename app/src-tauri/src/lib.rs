@@ -241,6 +241,7 @@ pub fn run() {
             commands::migration::detect_at_path,
             commands::migration::start_migration,
             commands::migration::use_in_place,
+            commands::migration::remove_old_installation,
         ]);
 
     app_result

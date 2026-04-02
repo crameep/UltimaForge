@@ -10,7 +10,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useSettings } from "../hooks/useSettings";
 import { checkForLauncherUpdate } from "../lib/launcherUpdater";
 import { calculatePercentage } from "../lib/types";
-import { scanForMigrations, detectAtPath, useInPlace } from "../lib/api";
+import { scanForMigrations, detectAtPath, useInPlace, removeOldInstallation } from "../lib/api";
 import type { DetectionResult } from "../lib/types";
 import "./Settings.css";
 
@@ -185,6 +185,8 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
   const [migrationResults, setMigrationResults] = useState<DetectionResult[]>([]);
   const [showMigrationResults, setShowMigrationResults] = useState(false);
   const [isMigrationScanning, setIsMigrationScanning] = useState(false);
+  const [isConfirmingRemoveOld, setIsConfirmingRemoveOld] = useState(false);
+  const [isRemovingOld, setIsRemovingOld] = useState(false);
 
   const handleLauncherUpdateCheck = async () => {
     setIsCheckingLauncherUpdate(true);
@@ -246,6 +248,20 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
       }
     } catch {
       setIsMigrationScanning(false);
+    }
+  };
+
+  const handleRemoveOldInstallation = async () => {
+    if (!state.migratedFrom) return;
+    setIsRemovingOld(true);
+    try {
+      await removeOldInstallation(state.migratedFrom);
+      setIsConfirmingRemoveOld(false);
+      actions.loadSettings(); // Refresh to clear migratedFrom
+    } catch (e) {
+      console.error("Failed to remove old installation:", e);
+    } finally {
+      setIsRemovingOld(false);
     }
   };
 
@@ -370,6 +386,48 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
               {state.currentVersion || "Unknown"}
             </span>
           </div>
+
+          {state.migratedFrom && (
+            <div className="settings-migrated-from">
+              <div className="settings-info-item">
+                <span className="settings-info-label">Migrated From</span>
+                <span className="settings-info-value" style={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
+                  {state.migratedFrom}
+                </span>
+              </div>
+              {!isConfirmingRemoveOld ? (
+                <button
+                  className="settings-action-btn settings-action-btn-danger"
+                  disabled={isRemovingOld || isAnyOperationRunning}
+                  onClick={() => setIsConfirmingRemoveOld(true)}
+                >
+                  Remove Old Installation
+                </button>
+              ) : (
+                <div className="settings-remove-confirm">
+                  <span className="settings-remove-confirm-text">
+                    Permanently delete all files from{" "}
+                    <strong>{state.migratedFrom}</strong>?
+                  </span>
+                  <div className="settings-remove-confirm-actions">
+                    <button
+                      className="settings-remove-cancel-btn"
+                      onClick={() => setIsConfirmingRemoveOld(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="settings-remove-confirm-btn"
+                      disabled={isRemovingOld}
+                      onClick={handleRemoveOldInstallation}
+                    >
+                      {isRemovingOld ? "Removing..." : "Yes, Delete It"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="settings-migration-actions">
             <button

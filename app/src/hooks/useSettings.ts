@@ -54,6 +54,8 @@ export interface UseSettingsState {
   currentVersion: string | null;
   /** Whether installation is complete */
   installComplete: boolean;
+  /** Path to old installation that was migrated from */
+  migratedFrom: string | null;
   /** Error message if operation failed */
   errorMessage: string | null;
   /** Success message after operation */
@@ -135,6 +137,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
   const [installPath, setInstallPath] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [installComplete, setInstallComplete] = useState(false);
+  const [migratedFrom, setMigratedFrom] = useState<string | null>(null);
 
   // Messages
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -176,6 +179,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
       setInstallPath(response.install_path);
       setCurrentVersion(response.current_version);
       setInstallComplete(response.install_complete);
+      setMigratedFrom(response.migrated_from);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to load settings";
       setErrorMessage(msg);
@@ -501,6 +505,7 @@ export function useSettings(): [UseSettingsState, UseSettingsActions] {
     installPath,
     currentVersion,
     installComplete,
+    migratedFrom,
     errorMessage,
     successMessage,
     verifyResult,

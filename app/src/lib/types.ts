@@ -389,6 +389,8 @@ export interface GetSettingsResponse {
   current_version: string | null;
   /** Whether installation is complete */
   install_complete: boolean;
+  /** Path to old installation that was migrated from (if any) */
+  migrated_from: string | null;
 }
 
 /**

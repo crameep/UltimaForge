@@ -510,6 +510,11 @@ pub struct LauncherConfig {
     /// When true, the launcher auto-relaunches as admin on startup.
     #[serde(rename = "requiresElevation", default)]
     pub requires_elevation: bool,
+
+    /// Path to a previous installation that was migrated from.
+    /// Shown in Settings so the user can remove it after verifying the migration worked.
+    #[serde(rename = "migratedFrom", default)]
+    pub migrated_from: Option<PathBuf>,
 }
 
 fn default_close_on_launch() -> bool {
@@ -543,6 +548,7 @@ impl Default for LauncherConfig {
             selected_assistant: AssistantKind::RazorEnhanced,
             client_count: 1,
             requires_elevation: false,
+            migrated_from: None,
         }
     }
 }
@@ -858,7 +864,8 @@ mod tests {
     use tempfile::TempDir;
 
     /// Valid 64-character hex public key for testing.
-    const TEST_PUBLIC_KEY: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    const TEST_PUBLIC_KEY: &str =
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
     /// Creates a valid brand config JSON string.
     fn valid_brand_json() -> String {
@@ -918,10 +925,7 @@ mod tests {
         assert_eq!(config.public_key, TEST_PUBLIC_KEY);
         assert_eq!(config.ui.colors.primary, "#1a1a2e");
         assert!(config.ui.show_patch_notes);
-        assert_eq!(
-            config.ui.window_title,
-            Some("Test UO Launcher".to_string())
-        );
+        assert_eq!(config.ui.window_title, Some("Test UO Launcher".to_string()));
     }
 
     #[test]
@@ -1049,7 +1053,9 @@ mod tests {
         );
 
         let result = BrandConfig::parse_str(&json);
-        assert!(matches!(result, Err(ConfigError::InvalidValue { field, .. }) if field == "updateUrl"));
+        assert!(
+            matches!(result, Err(ConfigError::InvalidValue { field, .. }) if field == "updateUrl")
+        );
     }
 
     #[test]
@@ -1064,7 +1070,9 @@ mod tests {
         }"#;
 
         let result = BrandConfig::parse_str(json);
-        assert!(matches!(result, Err(ConfigError::InvalidValue { field, .. }) if field == "publicKey"));
+        assert!(
+            matches!(result, Err(ConfigError::InvalidValue { field, .. }) if field == "publicKey")
+        );
     }
 
     #[test]
@@ -1079,7 +1087,9 @@ mod tests {
         }"#;
 
         let result = BrandConfig::parse_str(json);
-        assert!(matches!(result, Err(ConfigError::InvalidValue { field, .. }) if field == "publicKey"));
+        assert!(
+            matches!(result, Err(ConfigError::InvalidValue { field, .. }) if field == "publicKey")
+        );
     }
 
     #[test]
@@ -1299,10 +1309,16 @@ mod tests {
     #[test]
     fn test_launcher_config_creates_parent_dirs() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let nested_path = temp_dir.path().join("nested").join("deep").join("config.json");
+        let nested_path = temp_dir
+            .path()
+            .join("nested")
+            .join("deep")
+            .join("config.json");
 
         let config = LauncherConfig::new();
-        config.save(&nested_path).expect("Should create parent dirs and save");
+        config
+            .save(&nested_path)
+            .expect("Should create parent dirs and save");
 
         assert!(nested_path.exists());
     }

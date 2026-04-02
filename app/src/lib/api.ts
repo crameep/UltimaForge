@@ -123,6 +123,13 @@ export async function useInPlace(installPath: string): Promise<void> {
 }
 
 /**
+ * Removes an old installation directory after successful migration.
+ */
+export async function removeOldInstallation(path: string): Promise<void> {
+  return invoke<void>("remove_old_installation", { path });
+}
+
+/**
  * Listens for migration progress events.
  */
 export async function onMigrationProgress(

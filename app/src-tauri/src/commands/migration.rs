@@ -132,6 +132,7 @@ pub async fn start_migration(
     state.set_phase(AppPhase::Migrating);
 
     let source = PathBuf::from(&request.source_path);
+    let source_for_config = source.clone();
     let destination = PathBuf::from(&request.destination_path);
 
     let app_handle_clone = app_handle.clone();
@@ -150,6 +151,7 @@ pub async fn start_migration(
         Ok(()) => {
             // Configure launcher to use the new path
             let mut config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+            config.migrated_from = Some(source_for_config);
             config.install_path = Some(destination.clone());
             config.install_complete = true;
             // current_version stays None — updater will determine what to patch
@@ -209,5 +211,42 @@ pub async fn use_in_place(
         error!("Failed to save config after use-in-place: {}", e);
     }
 
+    Ok(())
+}
+
+/// Removes an old installation directory after a successful migration.
+/// Clears the `migrated_from` field in the launcher config.
+#[tauri::command]
+pub async fn remove_old_installation(
+    path: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+    info!("Removing old installation at: {}", path.display());
+
+    if !path.exists() {
+        // Already gone — just clear the config
+    } else if !path.is_dir() {
+        return Err("Path is not a directory".to_string());
+    } else {
+        std::fs::remove_dir_all(&path)
+            .map_err(|e| format!("Failed to remove {}: {}", path.display(), e))?;
+    }
+
+    // Clear migrated_from in config
+    let mut config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+    config.migrated_from = None;
+    state.set_launcher_config(config.clone());
+
+    let brand_config = state.brand_config();
+    let config_path = brand_config
+        .as_ref()
+        .map(|b| default_config_path(&b.product.server_name))
+        .unwrap_or_else(|| default_config_path("UltimaForge"));
+    if let Err(e) = config.save(&config_path) {
+        error!("Failed to save config after removing old installation: {}", e);
+    }
+
+    info!("Old installation removed: {}", path.display());
     Ok(())
 }

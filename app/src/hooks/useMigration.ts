@@ -13,6 +13,7 @@ import {
   detectAtPath,
   startMigration,
   useInPlace,
+  removeOldInstallation,
   onMigrationProgress,
   getRecommendedInstallPath,
   isRunningAsAdmin,
@@ -73,6 +74,8 @@ export interface UseMigrationActions {
   skip: () => void;
   /** Relaunch as admin for elevation */
   relaunchAsAdmin: () => Promise<void>;
+  /** Remove the old installation directory */
+  removeOldInstall: () => Promise<void>;
   /** Reset to initial state */
   reset: () => void;
 }
@@ -222,6 +225,15 @@ export function useMigration(
     }
   }, []);
 
+  const removeOldInstall = useCallback(async () => {
+    if (!selectedSource?.install_path) return;
+    try {
+      await removeOldInstallation(selectedSource.install_path);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to remove old installation");
+    }
+  }, [selectedSource]);
+
   const reset = useCallback(() => {
     setStep("scanning");
     setDetected([]);
@@ -251,6 +263,7 @@ export function useMigration(
     adoptInPlace,
     skip,
     relaunchAsAdmin: handleRelaunchAsAdmin,
+    removeOldInstall,
     reset,
   };
 

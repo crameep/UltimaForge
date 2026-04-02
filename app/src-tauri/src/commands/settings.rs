@@ -49,6 +49,8 @@ pub struct GetSettingsResponse {
     pub current_version: Option<String>,
     /// Whether installation is complete.
     pub install_complete: bool,
+    /// Path to old installation that was migrated from (if any).
+    pub migrated_from: Option<String>,
 }
 
 /// Request for saving settings.
@@ -237,6 +239,9 @@ pub async fn get_settings(state: State<'_, AppState>) -> Result<GetSettingsRespo
             .map(|p| p.display().to_string()),
         current_version: launcher_config.current_version,
         install_complete: launcher_config.install_complete,
+        migrated_from: launcher_config
+            .migrated_from
+            .map(|p| p.display().to_string()),
     })
 }
 
@@ -810,6 +815,7 @@ mod tests {
             install_path: Some("/game/uo".to_string()),
             current_version: Some("1.0.0".to_string()),
             install_complete: true,
+            migrated_from: None,
         };
 
         let json = serde_json::to_string(&response).expect("Should serialize");
