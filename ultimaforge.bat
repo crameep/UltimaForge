@@ -4,6 +4,30 @@ setlocal enabledelayedexpansion
 REM UltimaForge Server Owner Tools
 REM This batch file handles all server owner tasks
 
+REM ---- Initialize MSVC environment (link.exe, cl.exe) if available ----
+REM VS Build Tools / Visual Studio install vcvarsall.bat which sets up PATH.
+REM Without this, cargo/rustc can't find link.exe in a plain cmd window.
+if not defined VSINSTALLDIR (
+    set "VCVARSALL="
+    REM Check common VS Build Tools locations
+    for %%v in (
+        "%ProgramFiles%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
+        "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat"
+        "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat"
+        "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+        "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
+        "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
+        "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat"
+    ) do (
+        if exist %%v (
+            set "VCVARSALL=%%~v"
+        )
+    )
+    if defined VCVARSALL (
+        call "!VCVARSALL!" x64 >nul 2>nul
+    )
+)
+
 REM Check for command-line argument (non-interactive mode)
 if not "%~1"=="" (
     set "choice=%~1"
@@ -110,7 +134,10 @@ set "VPS_OK=0"
 where node >nul 2>nul
 if not errorlevel 1 (
     where cargo >nul 2>nul
-    if not errorlevel 1 set "PREREQS_OK=1"
+    if not errorlevel 1 (
+        where link.exe >nul 2>nul
+        if not errorlevel 1 set "PREREQS_OK=1"
+    )
 )
 
 if exist "keys\private.key" (
