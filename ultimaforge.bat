@@ -119,7 +119,12 @@ if exist "keys\private.key" (
 
 if exist "app\src-tauri\icons\icon.ico" set "ICONS_OK=1"
 
+REM Check for built launcher (exe in target\release or NSIS installer in bundle)
 dir /b "app\src-tauri\target\release\*.exe" >nul 2>nul
+if not errorlevel 1 set "BUILD_OK=1"
+dir /b "app\src-tauri\target\release\bundle\nsis\*.exe" >nul 2>nul
+if not errorlevel 1 set "BUILD_OK=1"
+dir /b "target\release\*.exe" >nul 2>nul
 if not errorlevel 1 set "BUILD_OK=1"
 
 if exist "server-data\deploy.json" set "VPS_OK=1"
