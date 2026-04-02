@@ -12,7 +12,7 @@ import { LauncherUpdateModal } from "./components/LauncherUpdateModal";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
 import { useLaunch } from "./hooks/useLaunch";
-import { getSettings, scanForMigrations, useInPlace } from "./lib/api";
+import { getSettings, scanForMigrations, useInPlace, removeOldInstallation } from "./lib/api";
 import { MigrationWizard } from "./components/MigrationWizard";
 import { checkForLauncherUpdate, type LauncherUpdateCheck } from "./lib/launcherUpdater";
 import "./App.css";
@@ -40,6 +40,7 @@ function App() {
   const [appVersion, setAppVersion] = useState<string>("");
   const [clientVersion, setClientVersion] = useState<string | null>(null);
   const [pendingLauncherUpdate, setPendingLauncherUpdate] = useState<LauncherUpdateCheck | null>(null);
+  const [oldInstallPath, setOldInstallPath] = useState<string | null>(null);
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
@@ -72,6 +73,7 @@ function App() {
           shouldCheckLauncherUpdates =
             settings.settings?.check_updates_on_startup ?? true;
           if (settings.current_version) setClientVersion(settings.current_version);
+          if (settings.migrated_from) setOldInstallPath(settings.migrated_from);
         } catch (settingsError) {
           // Settings fetch failed - default to checking updates (safe default)
           // Log warning but don't block app startup
@@ -450,6 +452,40 @@ function App() {
       runningClients={launchState.runningClients}
     >
       <div className="main-content">
+        {/* Old installation cleanup reminder */}
+        {oldInstallPath && (
+          <div className="old-install-banner">
+            <div className="old-install-banner-text">
+              <strong>Old installation found</strong>
+              <p>
+                Your previous installation at <code>{oldInstallPath}</code> is no longer
+                in use. Would you like to remove it to free up disk space?
+              </p>
+            </div>
+            <div className="old-install-banner-actions">
+              <button
+                className="old-install-btn old-install-btn-remove"
+                onClick={async () => {
+                  try {
+                    await removeOldInstallation(oldInstallPath);
+                    setOldInstallPath(null);
+                  } catch (e) {
+                    console.error("Failed to remove old installation:", e);
+                  }
+                }}
+              >
+                Remove It
+              </button>
+              <button
+                className="old-install-btn old-install-btn-dismiss"
+                onClick={() => setOldInstallPath(null)}
+              >
+                Not Now
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="hero-section">
           <h1 className="hero-title">
             {brandInfo?.hero_title || `Welcome to ${brandInfo?.display_name || "UltimaForge"}`}
