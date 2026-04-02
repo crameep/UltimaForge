@@ -112,10 +112,13 @@ function tryRsync(rsync, user, host, port, keyPath, localDir, remotePath) {
   const sshOpts = `-i "${keyPath}" -o StrictHostKeyChecking=accept-new -q -p ${port}`;
 
   if (rsync.wsl) {
-    // Run rsync inside WSL, converting Windows paths to /mnt/... paths
+    // Run rsync inside WSL, converting Windows paths to /mnt/... paths.
+    // WSL mounts NTFS with 0777 permissions, which makes ssh reject the key.
+    // Copy it to a WSL-native temp location with correct permissions first.
     const wslLocalDir = toWslPath(localDir);
     const wslKeyPath = toWslPath(keyPath);
-    const wslSshOpts = `-i "${wslKeyPath}" -o StrictHostKeyChecking=accept-new -q -p ${port}`;
+    spawnSync("wsl", ["bash", "-c", `cp "${wslKeyPath}" /tmp/uf-deploy-key && chmod 600 /tmp/uf-deploy-key`], { stdio: "ignore" });
+    const wslSshOpts = `-i /tmp/uf-deploy-key -o StrictHostKeyChecking=accept-new -q -p ${port}`;
     bin = "wsl";
     args = [
       "rsync",
@@ -375,7 +378,11 @@ const rsync = findRsync();
 if (rsync) {
   const label = rsync.wsl ? "wsl rsync" : rsync.bin !== "rsync" ? rsync.bin : "rsync";
   console.log(`Using ${label}...`);
-  tryRsync(rsync, user, host, port, securedKeyPath, publishDir, remotePath);
+  // WSL rsync uses WSL's ssh which reads Linux-style permissions on /mnt/...
+  // — the icacls-locked secured key won't be readable from WSL, so use the
+  // original key path (toWslPath inside tryRsync handles the conversion).
+  const rsyncKey = rsync.wsl ? deployKeyPath : securedKeyPath;
+  tryRsync(rsync, user, host, port, rsyncKey, publishDir, remotePath);
 } else {
   console.log("rsync not found - using scp instead (re-uploads all files).");
   console.log("Run Option 0 (Install Prerequisites) to install rsync for faster deploys.");
