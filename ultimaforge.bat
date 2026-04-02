@@ -220,7 +220,9 @@ echo Press any key to start installation...
 pause >nul
 
 REM Run setup from repo root using absolute path
+set "ULTIMAFORGE_MENU=1"
 call "%~dp0app\scripts\setup.bat"
+set "ULTIMAFORGE_MENU="
 
 echo.
 echo Press any key to return to menu...

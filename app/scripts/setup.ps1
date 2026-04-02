@@ -577,10 +577,15 @@ function Show-Summary {
 
     if ($allSuccess) {
         Write-Host "`nAll dependencies installed successfully!" -ForegroundColor $Colors.Green
-        Write-Host "`nNext steps:" -ForegroundColor $Colors.White
-        Write-Host "  1. Open a new terminal (to refresh PATH)" -ForegroundColor $Colors.White
-        Write-Host "  2. Run: npm install" -ForegroundColor $Colors.White
-        Write-Host "  3. Run: npm run tauri dev" -ForegroundColor $Colors.White
+        # Detect if launched from ultimaforge.bat (it sets INTERACTIVE=1)
+        if ($env:INTERACTIVE -eq "1" -or $env:ULTIMAFORGE_MENU -eq "1") {
+            Write-Host "`nReturn to the menu to continue setup." -ForegroundColor $Colors.White
+        } else {
+            Write-Host "`nNext steps:" -ForegroundColor $Colors.White
+            Write-Host "  1. Open a new terminal (to refresh PATH)" -ForegroundColor $Colors.White
+            Write-Host "  2. Run: npm install" -ForegroundColor $Colors.White
+            Write-Host "  3. Run: npm run tauri dev" -ForegroundColor $Colors.White
+        }
         Write-Host ""
         return 0
     }
