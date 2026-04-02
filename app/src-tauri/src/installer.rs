@@ -367,7 +367,8 @@ pub struct Installer {
 impl Installer {
     /// Creates a new installer with default downloader configuration.
     pub fn new(brand_config: BrandConfig) -> Result<Self, InstallError> {
-        let downloader = Downloader::new().map_err(|e| InstallError::ConfigSaveFailed(e.to_string()))?;
+        let downloader =
+            Downloader::new().map_err(|e| InstallError::ConfigSaveFailed(e.to_string()))?;
 
         Ok(Self {
             downloader,
@@ -420,7 +421,9 @@ impl Installer {
         #[cfg(target_os = "windows")]
         {
             use std::mem;
-            use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+            use windows::Win32::Security::{
+                GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+            };
             use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
             unsafe {
@@ -441,7 +444,9 @@ impl Installer {
                     Some(&mut elevation as *mut _ as *mut _),
                     mem::size_of::<TOKEN_ELEVATION>() as u32,
                     &mut size,
-                ).is_err() {
+                )
+                .is_err()
+                {
                     return false;
                 }
 
@@ -453,6 +458,17 @@ impl Installer {
         {
             false
         }
+    }
+
+    /// Public wrapper for checking if a path requires elevation.
+    /// Used by migration commands to determine if `requires_elevation` should be set.
+    pub fn path_requires_elevation_static(path: &Path) -> bool {
+        Self::path_requires_elevation(path)
+    }
+
+    /// Public wrapper for checking if the process is running elevated.
+    pub fn is_running_elevated_static() -> bool {
+        Self::is_running_elevated()
     }
 
     /// Validates an installation path without performing installation.
@@ -495,7 +511,8 @@ impl Installer {
         let (available_space, disk_space_warning) = self.get_available_space(path);
 
         // Check if path requires elevation
-        let requires_elevation = Self::path_requires_elevation(path) && !Self::is_running_elevated();
+        let requires_elevation =
+            Self::path_requires_elevation(path) && !Self::is_running_elevated();
 
         // Check write permissions by trying to create the directory
         let is_writable = self.check_write_permission(path);
@@ -536,7 +553,14 @@ impl Installer {
             };
         }
 
-        PathValidationResult::valid(available_space, exists, is_empty, is_writable, requires_elevation, disk_space_warning)
+        PathValidationResult::valid(
+            available_space,
+            exists,
+            is_empty,
+            is_writable,
+            requires_elevation,
+            disk_space_warning,
+        )
     }
 
     /// Gets available disk space for a path.
@@ -560,7 +584,10 @@ impl Installer {
                 if let Some(parent) = current.parent() {
                     current = parent.to_path_buf();
                 } else {
-                    warn!("Cannot determine disk space: no existing ancestor directory for {:?}", path);
+                    warn!(
+                        "Cannot determine disk space: no existing ancestor directory for {:?}",
+                        path
+                    );
                     return (u64::MAX, Some("Could not determine available disk space. Install may fail if there is insufficient space.".to_string()));
                 }
             }
@@ -570,8 +597,12 @@ impl Installer {
         // Use fs4 crate for cross-platform disk space detection
         match fs4::available_space(&check_path) {
             Ok(space) => {
-                debug!("Available disk space at {:?}: {} bytes ({} MB)",
-                    check_path, space, space / (1024 * 1024));
+                debug!(
+                    "Available disk space at {:?}: {} bytes ({} MB)",
+                    check_path,
+                    space,
+                    space / (1024 * 1024)
+                );
                 (space, None)
             }
             Err(e) => {
@@ -579,7 +610,10 @@ impl Installer {
                     "Could not check available disk space: {}. Install will proceed but may fail if there is insufficient space.",
                     e
                 );
-                warn!("Failed to get disk space for {:?}: {}. Assuming sufficient space.", check_path, e);
+                warn!(
+                    "Failed to get disk space for {:?}: {}. Assuming sufficient space.",
+                    check_path, e
+                );
                 (u64::MAX, Some(warning_msg))
             }
         }
@@ -649,8 +683,9 @@ impl Installer {
             .try_into()
             .map_err(|_| UpdateError::StagingError("Invalid public key length".to_string()))?;
 
-        signature::verify_manifest(&manifest_bytes, &signature_bytes, &public_key_bytes)
-            .map_err(|e| UpdateError::StagingError(format!("Signature verification failed: {}", e)))?;
+        signature::verify_manifest(&manifest_bytes, &signature_bytes, &public_key_bytes).map_err(
+            |e| UpdateError::StagingError(format!("Signature verification failed: {}", e)),
+        )?;
 
         // Parse manifest (now safe since signature is verified)
         let manifest = Manifest::parse(&manifest_bytes)
@@ -727,7 +762,9 @@ impl Installer {
         if !validation.is_valid {
             return Err(InstallError::InvalidPath {
                 path: install_path.to_path_buf(),
-                reason: validation.reason.unwrap_or_else(|| "Unknown error".to_string()),
+                reason: validation
+                    .reason
+                    .unwrap_or_else(|| "Unknown error".to_string()),
             });
         }
 
@@ -773,8 +810,9 @@ impl Installer {
             if !is_safe_relative_path(file_path) {
                 error!("Path containment violation detected: {}", file.path);
                 log.log(
-                    InstallLogEntry::new("DOWNLOAD", Some(&file.path), "BLOCKED")
-                        .with_details("Path containment violation - possible path traversal attack"),
+                    InstallLogEntry::new("DOWNLOAD", Some(&file.path), "BLOCKED").with_details(
+                        "Path containment violation - possible path traversal attack",
+                    ),
                 );
                 log.log_session_end(false);
                 return Err(InstallError::InvalidPath {
@@ -910,9 +948,7 @@ impl Installer {
                     );
                     if file.required {
                         log.log_session_end(false);
-                        return Err(InstallError::CorruptedInstallation {
-                            path: dest_path,
-                        });
+                        return Err(InstallError::CorruptedInstallation { path: dest_path });
                     }
                 }
                 Err(e) => {
@@ -1016,7 +1052,10 @@ impl Installer {
     /// # Returns
     ///
     /// A list of file paths that are missing or have invalid hashes.
-    pub async fn get_repair_list(&mut self, install_path: &Path) -> Result<Vec<String>, InstallError> {
+    pub async fn get_repair_list(
+        &mut self,
+        install_path: &Path,
+    ) -> Result<Vec<String>, InstallError> {
         let verification = self.verify_installation(install_path, |_| {}).await?;
 
         let repair_list: Vec<String> = verification
@@ -1037,7 +1076,10 @@ impl Installer {
     /// # Returns
     ///
     /// True if all required files are present and valid.
-    pub async fn is_installation_valid(&mut self, install_path: &Path) -> Result<bool, InstallError> {
+    pub async fn is_installation_valid(
+        &mut self,
+        install_path: &Path,
+    ) -> Result<bool, InstallError> {
         let manifest = if let Some(ref m) = self.cached_manifest {
             m.clone()
         } else {
@@ -1139,7 +1181,11 @@ impl DetectionResult {
 
     /// Returns true if a valid installation was detected with at least medium confidence.
     pub fn is_valid_installation(&self) -> bool {
-        self.detected && matches!(self.confidence, DetectionConfidence::High | DetectionConfidence::Medium)
+        self.detected
+            && matches!(
+                self.confidence,
+                DetectionConfidence::High | DetectionConfidence::Medium
+            )
     }
 }
 
@@ -1150,12 +1196,8 @@ impl Default for DetectionResult {
 }
 
 /// Known UO client executable names to search for.
-const DETECTION_EXECUTABLES: &[&str] = &[
-    "client.exe",
-    "Client.exe",
-    "ClassicUO.exe",
-    "classicuo.exe",
-];
+const DETECTION_EXECUTABLES: &[&str] =
+    &["client.exe", "Client.exe", "ClassicUO.exe", "classicuo.exe"];
 
 /// Required UO data files that indicate a valid installation.
 const DETECTION_DATA_FILES: &[&str] = &[
@@ -1286,7 +1328,8 @@ mod tests {
     use tempfile::TempDir;
 
     /// Valid 64-character hex public key for testing.
-    const TEST_PUBLIC_KEY: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    const TEST_PUBLIC_KEY: &str =
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
     fn test_brand_config() -> BrandConfig {
         BrandConfigBuilder::new()
@@ -1302,7 +1345,10 @@ mod tests {
     fn test_install_state_display() {
         assert_eq!(InstallState::Idle.to_string(), "Idle");
         assert_eq!(InstallState::Downloading.to_string(), "Downloading files");
-        assert_eq!(InstallState::Completed.to_string(), "Installation completed");
+        assert_eq!(
+            InstallState::Completed.to_string(),
+            "Installation completed"
+        );
     }
 
     #[test]
@@ -1355,7 +1401,10 @@ mod tests {
         let mut progress = InstallProgress::new();
         progress.set_failed("Something went wrong");
         assert_eq!(progress.state, InstallState::Failed);
-        assert_eq!(progress.error_message, Some("Something went wrong".to_string()));
+        assert_eq!(
+            progress.error_message,
+            Some("Something went wrong".to_string())
+        );
     }
 
     #[test]
@@ -1796,7 +1845,9 @@ mod tests {
         assert!(result.detected);
         assert_eq!(result.confidence, DetectionConfidence::High);
         assert!(result.is_valid_installation());
-        assert!(result.found_executables.contains(&"ClassicUO.exe".to_string()));
+        assert!(result
+            .found_executables
+            .contains(&"ClassicUO.exe".to_string()));
         assert_eq!(result.found_data_files.len(), DETECTION_DATA_FILES.len());
         assert!(result.missing_files.is_empty());
     }
@@ -1872,7 +1923,9 @@ mod tests {
 
         let result = detect_existing_installation(temp_dir.path());
         assert!(result.detected);
-        assert!(result.found_executables.contains(&"classicuo.exe".to_string()));
+        assert!(result
+            .found_executables
+            .contains(&"classicuo.exe".to_string()));
     }
 
     #[test]
@@ -1896,7 +1949,9 @@ mod tests {
         // These are the types of paths we expect in valid manifests
         assert!(is_safe_relative_path(Path::new("client.exe")));
         assert!(is_safe_relative_path(Path::new("data/map0.mul")));
-        assert!(is_safe_relative_path(Path::new("assets/textures/grass.png")));
+        assert!(is_safe_relative_path(Path::new(
+            "assets/textures/grass.png"
+        )));
         assert!(is_safe_relative_path(Path::new("./config.ini")));
     }
 
@@ -1905,8 +1960,12 @@ mod tests {
         // Verify that path traversal attempts are rejected
         assert!(!is_safe_relative_path(Path::new("../secret.txt")));
         assert!(!is_safe_relative_path(Path::new("../../../etc/passwd")));
-        assert!(!is_safe_relative_path(Path::new("data/../../../etc/passwd")));
-        assert!(!is_safe_relative_path(Path::new("foo/../bar/../../../secret")));
+        assert!(!is_safe_relative_path(Path::new(
+            "data/../../../etc/passwd"
+        )));
+        assert!(!is_safe_relative_path(Path::new(
+            "foo/../bar/../../../secret"
+        )));
     }
 
     #[test]
@@ -1937,7 +1996,9 @@ mod tests {
     fn test_path_containment_accepts_windows_relative_subdirs() {
         // Verify that Windows-style relative subdirectories are accepted
         assert!(is_safe_relative_path(Path::new("data\\maps\\map0.mul")));
-        assert!(is_safe_relative_path(Path::new("assets\\textures\\grass.png")));
+        assert!(is_safe_relative_path(Path::new(
+            "assets\\textures\\grass.png"
+        )));
     }
 
     #[test]
@@ -2027,7 +2088,10 @@ mod tests {
         if space < u64::MAX {
             assert!(warning.is_none(), "No warning expected when API succeeds");
         } else {
-            assert!(warning.is_some(), "Warning expected when API returns u64::MAX");
+            assert!(
+                warning.is_some(),
+                "Warning expected when API returns u64::MAX"
+            );
         }
     }
 
@@ -2044,7 +2108,10 @@ mod tests {
         let (space, _warning) = installer.get_available_space(&nonexistent);
 
         // Should still return a valid value by walking up to temp_dir
-        assert!(space > 0, "Disk space should be greater than 0 even for non-existent paths");
+        assert!(
+            space > 0,
+            "Disk space should be greater than 0 even for non-existent paths"
+        );
     }
 
     #[test]
@@ -2060,7 +2127,10 @@ mod tests {
         assert!(result.has_sufficient_space);
 
         // The available_space should be populated with a real value
-        assert!(result.available_space > 0, "Available space should be populated");
+        assert!(
+            result.available_space > 0,
+            "Available space should be populated"
+        );
     }
 
     #[test]
@@ -2079,7 +2149,10 @@ mod tests {
         // Note: If the disk space API fails and returns u64::MAX, this test may pass
         // unexpectedly, but that's acceptable - we're testing normal operation
         if result.available_space < huge_space_requirement {
-            assert!(!result.is_valid, "Should fail when required space exceeds available");
+            assert!(
+                !result.is_valid,
+                "Should fail when required space exceeds available"
+            );
             assert!(!result.has_sufficient_space);
             assert!(result.reason.is_some());
             assert!(result.reason.unwrap().contains("Insufficient disk space"));
@@ -2129,7 +2202,10 @@ mod tests {
             }
             Some(ref msg) => {
                 // Edge case: disk space API failed, warning present
-                assert!(!msg.is_empty(), "Warning message should not be empty if present");
+                assert!(
+                    !msg.is_empty(),
+                    "Warning message should not be empty if present"
+                );
                 assert!(
                     msg.contains("disk space") || msg.contains("insufficient"),
                     "Warning should be related to disk space"
@@ -2142,14 +2218,8 @@ mod tests {
     fn test_path_validation_result_with_warning() {
         // Test PathValidationResult::valid() with a warning message
         let warning = Some("Test warning: disk space check failed".to_string());
-        let result = PathValidationResult::valid(
-            u64::MAX,
-            true,
-            true,
-            true,
-            false,
-            warning.clone(),
-        );
+        let result =
+            PathValidationResult::valid(u64::MAX, true, true, true, false, warning.clone());
 
         assert!(result.is_valid);
         assert!(result.warning_message.is_some());

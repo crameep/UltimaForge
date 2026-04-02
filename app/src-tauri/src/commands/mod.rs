@@ -33,6 +33,7 @@
 pub mod crypto;
 pub mod install;
 pub mod launch;
+pub mod migration;
 pub mod settings;
 pub mod update;
 
@@ -40,5 +41,6 @@ pub mod update;
 pub use crypto::*;
 pub use install::*;
 pub use launch::*;
+pub use migration::*;
 pub use settings::*;
 pub use update::*;

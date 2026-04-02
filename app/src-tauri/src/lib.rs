@@ -207,6 +207,11 @@ pub fn run() {
             commands::settings::relaunch_as_admin,
             commands::settings::open_install_folder,
             commands::settings::remove_game_files,
+            // Migration commands
+            commands::migration::scan_for_migrations,
+            commands::migration::detect_at_path,
+            commands::migration::start_migration,
+            commands::migration::use_in_place,
         ]);
 
     app_result
