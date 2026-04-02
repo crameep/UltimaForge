@@ -6,9 +6,12 @@
  */
 
 import { useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useSettings } from "../hooks/useSettings";
 import { checkForLauncherUpdate } from "../lib/launcherUpdater";
 import { calculatePercentage } from "../lib/types";
+import { scanForMigrations, detectAtPath, useInPlace } from "../lib/api";
+import type { DetectionResult } from "../lib/types";
 import "./Settings.css";
 
 interface SettingsProps {
@@ -179,6 +182,10 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
   const [isCheckingLauncherUpdate, setIsCheckingLauncherUpdate] =
     useState(false);
 
+  const [migrationResults, setMigrationResults] = useState<DetectionResult[]>([]);
+  const [showMigrationResults, setShowMigrationResults] = useState(false);
+  const [isMigrationScanning, setIsMigrationScanning] = useState(false);
+
   const handleLauncherUpdateCheck = async () => {
     setIsCheckingLauncherUpdate(true);
     setLauncherUpdateMessage(null);
@@ -206,6 +213,52 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
     }
 
     setIsCheckingLauncherUpdate(false);
+  };
+
+  const handleFindInstallation = async () => {
+    setIsMigrationScanning(true);
+    setShowMigrationResults(false);
+    try {
+      const response = await scanForMigrations();
+      setMigrationResults(response.detected);
+      setShowMigrationResults(true);
+    } catch {
+      setMigrationResults([]);
+      setShowMigrationResults(true);
+    } finally {
+      setIsMigrationScanning(false);
+    }
+  };
+
+  const handleBrowseInstallation = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Select Existing Installation Directory",
+      });
+      if (selected && typeof selected === "string") {
+        setIsMigrationScanning(true);
+        const result = await detectAtPath(selected);
+        setMigrationResults(result.detected ? [result] : []);
+        setShowMigrationResults(true);
+        setIsMigrationScanning(false);
+      }
+    } catch {
+      setIsMigrationScanning(false);
+    }
+  };
+
+  const handleAdoptInstallation = async (path: string) => {
+    try {
+      await useInPlace(path);
+      setShowMigrationResults(false);
+      // Reload settings to reflect the new install path
+      actions.loadSettings();
+    } catch (e) {
+      // Show error via existing settings error mechanism if available
+      console.error("Failed to adopt installation:", e);
+    }
   };
 
   // Show loading state
@@ -317,6 +370,54 @@ export function Settings({ onBack, onLauncherUpdateAvailable }: SettingsProps) {
               {state.currentVersion || "Unknown"}
             </span>
           </div>
+
+          <div className="settings-migration-actions">
+            <button
+              className="settings-action-btn"
+              disabled={isMigrationScanning || isAnyOperationRunning}
+              onClick={handleFindInstallation}
+            >
+              {isMigrationScanning ? "Scanning..." : "Find Existing Installation"}
+            </button>
+            <button
+              className="settings-action-btn"
+              disabled={isMigrationScanning || isAnyOperationRunning}
+              onClick={handleBrowseInstallation}
+            >
+              Browse...
+            </button>
+          </div>
+
+          {showMigrationResults && (
+            <div className="settings-migration-results">
+              {migrationResults.length === 0 ? (
+                <p className="settings-migration-none">
+                  No existing installations found.
+                </p>
+              ) : (
+                migrationResults.map((result) => (
+                  <div key={result.install_path} className="settings-migration-item">
+                    <div className="settings-migration-item-info">
+                      <span className="settings-migration-item-path">
+                        {result.install_path}
+                      </span>
+                      <span className="settings-migration-item-confidence">
+                        {result.confidence} confidence — {result.found_executables.join(", ")}
+                        {result.found_data_files.length > 0 &&
+                          ` + ${result.found_data_files.length} data files`}
+                      </span>
+                    </div>
+                    <button
+                      className="settings-migration-adopt-btn"
+                      onClick={() => result.install_path && handleAdoptInstallation(result.install_path)}
+                    >
+                      Use This
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </section>
 
         {/* User Preferences */}
