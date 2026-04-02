@@ -788,6 +788,8 @@ echo   [1] Full (game + launcher) - default
 echo   [2] Game only (fast, skips launcher build)
 echo   [3] Launcher only (fast, skips game files)
 echo.
+echo   [M] Back to Main Menu
+echo.
 set "pub_choice="
 set /p pub_choice="Enter choice (or Enter for Full): "
 
@@ -795,6 +797,7 @@ if "%pub_choice%"=="" goto PUBLISH_ALL
 if "%pub_choice%"=="1" goto PUBLISH_ALL
 if "%pub_choice%"=="2" goto PUBLISH_GAME_ONLY
 if "%pub_choice%"=="3" goto PUBLISH_LAUNCHER_ONLY
+if /i "%pub_choice%"=="M" goto MENU
 
 echo Invalid choice. Using Full publish...
 goto PUBLISH_ALL
