@@ -12,6 +12,7 @@ pub mod hash;
 pub mod installer;
 pub mod launcher;
 pub mod manifest;
+pub mod migration;
 pub mod signature;
 pub mod state;
 pub mod updater;
@@ -36,7 +37,10 @@ fn load_brand_config() -> Option<BrandConfig> {
 
     match serde_json::from_str::<BrandConfig>(BRAND_JSON) {
         Ok(config) => {
-            info!("Successfully loaded embedded brand config: {}", config.product.display_name);
+            info!(
+                "Successfully loaded embedded brand config: {}",
+                config.product.display_name
+            );
             Some(config)
         }
         Err(e) => {
@@ -101,18 +105,23 @@ pub fn run() {
             // even when the launcher restarts mid-session.
             let detected_exe: Option<String> = {
                 use sysinfo::{ProcessesToUpdate, System};
-                app_state.launcher_config()
+                app_state
+                    .launcher_config()
                     .as_ref()
                     .and_then(|c| c.client_executable.clone())
                     .and_then(|exe_name| {
                         let exe_lower = exe_name.to_lowercase();
                         let mut sys = System::new();
                         sys.refresh_processes(ProcessesToUpdate::All, false);
-                        let running = sys.processes().values().any(|p| {
-                            p.name().to_string_lossy().to_lowercase() == exe_lower
-                        });
+                        let running = sys
+                            .processes()
+                            .values()
+                            .any(|p| p.name().to_string_lossy().to_lowercase() == exe_lower);
                         if running {
-                            info!("Detected game process '{}' already running on startup", exe_name);
+                            info!(
+                                "Detected game process '{}' already running on startup",
+                                exe_name
+                            );
                             app_state.set_game_running(true);
                             Some(exe_lower)
                         } else {
@@ -136,11 +145,15 @@ pub fn run() {
                         std::thread::sleep(std::time::Duration::from_secs(2));
                         let mut sys = System::new();
                         sys.refresh_processes(ProcessesToUpdate::All, false);
-                        let still_running = sys.processes().values().any(|p| {
-                            p.name().to_string_lossy().to_lowercase() == exe_lower
-                        });
+                        let still_running = sys
+                            .processes()
+                            .values()
+                            .any(|p| p.name().to_string_lossy().to_lowercase() == exe_lower);
                         if !still_running {
-                            info!("Game process '{}' exited, clearing GameRunning state", exe_lower);
+                            info!(
+                                "Game process '{}' exited, clearing GameRunning state",
+                                exe_lower
+                            );
                             handle.state::<AppState>().set_running_clients(0);
                             break;
                         }
@@ -274,7 +287,9 @@ mod tests {
         // Test 4: Config path generation should work
         let config_path = default_config_path(&brand_config.product.server_name);
         assert!(
-            config_path.to_string_lossy().contains(&brand_config.product.server_name),
+            config_path
+                .to_string_lossy()
+                .contains(&brand_config.product.server_name),
             "Config path should contain server name"
         );
         assert!(
@@ -301,8 +316,8 @@ mod tests {
             .expect("Should save config successfully");
 
         // Load the config
-        let loaded_config = LauncherConfig::load(&config_path)
-            .expect("Should load config successfully");
+        let loaded_config =
+            LauncherConfig::load(&config_path).expect("Should load config successfully");
 
         // Verify roundtrip
         assert_eq!(
@@ -329,8 +344,8 @@ mod tests {
     #[test]
     fn test_config_loading_brand_function() {
         // Call the actual load_brand_config function
-        let brand_config = load_brand_config()
-            .expect("load_brand_config should return a valid config");
+        let brand_config =
+            load_brand_config().expect("load_brand_config should return a valid config");
 
         // Verify the loaded config has expected structure
         assert!(
