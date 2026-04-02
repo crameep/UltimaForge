@@ -26,6 +26,7 @@ if /i "%choice%"=="4" goto BUILD
 if /i "%choice%"=="5" goto SETUP_VPS
 if /i "%choice%"=="6" goto PUBLISH_ALL
 if /i "%choice%"=="7" goto DEPLOY_VPS
+if /i "%choice%"=="8" goto UPDATE_SOURCE
 if /i "%choice%"=="D" goto DEV_MENU
 if /i "%choice%"=="X" goto END
 
@@ -72,6 +73,7 @@ echo   ONGOING
 echo.
 echo   [6] Publish Game Update
 echo   [7] Deploy to VPS
+echo   [8] Update Launcher Source
 echo.
 echo   [D] Developer Tools
 echo   [X] Exit
@@ -87,6 +89,7 @@ if /i "%choice%"=="4" goto BUILD
 if /i "%choice%"=="5" goto SETUP_VPS
 if /i "%choice%"=="6" goto PUBLISH_CHOICE
 if /i "%choice%"=="7" goto DEPLOY_VPS
+if /i "%choice%"=="8" goto UPDATE_SOURCE
 if /i "%choice%"=="D" goto DEV_MENU
 if /i "%choice%"=="X" goto END
 
@@ -826,6 +829,165 @@ echo (Skips game update manifest/blob generation.)
 echo.
 node app\scripts\publish-all.js --launcher-only true --auto-bump patch --auto-fix-deps true
 
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM UPDATE LAUNCHER SOURCE FROM UPSTREAM
+REM ============================================================================
+:UPDATE_SOURCE
+cls
+echo.
+echo ========================================
+echo    Update Launcher Source
+echo ========================================
+echo.
+echo This pulls the latest launcher code from the official UltimaForge
+echo repository. Your branding, keys, and game files are preserved.
+echo.
+
+REM Check for uncommitted changes
+git diff --quiet 2>nul
+set HAS_CHANGES=%errorlevel%
+git diff --cached --quiet 2>nul
+if %errorlevel% neq 0 set HAS_CHANGES=1
+
+if %HAS_CHANGES% neq 0 (
+    echo WARNING: You have uncommitted changes.
+    echo Committing them now to protect your work...
+    echo.
+    git add -A
+    git commit -m "chore: save local changes before upstream update"
+    if errorlevel 1 (
+        echo ERROR: Failed to commit local changes. Please resolve manually.
+        echo.
+        echo Press any key to return to menu...
+        pause >nul
+        goto MENU
+    )
+    echo Local changes saved.
+    echo.
+)
+
+REM Add or update upstream remote
+git remote get-url upstream >nul 2>nul
+if errorlevel 1 (
+    echo Adding upstream remote...
+    git remote add upstream https://github.com/crameep/UltimaForge.git
+) else (
+    echo Upstream remote already configured.
+)
+
+echo.
+echo Fetching latest from upstream...
+git fetch upstream
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to fetch from upstream. Check your internet connection.
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+
+REM Show what's new
+echo.
+echo Changes available:
+git log --oneline HEAD..upstream/main 2>nul
+echo.
+
+REM Check if there's anything to merge
+git log --oneline HEAD..upstream/main 2>nul | findstr /r "." >nul
+if errorlevel 1 (
+    echo Already up to date! No new changes from upstream.
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+
+set /p do_update="Apply these updates? (Y/n): "
+if /i "%do_update%"=="n" (
+    echo Update cancelled.
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+
+REM Backup branding and keys
+echo.
+echo Backing up your branding and keys...
+if not exist "_update_backup" mkdir "_update_backup"
+if exist "branding" xcopy /E /I /Y "branding" "_update_backup\branding" >nul 2>nul
+if exist "keys" xcopy /E /I /Y "keys" "_update_backup\keys" >nul 2>nul
+if exist ".publish-all-cache.json" copy /Y ".publish-all-cache.json" "_update_backup\" >nul 2>nul
+if exist "server-data" xcopy /E /I /Y "server-data" "_update_backup\server-data" >nul 2>nul
+
+REM Merge upstream
+echo.
+echo Merging upstream changes...
+git merge upstream/main -m "chore: merge upstream launcher updates"
+set MERGE_RESULT=%errorlevel%
+
+if %MERGE_RESULT% neq 0 (
+    echo.
+    echo Merge conflict detected. Restoring your branding...
+    REM Restore branding files and abort the merge
+    if exist "_update_backup\branding" xcopy /E /I /Y "_update_backup\branding" "branding" >nul 2>nul
+    if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "keys" >nul 2>nul
+    git checkout --theirs branding/ >nul 2>nul
+    git checkout --ours branding/ >nul 2>nul
+    echo.
+    echo Some conflicts may need manual resolution.
+    echo Your branding files have been restored from backup.
+    echo Backup location: _update_backup\
+    echo.
+    echo After resolving, run: git add -A ^&^& git commit -m "resolved merge"
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+
+REM Restore branding and keys (in case upstream changed them)
+echo.
+echo Restoring your branding and keys...
+if exist "_update_backup\branding" xcopy /E /I /Y "_update_backup\branding" "branding" >nul 2>nul
+if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "keys" >nul 2>nul
+if exist "_update_backup\.publish-all-cache.json" copy /Y "_update_backup\.publish-all-cache.json" "." >nul 2>nul
+if exist "_update_backup\server-data" xcopy /E /I /Y "_update_backup\server-data" "server-data" >nul 2>nul
+
+REM Commit the restored branding if it differs from the merge
+git diff --quiet branding/ keys/ 2>nul
+if %errorlevel% neq 0 (
+    git add branding/ keys/
+    git commit -m "chore: restore server branding after upstream merge"
+)
+
+REM Clean up backup
+rmdir /s /q "_update_backup" 2>nul
+
+REM Reinstall deps if package.json changed
+echo.
+echo Checking if dependencies need updating...
+git diff HEAD~1 --name-only 2>nul | findstr /i "package.json Cargo.toml" >nul
+if not errorlevel 1 (
+    echo Dependencies changed. Reinstalling...
+    call :NPM_CLEAN_INSTALL_FUNCTION
+)
+
+echo.
+echo ========================================
+echo    Update Complete!
+echo ========================================
+echo.
+echo Your launcher source has been updated.
+echo Branding, keys, and server config are preserved.
+echo.
+echo Next: Rebuild your launcher with option [4]
 echo.
 echo Press any key to return to menu...
 pause >nul
