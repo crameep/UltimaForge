@@ -88,6 +88,29 @@ pub fn run() {
                         }
                     };
 
+                    // Auto-elevate if the install path requires admin privileges
+                    #[cfg(target_os = "windows")]
+                    if launcher_config.requires_elevation {
+                        use crate::installer::Installer;
+                        if !Installer::is_running_elevated_static() {
+                            info!("Install path requires elevation, relaunching as admin");
+                            use std::process::Command;
+                            let exe_path =
+                                std::env::current_exe().expect("Failed to get executable path");
+                            let _ = Command::new("powershell")
+                                .args([
+                                    "-Command",
+                                    &format!(
+                                        "Start-Process -FilePath '{}' -Verb RunAs",
+                                        exe_path.display()
+                                    ),
+                                ])
+                                .spawn();
+                            // Exit this non-elevated instance
+                            std::process::exit(0);
+                        }
+                    }
+
                     // Create state and initialize with both configs
                     let state = AppState::new();
                     state.initialize(brand_config, launcher_config);
