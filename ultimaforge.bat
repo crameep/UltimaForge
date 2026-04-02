@@ -848,55 +848,23 @@ echo This pulls the latest launcher code from the official UltimaForge
 echo repository. Your branding, keys, and game files are preserved.
 echo.
 
-REM Check for uncommitted changes
-git diff --quiet 2>nul
-set HAS_CHANGES=%errorlevel%
-git diff --cached --quiet 2>nul
-if %errorlevel% neq 0 set HAS_CHANGES=1
-
-if %HAS_CHANGES% neq 0 (
-    echo WARNING: You have uncommitted changes.
-    echo Committing them now to protect your work...
-    echo.
-    git add -A
-    git commit -m "chore: save local changes before upstream update"
-    if errorlevel 1 (
-        echo ERROR: Failed to commit local changes. Please resolve manually.
-        echo.
-        echo Press any key to return to menu...
-        pause >nul
-        goto MENU
-    )
-    echo Local changes saved.
-    echo.
-)
-
 REM Add or update upstream remote
 git remote get-url upstream >nul 2>nul
 if errorlevel 1 (
     echo Adding upstream remote...
     git remote add upstream https://github.com/crameep/UltimaForge.git
-) else (
-    echo Upstream remote already configured.
 )
 
-echo.
 echo Fetching latest from upstream...
+echo.
 git fetch upstream
 if errorlevel 1 (
-    echo.
     echo ERROR: Failed to fetch from upstream. Check your internet connection.
     echo.
     echo Press any key to return to menu...
     pause >nul
     goto MENU
 )
-
-REM Show what's new
-echo.
-echo Changes available:
-git log --oneline HEAD..upstream/main 2>nul
-echo.
 
 REM Check if there's anything to merge
 git log --oneline HEAD..upstream/main 2>nul | findstr /r "." >nul
@@ -908,6 +876,19 @@ if errorlevel 1 (
     goto MENU
 )
 
+REM Show changelog
+echo ----------------------------------------
+echo   What's New
+echo ----------------------------------------
+echo.
+git log --format="  %%h %%s" HEAD..upstream/main 2>nul
+echo.
+echo ----------------------------------------
+echo.
+echo Changed files:
+git diff --stat HEAD..upstream/main 2>nul
+echo.
+
 set /p do_update="Apply these updates? (Y/n): "
 if /i "%do_update%"=="n" (
     echo Update cancelled.
@@ -917,14 +898,22 @@ if /i "%do_update%"=="n" (
     goto MENU
 )
 
-REM Backup branding and keys
+REM Stash any local uncommitted changes (branding edits etc)
+git stash push -m "pre-update-stash" --include-untracked >nul 2>nul
+set STASHED=%errorlevel%
+
+REM Backup branding, keys, scripts, batch file, and server config
 echo.
-echo Backing up your branding and keys...
+echo Backing up your files...
 if not exist "_update_backup" mkdir "_update_backup"
 if exist "branding" xcopy /E /I /Y "branding" "_update_backup\branding" >nul 2>nul
 if exist "keys" xcopy /E /I /Y "keys" "_update_backup\keys" >nul 2>nul
-if exist ".publish-all-cache.json" copy /Y ".publish-all-cache.json" "_update_backup\" >nul 2>nul
 if exist "server-data" xcopy /E /I /Y "server-data" "_update_backup\server-data" >nul 2>nul
+if exist ".publish-all-cache.json" copy /Y ".publish-all-cache.json" "_update_backup\" >nul 2>nul
+if exist "updates" xcopy /E /I /Y "updates" "_update_backup\updates" >nul 2>nul
+
+REM Record current batch file hash to detect self-update
+certutil -hashfile ultimaforge.bat SHA256 2>nul | findstr /v "hash" > "_update_backup\bat_hash_before.txt"
 
 REM Merge upstream
 echo.
@@ -934,43 +923,36 @@ set MERGE_RESULT=%errorlevel%
 
 if %MERGE_RESULT% neq 0 (
     echo.
-    echo Merge conflict detected. Restoring your branding...
-    REM Restore branding files and abort the merge
+    echo Merge conflict detected. Aborting and restoring your files...
+    git merge --abort >nul 2>nul
     if exist "_update_backup\branding" xcopy /E /I /Y "_update_backup\branding" "branding" >nul 2>nul
     if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "keys" >nul 2>nul
-    git checkout --theirs branding/ >nul 2>nul
-    git checkout --ours branding/ >nul 2>nul
+    rmdir /s /q "_update_backup" 2>nul
+    if %STASHED% equ 0 git stash pop >nul 2>nul
     echo.
-    echo Some conflicts may need manual resolution.
-    echo Your branding files have been restored from backup.
-    echo Backup location: _update_backup\
-    echo.
-    echo After resolving, run: git add -A ^&^& git commit -m "resolved merge"
+    echo Update failed due to conflicts. Your files are unchanged.
+    echo Please report this issue so we can fix it upstream.
     echo.
     echo Press any key to return to menu...
     pause >nul
     goto MENU
 )
 
-REM Restore branding and keys (in case upstream changed them)
+REM Restore server-owner files over any upstream changes
 echo.
-echo Restoring your branding and keys...
+echo Restoring your branding, keys, and config...
 if exist "_update_backup\branding" xcopy /E /I /Y "_update_backup\branding" "branding" >nul 2>nul
 if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "keys" >nul 2>nul
-if exist "_update_backup\.publish-all-cache.json" copy /Y "_update_backup\.publish-all-cache.json" "." >nul 2>nul
 if exist "_update_backup\server-data" xcopy /E /I /Y "_update_backup\server-data" "server-data" >nul 2>nul
+if exist "_update_backup\.publish-all-cache.json" copy /Y "_update_backup\.publish-all-cache.json" "." >nul 2>nul
+if exist "_update_backup\updates" xcopy /E /I /Y "_update_backup\updates" "updates" >nul 2>nul
 
-REM Commit the restored branding if it differs from the merge
-git diff --quiet branding/ keys/ 2>nul
-if %errorlevel% neq 0 (
-    git add branding/ keys/
-    git commit -m "chore: restore server branding after upstream merge"
+REM Pop stash to restore any uncommitted local changes
+if %STASHED% equ 0 (
+    git stash pop >nul 2>nul
 )
 
-REM Clean up backup
-rmdir /s /q "_update_backup" 2>nul
-
-REM Reinstall deps if package.json changed
+REM Reinstall deps if package.json or Cargo.toml changed
 echo.
 echo Checking if dependencies need updating...
 git diff HEAD~1 --name-only 2>nul | findstr /i "package.json Cargo.toml" >nul
@@ -979,6 +961,14 @@ if not errorlevel 1 (
     call :NPM_CLEAN_INSTALL_FUNCTION
 )
 
+REM Check if the batch file itself was updated
+certutil -hashfile ultimaforge.bat SHA256 2>nul | findstr /v "hash" > "_update_backup\bat_hash_after.txt"
+fc /b "_update_backup\bat_hash_before.txt" "_update_backup\bat_hash_after.txt" >nul 2>nul
+set BAT_CHANGED=%errorlevel%
+
+REM Clean up backup
+rmdir /s /q "_update_backup" 2>nul
+
 echo.
 echo ========================================
 echo    Update Complete!
@@ -986,6 +976,13 @@ echo ========================================
 echo.
 echo Your launcher source has been updated.
 echo Branding, keys, and server config are preserved.
+
+if %BAT_CHANGED% neq 0 (
+    echo.
+    echo NOTE: This tools menu was also updated.
+    echo Please close and re-open ultimaforge.bat to use the new version.
+)
+
 echo.
 echo Next: Rebuild your launcher with option [4]
 echo.
