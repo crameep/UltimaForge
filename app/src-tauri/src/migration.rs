@@ -1,4 +1,5 @@
-use crate::installer::{detect_existing_installation, DetectionResult};
+use crate::installer::{detect_existing_installation, detect_with_manifest, DetectionResult};
+use crate::manifest::Manifest;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -17,17 +18,24 @@ pub struct MigrationProgress {
 
 /// Scans a list of exact paths for existing UO installations.
 ///
-/// Returns only results where a valid installation was detected
-/// (medium or high confidence). Paths that don't exist or contain
-/// no recognizable files are silently skipped.
-pub fn scan_migration_paths(paths: &[String]) -> Vec<DetectionResult> {
+/// If a manifest is provided, uses it for precise file-based detection.
+/// Falls back to heuristic detection (hardcoded executables + data files) otherwise.
+///
+/// Returns only results where an installation was detected.
+/// Paths that don't exist or contain no recognizable files are silently skipped.
+pub fn scan_migration_paths(paths: &[String], manifest: Option<&Manifest>) -> Vec<DetectionResult> {
     let mut results = Vec::new();
 
     for path_str in paths {
         let path = Path::new(path_str);
         info!("Scanning migration path: {}", path.display());
 
-        let result = detect_existing_installation(path);
+        let result = if let Some(m) = manifest {
+            detect_with_manifest(path, m)
+        } else {
+            detect_existing_installation(path)
+        };
+
         if result.detected {
             info!(
                 "Found installation at {} with {} confidence",
@@ -176,20 +184,20 @@ mod tests {
         fs::write(uo_dir.join("artidx.mul"), b"fake").unwrap();
         fs::write(uo_dir.join("map0.mul"), b"fake").unwrap();
 
-        let results = scan_migration_paths(&[uo_dir.to_string_lossy().to_string()]);
+        let results = scan_migration_paths(&[uo_dir.to_string_lossy().to_string()], None);
         assert_eq!(results.len(), 1);
         assert!(results[0].is_valid_installation());
     }
 
     #[test]
     fn test_scan_migration_paths_skips_missing() {
-        let results = scan_migration_paths(&["C:\\NonExistent\\Path\\12345".to_string()]);
+        let results = scan_migration_paths(&["C:\\NonExistent\\Path\\12345".to_string()], None);
         assert!(results.is_empty());
     }
 
     #[test]
     fn test_scan_migration_paths_empty_list() {
-        let results = scan_migration_paths(&[]);
+        let results = scan_migration_paths(&[], None);
         assert!(results.is_empty());
     }
 

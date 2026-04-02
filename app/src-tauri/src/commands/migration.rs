@@ -3,13 +3,13 @@
 //! These commands handle detection and migration of existing UO installations.
 
 use crate::config::{default_config_path, LauncherConfig};
-use crate::installer::{detect_existing_installation, DetectionResult, Installer};
+use crate::installer::{detect_existing_installation, detect_with_manifest, DetectionResult, Installer};
 use crate::migration::{migrate_installation, scan_migration_paths};
 use crate::state::{AppPhase, AppState};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{Emitter, State};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Response from scanning for migratable installations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +38,8 @@ pub struct UseInPlaceRequest {
 
 /// Scans brand-configured migration paths for existing installations.
 ///
-/// Returns all detected installations with medium or high confidence.
+/// Fetches the manifest from the update server for accurate file-based detection.
+/// Falls back to heuristic detection if the manifest can't be fetched.
 #[tauri::command]
 pub async fn scan_for_migrations(
     state: State<'_, AppState>,
@@ -55,8 +56,26 @@ pub async fn scan_for_migrations(
         .map(|m| m.search_paths.clone())
         .unwrap_or_default();
 
+    // Try to fetch the manifest for accurate detection
+    let manifest = match Installer::new(brand_config.clone()) {
+        Ok(mut installer) => match installer.fetch_manifest().await {
+            Ok(m) => {
+                info!("Fetched manifest for migration detection: {} files", m.files.len());
+                Some(m)
+            }
+            Err(e) => {
+                warn!("Could not fetch manifest for migration scan, using heuristic detection: {}", e);
+                None
+            }
+        },
+        Err(e) => {
+            warn!("Could not create installer for manifest fetch: {}", e);
+            None
+        }
+    };
+
     let paths_scanned = search_paths.len();
-    let detected = scan_migration_paths(&search_paths);
+    let detected = scan_migration_paths(&search_paths, manifest.as_ref());
 
     if !detected.is_empty() {
         state.set_phase(AppPhase::NeedsMigration);
@@ -70,11 +89,29 @@ pub async fn scan_for_migrations(
 
 /// Detects an existing installation at a user-specified path.
 ///
-/// Used for manual "browse to directory" migration from Settings.
+/// Tries manifest-based detection first (uses cached manifest if available),
+/// falls back to heuristic detection.
+/// Used for manual "browse to directory" from Settings and InstallWizard.
 #[tauri::command]
-pub async fn detect_at_path(path: String) -> Result<DetectionResult, String> {
+pub async fn detect_at_path(
+    path: String,
+    state: State<'_, AppState>,
+) -> Result<DetectionResult, String> {
     info!("Detecting installation at user-specified path: {}", path);
-    Ok(detect_existing_installation(&PathBuf::from(&path)))
+    let path_buf = PathBuf::from(&path);
+
+    // Try manifest-based detection first
+    let brand_config = state.brand_config();
+    if let Some(bc) = brand_config {
+        if let Ok(mut installer) = Installer::new(bc) {
+            if let Ok(manifest) = installer.fetch_manifest().await {
+                return Ok(detect_with_manifest(&path_buf, &manifest));
+            }
+        }
+    }
+
+    // Fall back to heuristic detection
+    Ok(detect_existing_installation(&path_buf))
 }
 
 /// Starts a file-copy migration from source to destination.

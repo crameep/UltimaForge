@@ -1334,6 +1334,86 @@ pub fn detect_existing_installation(path: &Path) -> DetectionResult {
     result
 }
 
+/// Detects an existing installation by checking against the actual manifest file list.
+///
+/// Instead of hardcoded file names, this uses the server's manifest to know exactly
+/// what files to look for. This handles any directory layout (flat, nested, etc.).
+///
+/// # Confidence Levels
+///
+/// - **High**: 80%+ of manifest files found
+/// - **Medium**: 40%+ of manifest files found
+/// - **Low**: Any manifest files found but < 40%
+/// - **None**: No manifest files found
+pub fn detect_with_manifest(path: &Path, manifest: &crate::manifest::Manifest) -> DetectionResult {
+    info!("Detecting installation at {} using manifest ({} files)", path.display(), manifest.files.len());
+
+    if !path.exists() || !path.is_dir() {
+        return DetectionResult::not_detected();
+    }
+
+    let mut result = DetectionResult {
+        detected: false,
+        install_path: Some(path.to_path_buf()),
+        confidence: DetectionConfidence::None,
+        detected_version: None,
+        found_executables: Vec::new(),
+        found_data_files: Vec::new(),
+        missing_files: Vec::new(),
+    };
+
+    let total_files = manifest.files.len();
+    if total_files == 0 {
+        return result;
+    }
+
+    // Check for the client executable
+    let exe_path = path.join(&manifest.client_executable);
+    if exe_path.exists() && exe_path.is_file() {
+        result.found_executables.push(manifest.client_executable.clone());
+    }
+
+    // Check for each file in the manifest
+    let mut found_count = 0;
+    for file_entry in &manifest.files {
+        let file_path = path.join(&file_entry.path);
+        if file_path.exists() && file_path.is_file() {
+            found_count += 1;
+            result.found_data_files.push(file_entry.path.clone());
+        } else {
+            result.missing_files.push(file_entry.path.clone());
+        }
+    }
+
+    let ratio = found_count as f64 / total_files as f64;
+    let has_executable = !result.found_executables.is_empty();
+
+    result.confidence = if has_executable && ratio >= 0.8 {
+        DetectionConfidence::High
+    } else if ratio >= 0.4 || (has_executable && found_count > 0) {
+        DetectionConfidence::Medium
+    } else if found_count > 0 {
+        DetectionConfidence::Low
+    } else {
+        DetectionConfidence::None
+    };
+
+    result.detected = result.confidence != DetectionConfidence::None;
+
+    if result.detected {
+        info!(
+            "Manifest-based detection: {} confidence, {}/{} files found ({}%), executable: {}",
+            result.confidence,
+            found_count,
+            total_files,
+            (ratio * 100.0) as u32,
+            has_executable
+        );
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
