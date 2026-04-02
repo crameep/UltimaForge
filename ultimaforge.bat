@@ -148,6 +148,7 @@ echo   [9] Run All Tests
 echo   [A] Publish New Test Version
 echo   [B] Publish Launcher Update Metadata
 echo   [C] Build Production (manual)
+echo   [D] Undo Last Source Update
 echo.
 echo   [M] Back to Main Menu
 echo.
@@ -167,6 +168,7 @@ if /i "%dev_choice%"=="9" goto TEST
 if /i "%dev_choice%"=="A" goto PUBLISH_UPDATE
 if /i "%dev_choice%"=="B" goto PUBLISH_LAUNCHER_UPDATE
 if /i "%dev_choice%"=="C" goto BUILD
+if /i "%dev_choice%"=="D" goto UNDO_UPDATE
 if /i "%dev_choice%"=="M" goto MENU
 
 echo Invalid choice. Please try again.
@@ -833,6 +835,65 @@ echo.
 echo Press any key to return to menu...
 pause >nul
 goto MENU
+
+REM ============================================================================
+REM UNDO LAST SOURCE UPDATE
+REM ============================================================================
+:UNDO_UPDATE
+cls
+echo.
+echo ========================================
+echo    Undo Last Source Update
+echo ========================================
+echo.
+echo This will revert the last upstream merge, restoring your launcher
+echo source to the state before the update.
+echo.
+
+REM Check if the last commit is a merge from upstream
+git log -1 --format="%%s" 2>nul | findstr /i "merge upstream" >nul
+if errorlevel 1 (
+    echo The last commit doesn't appear to be an upstream update.
+    echo.
+    echo Last 5 commits:
+    git log --oneline -5 2>nul
+    echo.
+    echo This option only undoes updates applied via option [8].
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto DEV_MENU
+)
+
+echo Last update commit:
+git log -1 --format="  %%h %%s (%%ar)" 2>nul
+echo.
+
+set /p do_undo="Undo this update? (y/N): "
+if /i not "%do_undo%"=="y" (
+    echo Cancelled.
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto DEV_MENU
+)
+
+echo.
+echo Reverting...
+git reset --hard HEAD~1
+if errorlevel 1 (
+    echo ERROR: Failed to revert. You may need to resolve this manually.
+) else (
+    echo.
+    echo Update reverted successfully.
+    echo You are now back to:
+    git log -1 --format="  %%h %%s" 2>nul
+)
+
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto DEV_MENU
 
 REM ============================================================================
 REM UPDATE LAUNCHER SOURCE FROM UPSTREAM
