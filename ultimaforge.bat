@@ -197,12 +197,30 @@ echo   - Visual Studio Build Tools
 echo   - Tauri CLI
 echo   - rsync (optional, for efficient VPS deploys)
 echo.
+echo Note: VS Build Tools installation requires administrator rights.
+echo.
+
+REM Check if running as admin
+net session >nul 2>nul
+if errorlevel 1 (
+    echo You are NOT running as administrator.
+    echo.
+    set /p elevate="Relaunch as administrator? (Y/n): "
+    if /i not "!elevate!"=="n" (
+        echo Relaunching as administrator...
+        powershell -Command "Start-Process -FilePath '%~f0' -ArgumentList '1' -Verb RunAs"
+        exit /b 0
+    )
+    echo.
+    echo Continuing without admin. VS Build Tools may fail to install.
+    echo.
+)
+
 echo Press any key to start installation...
 pause >nul
 
-cd app
-call scripts\setup.bat
-cd ..
+REM Run setup from repo root using absolute path
+call "%~dp0app\scripts\setup.bat"
 
 echo.
 echo Press any key to return to menu...
