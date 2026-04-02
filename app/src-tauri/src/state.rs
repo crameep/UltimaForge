@@ -38,6 +38,10 @@ use std::sync::{Mutex, RwLock};
 pub enum AppPhase {
     /// Application is initializing.
     Initializing,
+    /// Existing installation detected, user needs to choose migration option.
+    NeedsMigration,
+    /// Migration (file copy) is in progress.
+    Migrating,
     /// First-run installation required.
     NeedsInstall,
     /// Installation is in progress.
@@ -66,6 +70,8 @@ impl std::fmt::Display for AppPhase {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Initializing => write!(f, "Initializing"),
+            Self::NeedsMigration => write!(f, "Migration Available"),
+            Self::Migrating => write!(f, "Migrating"),
             Self::NeedsInstall => write!(f, "Installation Required"),
             Self::Installing => write!(f, "Installing"),
             Self::CheckingUpdates => write!(f, "Checking for Updates"),
@@ -111,6 +117,10 @@ struct AppStateInner {
     install_progress: f64,
     /// Current operation description for UI.
     current_operation: Option<String>,
+    /// Migration progress: number of files copied so far.
+    migration_files_copied: usize,
+    /// Migration progress: total number of files to copy.
+    migration_files_total: usize,
 }
 
 /// Thread-safe application state for the launcher.
@@ -450,6 +460,21 @@ impl AppState {
     /// Clears the current operation description.
     pub fn clear_current_operation(&self) {
         self.inner.lock().unwrap().current_operation = None;
+    }
+
+    // === Migration State ===
+
+    /// Gets migration progress as (copied, total).
+    pub fn migration_progress(&self) -> (usize, usize) {
+        let inner = self.inner.lock().unwrap();
+        (inner.migration_files_copied, inner.migration_files_total)
+    }
+
+    /// Sets migration progress.
+    pub fn set_migration_progress(&self, copied: usize, total: usize) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.migration_files_copied = copied;
+        inner.migration_files_total = total;
     }
 
     // === Configuration Access ===
@@ -1170,6 +1195,29 @@ mod tests {
         assert_eq!(format_size(1024 * 1024), "1.00 MB");
         assert_eq!(format_size(1024 * 1024 * 1024), "1.00 GB");
         assert_eq!(format_size(1024 * 1024 * 1024 * 2), "2.00 GB");
+    }
+
+    #[test]
+    fn test_migration_phases_exist() {
+        let phase = AppPhase::NeedsMigration;
+        assert_eq!(format!("{}", phase), "Migration Available");
+
+        let phase2 = AppPhase::Migrating;
+        assert_eq!(format!("{}", phase2), "Migrating");
+    }
+
+    #[test]
+    fn test_migration_progress() {
+        let state = AppState::new();
+
+        let (copied, total) = state.migration_progress();
+        assert_eq!(copied, 0);
+        assert_eq!(total, 0);
+
+        state.set_migration_progress(25, 100);
+        let (copied, total) = state.migration_progress();
+        assert_eq!(copied, 25);
+        assert_eq!(total, 100);
     }
 
     #[test]
