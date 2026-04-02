@@ -804,7 +804,7 @@ echo ========================================
 echo.
 echo This will publish game updates and launcher update metadata.
 echo.
-node app\scripts\publish-all.js --auto-bump patch
+node app\scripts\publish-all.js --auto-bump patch --auto-fix-deps true
 
 echo.
 echo Press any key to return to menu...
@@ -824,7 +824,7 @@ echo.
 echo This will build and publish launcher updates only.
 echo (Skips game update manifest/blob generation.)
 echo.
-node app\scripts\publish-all.js --launcher-only true --auto-bump patch
+node app\scripts\publish-all.js --launcher-only true --auto-bump patch --auto-fix-deps true
 
 echo.
 echo Press any key to return to menu...
