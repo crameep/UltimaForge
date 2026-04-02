@@ -505,6 +505,11 @@ pub struct LauncherConfig {
     /// Version of this configuration format.
     #[serde(rename = "configVersion", default = "default_config_version")]
     pub config_version: u32,
+
+    /// Whether the install path requires admin elevation.
+    /// When true, the launcher auto-relaunches as admin on startup.
+    #[serde(rename = "requiresElevation", default)]
+    pub requires_elevation: bool,
 }
 
 fn default_close_on_launch() -> bool {
@@ -537,6 +542,7 @@ impl Default for LauncherConfig {
             selected_server: ServerChoice::Live,
             selected_assistant: AssistantKind::RazorEnhanced,
             client_count: 1,
+            requires_elevation: false,
         }
     }
 }
@@ -1519,5 +1525,32 @@ mod tests {
 
         let config: BrandConfig = serde_json::from_str(json).expect("Should parse");
         assert!(config.migration.is_none());
+    }
+
+    #[test]
+    fn test_requires_elevation_default_false() {
+        let config = LauncherConfig::new();
+        assert!(!config.requires_elevation);
+    }
+
+    #[test]
+    fn test_requires_elevation_roundtrip() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("test.json");
+
+        let mut config = LauncherConfig::new();
+        config.requires_elevation = true;
+        config.save(&config_path).unwrap();
+
+        let loaded = LauncherConfig::load(&config_path).unwrap();
+        assert!(loaded.requires_elevation);
+    }
+
+    #[test]
+    fn test_requires_elevation_missing_from_json() {
+        // Old configs without the field should default to false
+        let json = r#"{"installComplete": true}"#;
+        let config: LauncherConfig = serde_json::from_str(json).unwrap();
+        assert!(!config.requires_elevation);
     }
 }
