@@ -996,40 +996,7 @@ echo.
 
 REM Check if this is a git repo. If not (e.g. downloaded as zip), initialize it.
 git rev-parse --git-dir >nul 2>nul
-if errorlevel 1 (
-    echo This doesn't appear to be a git repository.
-    echo Initializing git so updates can be tracked...
-    echo.
-    git init
-    git config user.email "server-owner@ultimaforge.local"
-    git config user.name "UltimaForge Server Owner"
-    REM Write gitignore before adding files to exclude builds, deps, and user data
-    (
-        echo /target/
-        echo /app/target/
-        echo /app/src-tauri/target/
-        echo /app/tools/*/target/
-        echo /app/node_modules/
-        echo /app/dist/
-        echo /keys/
-        echo /server-data/*
-        echo /updates/
-        echo /branding/brand.json
-        echo .publish-all-cache.json
-    ) > .gitignore
-    git add -A
-    git commit -m "Initial commit from downloaded zip"
-    if errorlevel 1 (
-        echo ERROR: Failed to initialize git repository.
-        echo.
-        echo Press any key to return to menu...
-        pause >nul
-        goto MENU
-    )
-    echo.
-    echo Git repository initialized.
-    echo.
-)
+if errorlevel 1 call :INIT_GIT_REPO
 
 REM Add or update upstream remote
 git remote get-url upstream >nul 2>nul
@@ -1466,4 +1433,39 @@ REM ============================================================================
 echo.
 echo Goodbye!
 timeout /t 1 >nul
+exit /b 0
+
+REM ============================================================================
+REM INIT GIT REPO (called when downloaded as zip, no .git directory)
+REM ============================================================================
+:INIT_GIT_REPO
+echo This doesn't appear to be a git repository.
+echo Initializing git so updates can be tracked...
+echo.
+git init
+git config user.email "server-owner@ultimaforge.local"
+git config user.name "UltimaForge Server Owner"
+REM Write gitignore before adding files to exclude builds, deps, and user data
+echo /target/> .gitignore
+echo /app/target/>> .gitignore
+echo /app/src-tauri/target/>> .gitignore
+echo /app/node_modules/>> .gitignore
+echo /app/dist/>> .gitignore
+echo /keys/>> .gitignore
+echo /server-data/>> .gitignore
+echo /updates/>> .gitignore
+echo /branding/brand.json>> .gitignore
+echo .publish-all-cache.json>> .gitignore
+git add -A
+git commit -m "Initial commit from downloaded zip"
+if errorlevel 1 (
+    echo ERROR: Failed to initialize git repository.
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+echo.
+echo Git repository initialized.
+echo.
 exit /b 0
