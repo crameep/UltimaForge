@@ -24,7 +24,10 @@ if not defined VSINSTALLDIR (
         )
     )
     if defined VCVARSALL (
-        call "!VCVARSALL!" x64 >nul 2>nul
+        REM Detect CPU architecture and pass the right arg to vcvarsall
+        set "VCARCH=x64"
+        if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "VCARCH=arm64"
+        call "!VCVARSALL!" !VCARCH! >nul 2>nul
     )
 )
 
