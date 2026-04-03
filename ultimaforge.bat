@@ -7,17 +7,14 @@ REM This batch file handles all server owner tasks
 REM Initialize MSVC environment (link.exe, cl.exe) if available
 call :INIT_MSVC
 
-REM Ensure Rust uses x64 toolchain (fixes ARM64 machines with x64 VS tools).
-REM proc-macros compile for the HOST architecture, so we need the host itself
-REM to be x64 — just setting CARGO_BUILD_TARGET is not enough.
+REM Force x64 Rust toolchain via env var (works immediately, no restart needed).
+REM On ARM64 machines the aarch64 host toolchain can't use the x64 VS linker.
+REM RUSTUP_TOOLCHAIN overrides the default toolchain for all cargo/rustc calls.
+REM On x64 machines this is already the default toolchain so it's a no-op.
 where rustup >nul 2>nul
 if not errorlevel 1 (
-    for /f "tokens=*" %%h in ('rustc -vV 2^>nul ^| findstr /i "host:"') do (
-        echo %%h | findstr /i "aarch64" >nul
-        if not errorlevel 1 (
-            rustup default stable-x86_64-pc-windows-msvc >nul 2>nul
-        )
-    )
+    set "RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-msvc"
+    rustup toolchain install stable-x86_64-pc-windows-msvc >nul 2>nul
 )
 
 REM Check for command-line argument (non-interactive mode)
