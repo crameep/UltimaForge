@@ -1057,8 +1057,25 @@ if errorlevel 1 (
         goto MENU
     )
     echo.
+    echo Backing up your files...
+    if not exist "_update_backup" mkdir "_update_backup"
+    if exist "%~dp0branding\brand.json" copy /Y "%~dp0branding\brand.json" "_update_backup\brand.json" >nul 2>nul
+    if exist "%~dp0keys" xcopy /E /I /Y "%~dp0keys" "_update_backup\keys" >nul 2>nul
+    if exist "%~dp0server-data" xcopy /E /I /Y "%~dp0server-data" "_update_backup\server-data" >nul 2>nul
+    if exist "%~dp0.publish-all-cache.json" copy /Y "%~dp0.publish-all-cache.json" "_update_backup\" >nul 2>nul
+    if exist "%~dp0updates" xcopy /E /I /Y "%~dp0updates" "_update_backup\updates" >nul 2>nul
     echo Syncing to upstream...
     git reset --hard upstream/main >nul 2>nul
+    echo Restoring your files...
+    if exist "_update_backup\brand.json" (
+        if not exist "%~dp0branding" mkdir "%~dp0branding"
+        copy /Y "_update_backup\brand.json" "%~dp0branding\brand.json" >nul 2>nul
+    )
+    if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "%~dp0keys" >nul 2>nul
+    if exist "_update_backup\server-data" xcopy /E /I /Y "_update_backup\server-data" "%~dp0server-data" >nul 2>nul
+    if exist "_update_backup\.publish-all-cache.json" copy /Y "_update_backup\.publish-all-cache.json" "%~dp0" >nul 2>nul
+    if exist "_update_backup\updates" xcopy /E /I /Y "_update_backup\updates" "%~dp0updates" >nul 2>nul
+    rmdir /s /q "_update_backup" 2>nul
     echo.
     echo ========================================
     echo    Update Complete!
