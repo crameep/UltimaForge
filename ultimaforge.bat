@@ -7,6 +7,9 @@ REM This batch file handles all server owner tasks
 REM Initialize MSVC environment (link.exe, cl.exe) if available
 call :INIT_MSVC
 
+REM Force x64 target for all cargo commands (fixes ARM64 machines with x64 VS tools)
+if not defined CARGO_BUILD_TARGET set "CARGO_BUILD_TARGET=x86_64-pc-windows-msvc"
+
 REM Check for command-line argument (non-interactive mode)
 if not "%~1"=="" (
     set "choice=%~1"
