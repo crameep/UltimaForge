@@ -228,9 +228,13 @@ function Install-Rust {
     if (Test-Command "rustc") {
         $version = (rustc --version) -replace 'rustc\s+', '' -replace '\s.*', ''
 
-        # On ARM64, ensure we're using the x64 toolchain for VS Build Tools compatibility
-        if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -and (rustc --version 2>$null) -match "aarch64") {
-            Write-Status "ARM64 detected with aarch64 toolchain - switching to x64 for build compatibility" -Type "Info"
+        # If Rust is targeting aarch64, switch to x64 toolchain.
+        # Most VS Build Tools installs only include x64 MSVC linker,
+        # and x64 binaries run fine on ARM64 via emulation.
+        $rustHost = (rustc --version --verbose 2>$null | Select-String "host:") -replace '.*host:\s*', ''
+        if ($rustHost -match "aarch64") {
+            Write-Status "aarch64 Rust toolchain detected - switching to x64 for VS Build Tools compatibility" -Type "Info"
+            & rustup toolchain install stable-x86_64-pc-windows-msvc 2>$null
             & rustup default stable-x86_64-pc-windows-msvc 2>$null
             $version = (rustc --version) -replace 'rustc\s+', '' -replace '\s.*', ''
         }
@@ -277,11 +281,11 @@ function Install-Rust {
             $env:PATH = "$cargoPath;$env:PATH"
         }
 
-        # On ARM64 Windows, default to x64 toolchain for VS Build Tools compatibility.
-        # x64 binaries run fine on ARM64 via emulation, and most VS installs only
-        # include x64 MSVC tools.
-        if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-            Write-Status "ARM64 detected - setting Rust to use x64 toolchain for build compatibility" -Type "Info"
+        # Check if Rust defaulted to aarch64 - switch to x64 for VS Build Tools compatibility.
+        $newHost = (rustc --version --verbose 2>$null | Select-String "host:") -replace '.*host:\s*', ''
+        if ($newHost -match "aarch64") {
+            Write-Status "aarch64 toolchain detected - switching to x64 for build compatibility" -Type "Info"
+            & rustup toolchain install stable-x86_64-pc-windows-msvc 2>$null
             & rustup default stable-x86_64-pc-windows-msvc 2>$null
         }
 
