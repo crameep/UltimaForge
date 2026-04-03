@@ -119,17 +119,15 @@ set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
 for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('PATH','User')"`) do set "PATH=%%p;%PATH%"
 for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('PATH','Machine')"`) do set "PATH=%%p;%PATH%"
 
+set "PREREQS_OK=1"
 where git >nul 2>nul
-if not errorlevel 1 (
-    where node >nul 2>nul
-    if not errorlevel 1 (
-        where cargo >nul 2>nul
-        if not errorlevel 1 (
-            where link.exe >nul 2>nul
-            if not errorlevel 1 set "PREREQS_OK=1"
-        )
-    )
-)
+if errorlevel 1 set "PREREQS_OK=0"
+where node >nul 2>nul
+if errorlevel 1 set "PREREQS_OK=0"
+where cargo >nul 2>nul
+if errorlevel 1 set "PREREQS_OK=0"
+where link.exe >nul 2>nul
+if errorlevel 1 set "PREREQS_OK=0"
 
 if exist "keys\private.key" (
     if exist "keys\tauri-updater\tauri.key" set "BRANDING_OK=1"
