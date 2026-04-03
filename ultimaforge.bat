@@ -631,11 +631,15 @@ echo.
 echo [5/5] Building Tauri application...
 echo This will take several minutes...
 cd /d "%~dp0app"
-if exist "..\keys\tauri-updater\tauri.key" (
+REM Look for Tauri updater keys in both legacy and new locations
+set "UPDATER_KEY_DIR="
+if exist "..\keys\tauri-updater\tauri.key" set "UPDATER_KEY_DIR=..\keys\tauri-updater"
+if exist "..\server-data\keys\tauri-updater\tauri.key" set "UPDATER_KEY_DIR=..\server-data\keys\tauri-updater"
+if defined UPDATER_KEY_DIR (
     echo Loading Tauri updater signing key...
-    for /f "delims=" %%k in ('node scripts\print-signing-key.js "..\keys\tauri-updater\tauri.key"') do set "TAURI_SIGNING_PRIVATE_KEY=%%k"
-    if exist "..\keys\tauri-updater\password.txt" (
-        for /f "usebackq delims=" %%p in ("..\keys\tauri-updater\password.txt") do set "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=%%p"
+    for /f "delims=" %%k in ('node scripts\print-signing-key.js "!UPDATER_KEY_DIR!\tauri.key"') do set "TAURI_SIGNING_PRIVATE_KEY=%%k"
+    if exist "!UPDATER_KEY_DIR!\password.txt" (
+        for /f "usebackq delims=" %%p in ("!UPDATER_KEY_DIR!\password.txt") do set "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=%%p"
     )
 )
 call npm run tauri build
