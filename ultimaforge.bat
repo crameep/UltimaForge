@@ -8,7 +8,12 @@ REM Initialize MSVC environment (link.exe, cl.exe) if available
 call :INIT_MSVC
 
 REM Force x64 target for all cargo commands (fixes ARM64 machines with x64 VS tools)
-if not defined CARGO_BUILD_TARGET set "CARGO_BUILD_TARGET=x86_64-pc-windows-msvc"
+if not defined CARGO_BUILD_TARGET (
+    set "CARGO_BUILD_TARGET=x86_64-pc-windows-msvc"
+    REM Ensure the x64 target is installed (needed on ARM64 machines)
+    where rustup >nul 2>nul
+    if not errorlevel 1 rustup target add x86_64-pc-windows-msvc >nul 2>nul
+)
 
 REM Check for command-line argument (non-interactive mode)
 if not "%~1"=="" (
