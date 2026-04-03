@@ -991,11 +991,31 @@ echo This pulls the latest launcher code from the official UltimaForge
 echo repository. Your branding, keys, and game files are preserved.
 echo.
 
+REM Check if this is a git repo. If not (e.g. downloaded as zip), initialize it.
+git rev-parse --git-dir >nul 2>nul
+if errorlevel 1 (
+    echo This doesn't appear to be a git repository.
+    echo Initializing git so updates can be tracked...
+    echo.
+    git init
+    git add -A
+    git commit -m "Initial commit from downloaded zip"
+    echo.
+    echo Git repository initialized.
+    echo.
+)
+
 REM Add or update upstream remote
 git remote get-url upstream >nul 2>nul
 if errorlevel 1 (
     echo Adding upstream remote...
     git remote add upstream https://github.com/crameep/UltimaForge.git
+)
+
+REM Also set origin if missing (zip downloads won't have it)
+git remote get-url origin >nul 2>nul
+if errorlevel 1 (
+    git remote add origin https://github.com/crameep/UltimaForge.git
 )
 
 echo Fetching latest from upstream...
@@ -1007,6 +1027,15 @@ if errorlevel 1 (
     echo Press any key to return to menu...
     pause >nul
     goto MENU
+)
+
+REM Check if histories are related (zip download vs git clone)
+git merge-base HEAD upstream/main >nul 2>nul
+if errorlevel 1 (
+    echo This is your first update from the official repository.
+    echo Your launcher source will be synced to the latest version.
+    echo.
+    goto UPDATE_CONFIRM
 )
 
 REM Check if there's anything to merge
@@ -1032,6 +1061,7 @@ echo Changed files:
 git diff --stat HEAD..upstream/main 2>nul
 echo.
 
+:UPDATE_CONFIRM
 set /p do_update="Apply these updates? (Y/n): "
 if /i "%do_update%"=="n" (
     echo Update cancelled.
@@ -1052,7 +1082,7 @@ certutil -hashfile ultimaforge.bat SHA256 2>nul | findstr /v "hash" > "_update_b
 REM Merge upstream (branding, keys, server-data, updates are gitignored — safe)
 echo.
 echo Merging upstream changes...
-git merge upstream/main -m "chore: merge upstream launcher updates"
+git merge upstream/main --allow-unrelated-histories -m "chore: merge upstream launcher updates"
 set MERGE_RESULT=%errorlevel%
 
 if %MERGE_RESULT% neq 0 (
