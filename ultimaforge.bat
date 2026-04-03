@@ -50,6 +50,7 @@ REM ============================================================================
 REM MAIN MENU
 REM ============================================================================
 :MENU
+cd /d "%~dp0"
 cls
 call :CHECK_STATUS
 
@@ -967,6 +968,7 @@ REM ============================================================================
 REM UPDATE LAUNCHER SOURCE FROM UPSTREAM
 REM ============================================================================
 :UPDATE_SOURCE
+cd /d "%~dp0"
 cls
 echo.
 echo ========================================
@@ -1369,6 +1371,7 @@ REM ============================================================================
 REM FIRST TIME UPDATE (zip download — reset to upstream)
 REM ============================================================================
 :FIRST_TIME_UPDATE
+cd /d "%~dp0"
 echo This is your first update from the official repository.
 echo Your launcher source will be synced to the latest version.
 echo Branding, keys, and game files will not be affected.
@@ -1457,6 +1460,7 @@ REM ============================================================================
 REM INIT GIT REPO (called when downloaded as zip, no .git directory)
 REM ============================================================================
 :INIT_GIT_REPO
+cd /d "%~dp0"
 echo This doesn't appear to be a git repository.
 echo Initializing git so updates can be tracked...
 echo.
