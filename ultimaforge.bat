@@ -4,32 +4,8 @@ setlocal enabledelayedexpansion
 REM UltimaForge Server Owner Tools
 REM This batch file handles all server owner tasks
 
-REM ---- Initialize MSVC environment (link.exe, cl.exe) if available ----
-REM VS Build Tools / Visual Studio install vcvarsall.bat which sets up PATH.
-REM Without this, cargo/rustc can't find link.exe in a plain cmd window.
-if not defined VSINSTALLDIR (
-    set "VCVARSALL="
-    REM Check common VS Build Tools locations
-    for %%v in (
-        "%ProgramFiles%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
-        "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat"
-        "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat"
-        "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
-        "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
-        "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
-        "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat"
-    ) do (
-        if exist %%v (
-            set "VCVARSALL=%%~v"
-        )
-    )
-    if defined VCVARSALL (
-        REM Detect CPU architecture and pass the right arg to vcvarsall
-        set "VCARCH=x64"
-        if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "VCARCH=arm64"
-        call "!VCVARSALL!" !VCARCH! >nul 2>nul
-    )
-)
+REM Initialize MSVC environment (link.exe, cl.exe) if available
+call :INIT_MSVC
 
 REM Check for command-line argument (non-interactive mode)
 if not "%~1"=="" (
@@ -133,6 +109,15 @@ set "BRANDING_OK=0"
 set "ICONS_OK=0"
 set "BUILD_OK=0"
 set "VPS_OK=0"
+
+REM Re-init MSVC environment in case VS Build Tools was just installed
+where link.exe >nul 2>nul
+if errorlevel 1 call :INIT_MSVC
+
+REM Also refresh PATH for newly installed tools (node, cargo, git)
+set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('PATH','User')"`) do set "PATH=%%p;%PATH%"
+for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('PATH','Machine')"`) do set "PATH=%%p;%PATH%"
 
 where git >nul 2>nul
 if not errorlevel 1 (
@@ -1444,6 +1429,30 @@ REM ============================================================================
 echo.
 echo Goodbye!
 timeout /t 1 >nul
+exit /b 0
+
+REM ============================================================================
+REM INIT MSVC (find and call vcvarsall.bat for link.exe)
+REM ============================================================================
+:INIT_MSVC
+if defined VSINSTALLDIR exit /b 0
+set "VCVARSALL="
+for %%v in (
+    "%ProgramFiles%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
+    "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat"
+    "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat"
+    "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"
+    "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
+    "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
+    "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat"
+) do (
+    if exist %%v set "VCVARSALL=%%~v"
+)
+if defined VCVARSALL (
+    set "VCARCH=x64"
+    if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "VCARCH=arm64"
+    call "!VCVARSALL!" !VCARCH! >nul 2>nul
+)
 exit /b 0
 
 REM ============================================================================
