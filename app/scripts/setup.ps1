@@ -231,7 +231,7 @@ function Install-Rust {
         # If Rust is targeting aarch64, switch to x64 toolchain.
         # Most VS Build Tools installs only include x64 MSVC linker,
         # and x64 binaries run fine on ARM64 via emulation.
-        $rustHost = (rustc --version --verbose 2>$null | Select-String "host:") -replace '.*host:\s*', ''
+        $rustHost = (rustc -vV 2>$null | Select-String "host:") -replace '.*host:\s*', ''
         if ($rustHost -match "aarch64") {
             Write-Status "aarch64 Rust toolchain detected - switching to x64 for VS Build Tools compatibility" -Type "Info"
             & rustup toolchain install stable-x86_64-pc-windows-msvc 2>$null
@@ -282,7 +282,7 @@ function Install-Rust {
         }
 
         # Check if Rust defaulted to aarch64 - switch to x64 for VS Build Tools compatibility.
-        $newHost = (rustc --version --verbose 2>$null | Select-String "host:") -replace '.*host:\s*', ''
+        $newHost = (rustc -vV 2>$null | Select-String "host:") -replace '.*host:\s*', ''
         if ($newHost -match "aarch64") {
             Write-Status "aarch64 toolchain detected - switching to x64 for build compatibility" -Type "Info"
             & rustup toolchain install stable-x86_64-pc-windows-msvc 2>$null
