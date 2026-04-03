@@ -237,6 +237,15 @@ function Install-Rust {
             & rustup toolchain install stable-x86_64-pc-windows-msvc 2>$null
             & rustup default stable-x86_64-pc-windows-msvc 2>$null
             $version = (rustc --version) -replace 'rustc\s+', '' -replace '\s.*', ''
+
+            # Clean stale aarch64 build cache
+            $scriptDir = $PSScriptRoot
+            $repoRoot = (Resolve-Path (Join-Path $scriptDir "../..")).Path
+            $targetDir = Join-Path $repoRoot "target"
+            if (Test-Path $targetDir) {
+                Write-Status "Cleaning stale build cache from previous toolchain..." -Type "Info"
+                Remove-Item -Recurse -Force $targetDir -ErrorAction SilentlyContinue
+            }
         }
 
         if (Compare-Version -Actual $version -Required $RUST_MIN_VERSION) {
