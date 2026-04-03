@@ -1,14 +1,14 @@
 {
   "product": {
-    "displayName": "Unchained",
-    "serverName": "Unchained",
-    "description": "Get Shreked, Try again...",
+    "displayName": "My UO Server",
+    "serverName": "MyServer",
+    "description": "Your server description here",
     "supportEmail": "support@example.com",
     "website": "https://example.com",
     "discord": "https://discord.gg/example"
   },
-  "updateUrl": "http://45.76.19.61",
-  "publicKey": "2a26d57c2e53b821c554c28ea6bc3802b18a18f26eaf39e86ce3aaa9b25dc449",
+  "updateUrl": "http://your-server-ip-or-domain",
+  "publicKey": "YOUR_PUBLIC_KEY_HEX_64_CHARS",
   "ui": {
     "colors": {
       "primary": "#1a1a2e",
@@ -16,12 +16,12 @@
       "background": "#16213e",
       "text": "#eaeaea"
     },
-    "backgroundImage": "/branding/unchainedbg.png",
+    "backgroundImage": "/branding/hero-bg.png",
     "logoUrl": "/branding/sidebar-logo.png",
     "sidebarBackground": "/branding/sidebar-texture.png",
     "showPatchNotes": true,
-    "windowTitle": "Unchained",
-    "heroTitle": "Welcome to Unchained",
+    "windowTitle": "My UO Server",
+    "heroTitle": "Welcome to My UO Server",
     "heroSubtitle": "Your adventure begins here",
     "sidebarSubtitle": "Launcher",
     "sidebarLinks": [
@@ -43,13 +43,13 @@
   "cuo": {
     "client_version": "7.0.10.3",
     "live_server": {
-      "label": "UO Unchained",
-      "ip": "login.patchuo.com",
+      "label": "My Server",
+      "ip": "your.server.ip",
       "port": 2593
     },
     "test_server": {
       "label": "Test Center",
-      "ip": "login.patchuo.com",
+      "ip": "your.server.ip",
       "port": 2594
     },
     "available_assistants": [
@@ -61,9 +61,6 @@
   },
   "brandVersion": "1.0",
   "migration": {
-    "searchPaths": [
-      "C:\\Program Files\\EA Games\\Ultima Online",
-      "C:\\Program Files (x86)\\EA Games\\Ultima Online"
-    ]
+    "searchPaths": []
   }
 }

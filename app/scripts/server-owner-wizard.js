@@ -15,6 +15,7 @@ const repoRoot = path.resolve(appDir, "..");
 
 const brandingDir = path.join(repoRoot, "branding");
 const brandPath = path.join(brandingDir, "brand.json");
+const brandExamplePath = path.join(brandingDir, "brand.example.json");
 const legacyKeysDir = path.join(repoRoot, "keys");
 const defaultKeysDir = path.join(repoRoot, "server-data", "keys");
 const keysDir = fs.existsSync(legacyKeysDir) ? legacyKeysDir : defaultKeysDir;
@@ -58,7 +59,8 @@ async function main() {
     output: process.stdout,
   });
 
-  const existing = readJsonIfExists(brandPath);
+  // Seed from example template if brand.json doesn't exist yet
+  const existing = readJsonIfExists(brandPath) || readJsonIfExists(brandExamplePath);
 
   console.log("UltimaForge Server Owner Wizard");
   console.log("This will create branding/brand.json for your launcher.\n");

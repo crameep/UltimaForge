@@ -1044,20 +1044,11 @@ REM Stash any local uncommitted changes (branding edits etc)
 git stash push -m "pre-update-stash" --include-untracked >nul 2>nul
 set STASHED=%errorlevel%
 
-REM Backup branding, keys, scripts, batch file, and server config
-echo.
-echo Backing up your files...
-if not exist "_update_backup" mkdir "_update_backup"
-if exist "branding" xcopy /E /I /Y "branding" "_update_backup\branding" >nul 2>nul
-if exist "keys" xcopy /E /I /Y "keys" "_update_backup\keys" >nul 2>nul
-if exist "server-data" xcopy /E /I /Y "server-data" "_update_backup\server-data" >nul 2>nul
-if exist ".publish-all-cache.json" copy /Y ".publish-all-cache.json" "_update_backup\" >nul 2>nul
-if exist "updates" xcopy /E /I /Y "updates" "_update_backup\updates" >nul 2>nul
-
 REM Record current batch file hash to detect self-update
+if not exist "_update_backup" mkdir "_update_backup"
 certutil -hashfile ultimaforge.bat SHA256 2>nul | findstr /v "hash" > "_update_backup\bat_hash_before.txt"
 
-REM Merge upstream
+REM Merge upstream (branding, keys, server-data, updates are gitignored — safe)
 echo.
 echo Merging upstream changes...
 git merge upstream/main -m "chore: merge upstream launcher updates"
@@ -1065,10 +1056,8 @@ set MERGE_RESULT=%errorlevel%
 
 if %MERGE_RESULT% neq 0 (
     echo.
-    echo Merge conflict detected. Aborting and restoring your files...
+    echo Merge conflict detected. Aborting...
     git merge --abort >nul 2>nul
-    if exist "_update_backup\branding" xcopy /E /I /Y "_update_backup\branding" "branding" >nul 2>nul
-    if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "keys" >nul 2>nul
     rmdir /s /q "_update_backup" 2>nul
     if %STASHED% equ 0 git stash pop >nul 2>nul
     echo.
@@ -1079,15 +1068,6 @@ if %MERGE_RESULT% neq 0 (
     pause >nul
     goto MENU
 )
-
-REM Restore server-owner files over any upstream changes
-echo.
-echo Restoring your branding, keys, and config...
-if exist "_update_backup\branding" xcopy /E /I /Y "_update_backup\branding" "branding" >nul 2>nul
-if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "keys" >nul 2>nul
-if exist "_update_backup\server-data" xcopy /E /I /Y "_update_backup\server-data" "server-data" >nul 2>nul
-if exist "_update_backup\.publish-all-cache.json" copy /Y "_update_backup\.publish-all-cache.json" "." >nul 2>nul
-if exist "_update_backup\updates" xcopy /E /I /Y "_update_backup\updates" "updates" >nul 2>nul
 
 REM Pop stash to restore any uncommitted local changes
 if %STASHED% equ 0 (
@@ -1117,7 +1097,7 @@ echo    Update Complete!
 echo ========================================
 echo.
 echo Your launcher source has been updated.
-echo Branding, keys, and server config are preserved.
+echo Branding, keys, and server config are untouched (not tracked in git).
 
 if %BAT_CHANGED% neq 0 (
     echo.

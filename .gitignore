@@ -17,6 +17,14 @@
 # Cargo.lock
 # package-lock.json
 
+# Branding (server-owner customized - only template is tracked)
+/branding/*
+!/branding/brand.example.json
+!/branding/README.md
+
+# Publish cache (server-specific)
+.publish-all-cache.json
+
 # Environment Variables
 .env
 .env.local
