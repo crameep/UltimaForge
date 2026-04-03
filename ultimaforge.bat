@@ -1440,7 +1440,6 @@ REM ============================================================================
 REM INIT MSVC (find and call vcvarsall.bat for link.exe)
 REM ============================================================================
 :INIT_MSVC
-if defined VSINSTALLDIR exit /b 0
 set "VCVARSALL="
 for %%v in (
     "%ProgramFiles%\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat"
@@ -1454,9 +1453,8 @@ for %%v in (
     if exist %%v set "VCVARSALL=%%~v"
 )
 if defined VCVARSALL (
-    set "VCARCH=x64"
-    if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "VCARCH=arm64"
-    call "!VCVARSALL!" !VCARCH! >nul 2>nul
+    REM Always use x64 - we force Rust to target x64 even on ARM64 machines
+    call "!VCVARSALL!" x64 >nul 2>nul
 )
 exit /b 0
 
