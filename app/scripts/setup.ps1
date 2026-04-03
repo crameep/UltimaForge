@@ -227,6 +227,14 @@ function Install-Rust {
 
     if (Test-Command "rustc") {
         $version = (rustc --version) -replace 'rustc\s+', '' -replace '\s.*', ''
+
+        # On ARM64, ensure we're using the x64 toolchain for VS Build Tools compatibility
+        if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -and (rustc --version 2>$null) -match "aarch64") {
+            Write-Status "ARM64 detected with aarch64 toolchain — switching to x64 for build compatibility" -Type "Info"
+            & rustup default stable-x86_64-pc-windows-msvc 2>$null
+            $version = (rustc --version) -replace 'rustc\s+', '' -replace '\s.*', ''
+        }
+
         if (Compare-Version -Actual $version -Required $RUST_MIN_VERSION) {
             Write-Status "Rust $version already installed (>= $RUST_MIN_VERSION required)" -Type "Success"
             return $true
