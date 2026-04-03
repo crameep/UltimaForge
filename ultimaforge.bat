@@ -1001,8 +1001,17 @@ if errorlevel 1 (
     echo Initializing git so updates can be tracked...
     echo.
     git init
+    git config user.email "server-owner@ultimaforge.local"
+    git config user.name "UltimaForge Server Owner"
     git add -A
     git commit -m "Initial commit from downloaded zip"
+    if errorlevel 1 (
+        echo ERROR: Failed to initialize git repository.
+        echo.
+        echo Press any key to return to menu...
+        pause >nul
+        goto MENU
+    )
     echo.
     echo Git repository initialized.
     echo.
@@ -1037,8 +1046,34 @@ git merge-base HEAD upstream/main >nul 2>nul
 if errorlevel 1 (
     echo This is your first update from the official repository.
     echo Your launcher source will be synced to the latest version.
+    echo Branding, keys, and game files will not be affected.
     echo.
-    goto UPDATE_CONFIRM
+    set /p do_first_update="Apply update? (Y/n): "
+    if /i "!do_first_update!"=="n" (
+        echo Update cancelled.
+        echo.
+        echo Press any key to return to menu...
+        pause >nul
+        goto MENU
+    )
+    echo.
+    echo Syncing to upstream...
+    git reset --hard upstream/main >nul 2>nul
+    echo.
+    echo ========================================
+    echo    Update Complete!
+    echo ========================================
+    echo.
+    echo Your launcher source has been synced to the latest version.
+    echo Branding, keys, and server config are untouched (not tracked in git).
+    echo.
+    echo NOTE: This tools menu was updated. Please close and re-open ultimaforge.bat.
+    echo.
+    echo Next: Run option [2] to configure branding, then [4] to build.
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
 )
 
 REM Check if there's anything to merge
