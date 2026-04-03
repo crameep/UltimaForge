@@ -269,6 +269,14 @@ function Install-Rust {
             $env:PATH = "$cargoPath;$env:PATH"
         }
 
+        # On ARM64 Windows, default to x64 toolchain for VS Build Tools compatibility.
+        # x64 binaries run fine on ARM64 via emulation, and most VS installs only
+        # include x64 MSVC tools.
+        if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+            Write-Status "ARM64 detected — setting Rust to use x64 toolchain for build compatibility" -Type "Info"
+            & rustup default stable-x86_64-pc-windows-msvc 2>$null
+        }
+
         # Verify installation
         if (Test-Command "rustc") {
             $version = (rustc --version) -replace 'rustc\s+', '' -replace '\s.*', ''

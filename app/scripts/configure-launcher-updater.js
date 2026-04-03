@@ -124,7 +124,9 @@ async function runSignerGenerate() {
   const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
   // Base path passed to --write-keys; Tauri v2 writes <base> (no ext) and <base>.pub
-  const keyBase = path.join(updaterDir, "tauri");
+  // Quote the path to handle spaces and parentheses in directory names
+  const keyBaseRaw = path.join(updaterDir, "tauri");
+  const keyBase = process.platform === "win32" ? `"${keyBaseRaw}"` : keyBaseRaw;
   const tauriJs = path.join(appDir, "node_modules", "@tauri-apps", "cli", "tauri.js");
 
   // Generate a random non-empty password.
@@ -166,7 +168,7 @@ async function runSignerGenerate() {
           shell: cmd !== process.execPath && process.platform === "win32",
         });
         if (result.status === 0) {
-          const keys = tryReadWrittenKeys(keyBase);
+          const keys = tryReadWrittenKeys(keyBaseRaw);
           if (keys) return keys;
         }
       } catch (e) {
@@ -206,7 +208,7 @@ async function runSignerGenerate() {
           shell: cmd !== process.execPath && process.platform === "win32",
         });
         if (result.status === 0) {
-          generated = tryReadWrittenKeys(keyBase);
+          generated = tryReadWrittenKeys(keyBaseRaw);
           if (generated) break;
         }
       } catch (e) {
