@@ -230,7 +230,7 @@ function Install-Rust {
 
         # On ARM64, ensure we're using the x64 toolchain for VS Build Tools compatibility
         if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -and (rustc --version 2>$null) -match "aarch64") {
-            Write-Status "ARM64 detected with aarch64 toolchain — switching to x64 for build compatibility" -Type "Info"
+            Write-Status "ARM64 detected with aarch64 toolchain - switching to x64 for build compatibility" -Type "Info"
             & rustup default stable-x86_64-pc-windows-msvc 2>$null
             $version = (rustc --version) -replace 'rustc\s+', '' -replace '\s.*', ''
         }
@@ -281,7 +281,7 @@ function Install-Rust {
         # x64 binaries run fine on ARM64 via emulation, and most VS installs only
         # include x64 MSVC tools.
         if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-            Write-Status "ARM64 detected — setting Rust to use x64 toolchain for build compatibility" -Type "Info"
+            Write-Status "ARM64 detected - setting Rust to use x64 toolchain for build compatibility" -Type "Info"
             & rustup default stable-x86_64-pc-windows-msvc 2>$null
         }
 
@@ -714,7 +714,7 @@ function Main {
         "rsync" = $false
     }
 
-    # Install dependencies in order (Git first — needed for updates)
+    # Install dependencies in order (Git first - needed for updates)
     $results["Git"] = Install-Git
     $results["Rust"] = Install-Rust
     $results["Node.js"] = Install-NodeJS
