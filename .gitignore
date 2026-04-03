@@ -17,10 +17,8 @@
 # Cargo.lock
 # package-lock.json
 
-# Branding (server-owner customized - only template is tracked)
-/branding/*
-!/branding/brand.example.json
-!/branding/README.md
+# Branding (brand.json is server-owner-specific, images are default placeholders)
+/branding/brand.json
 
 # Publish cache (server-specific)
 .publish-all-cache.json
