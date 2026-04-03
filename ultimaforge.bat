@@ -127,8 +127,12 @@ where node >nul 2>nul
 if errorlevel 1 set "PREREQS_OK=0"
 where cargo >nul 2>nul
 if errorlevel 1 set "PREREQS_OK=0"
-where link.exe >nul 2>nul
-if errorlevel 1 set "PREREQS_OK=0"
+REM Check for VS Build Tools via VCINSTALLDIR (set by vcvarsall) or vswhere
+if not defined VCINSTALLDIR (
+    if not exist "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" (
+        if not exist "%ProgramFiles%\Microsoft Visual Studio\2022\BuildTools" set "PREREQS_OK=0"
+    )
+)
 
 if exist "keys\private.key" (
     if exist "keys\tauri-updater\tauri.key" set "BRANDING_OK=1"
