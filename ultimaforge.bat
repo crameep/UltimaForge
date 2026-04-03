@@ -994,9 +994,13 @@ echo This pulls the latest launcher code from the official UltimaForge
 echo repository. Your branding, keys, and game files are preserved.
 echo.
 
-REM Check if this is a git repo. If not (e.g. downloaded as zip), initialize it.
-git rev-parse --git-dir >nul 2>nul
-if errorlevel 1 call :INIT_GIT_REPO
+REM Check if this is a working git repo. If not, initialize it.
+REM Also handles broken .git from a previous failed attempt.
+git rev-parse HEAD >nul 2>nul
+if errorlevel 1 (
+    if exist ".git" rmdir /s /q ".git" >nul 2>nul
+    call :INIT_GIT_REPO
+)
 
 REM Add or update upstream remote
 git remote get-url upstream >nul 2>nul
@@ -1024,55 +1028,7 @@ if errorlevel 1 (
 
 REM Check if histories are related (zip download vs git clone)
 git merge-base HEAD upstream/main >nul 2>nul
-if errorlevel 1 (
-    echo This is your first update from the official repository.
-    echo Your launcher source will be synced to the latest version.
-    echo Branding, keys, and game files will not be affected.
-    echo.
-    set /p do_first_update="Apply update? (Y/n): "
-    if /i "!do_first_update!"=="n" (
-        echo Update cancelled.
-        echo.
-        echo Press any key to return to menu...
-        pause >nul
-        goto MENU
-    )
-    echo.
-    echo Backing up your files...
-    if not exist "_update_backup" mkdir "_update_backup"
-    if exist "%~dp0branding\brand.json" copy /Y "%~dp0branding\brand.json" "_update_backup\brand.json" >nul 2>nul
-    if exist "%~dp0keys" xcopy /E /I /Y "%~dp0keys" "_update_backup\keys" >nul 2>nul
-    if exist "%~dp0server-data" xcopy /E /I /Y "%~dp0server-data" "_update_backup\server-data" >nul 2>nul
-    if exist "%~dp0.publish-all-cache.json" copy /Y "%~dp0.publish-all-cache.json" "_update_backup\" >nul 2>nul
-    if exist "%~dp0updates" xcopy /E /I /Y "%~dp0updates" "_update_backup\updates" >nul 2>nul
-    echo Syncing to upstream...
-    git reset --hard upstream/main >nul 2>nul
-    echo Restoring your files...
-    if exist "_update_backup\brand.json" (
-        if not exist "%~dp0branding" mkdir "%~dp0branding"
-        copy /Y "_update_backup\brand.json" "%~dp0branding\brand.json" >nul 2>nul
-    )
-    if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "%~dp0keys" >nul 2>nul
-    if exist "_update_backup\server-data" xcopy /E /I /Y "_update_backup\server-data" "%~dp0server-data" >nul 2>nul
-    if exist "_update_backup\.publish-all-cache.json" copy /Y "_update_backup\.publish-all-cache.json" "%~dp0" >nul 2>nul
-    if exist "_update_backup\updates" xcopy /E /I /Y "_update_backup\updates" "%~dp0updates" >nul 2>nul
-    rmdir /s /q "_update_backup" 2>nul
-    echo.
-    echo ========================================
-    echo    Update Complete!
-    echo ========================================
-    echo.
-    echo Your launcher source has been synced to the latest version.
-    echo Branding, keys, and server config are untouched (not tracked in git).
-    echo.
-    echo NOTE: This tools menu was updated. Please close and re-open ultimaforge.bat.
-    echo.
-    echo Next: Run option [2] to configure branding, then [4] to build.
-    echo.
-    echo Press any key to return to menu...
-    pause >nul
-    goto MENU
-)
+if errorlevel 1 goto FIRST_TIME_UPDATE
 
 REM Check if there's anything to merge
 git log --oneline HEAD..upstream/main 2>nul | findstr /r "." >nul
@@ -1421,6 +1377,61 @@ echo.
 echo ========================================
 echo    An error occurred!
 echo ========================================
+echo.
+echo Press any key to return to menu...
+pause >nul
+goto MENU
+
+REM ============================================================================
+REM FIRST TIME UPDATE (zip download — reset to upstream)
+REM ============================================================================
+:FIRST_TIME_UPDATE
+echo This is your first update from the official repository.
+echo Your launcher source will be synced to the latest version.
+echo Branding, keys, and game files will not be affected.
+echo.
+set /p do_first_update="Apply update? (Y/n): "
+if /i "%do_first_update%"=="n" (
+    echo Update cancelled.
+    echo.
+    echo Press any key to return to menu...
+    pause >nul
+    goto MENU
+)
+echo.
+echo Backing up your files...
+if not exist "_update_backup" mkdir "_update_backup"
+if exist "%~dp0branding\brand.json" copy /Y "%~dp0branding\brand.json" "_update_backup\brand.json" >nul 2>nul
+if exist "%~dp0keys" xcopy /E /I /Y "%~dp0keys" "_update_backup\keys" >nul 2>nul
+if exist "%~dp0server-data" xcopy /E /I /Y "%~dp0server-data" "_update_backup\server-data" >nul 2>nul
+if exist "%~dp0.publish-all-cache.json" copy /Y "%~dp0.publish-all-cache.json" "_update_backup\" >nul 2>nul
+if exist "%~dp0updates" xcopy /E /I /Y "%~dp0updates" "_update_backup\updates" >nul 2>nul
+
+echo Syncing to upstream...
+git reset --hard upstream/main
+echo.
+echo Restoring your files...
+if exist "_update_backup\brand.json" (
+    if not exist "%~dp0branding" mkdir "%~dp0branding"
+    copy /Y "_update_backup\brand.json" "%~dp0branding\brand.json" >nul 2>nul
+)
+if exist "_update_backup\keys" xcopy /E /I /Y "_update_backup\keys" "%~dp0keys" >nul 2>nul
+if exist "_update_backup\server-data" xcopy /E /I /Y "_update_backup\server-data" "%~dp0server-data" >nul 2>nul
+if exist "_update_backup\.publish-all-cache.json" copy /Y "_update_backup\.publish-all-cache.json" "%~dp0" >nul 2>nul
+if exist "_update_backup\updates" xcopy /E /I /Y "_update_backup\updates" "%~dp0updates" >nul 2>nul
+rmdir /s /q "_update_backup" 2>nul
+
+echo.
+echo ========================================
+echo    Update Complete!
+echo ========================================
+echo.
+echo Your launcher source has been synced to the latest version.
+echo Branding, keys, and server config are untouched.
+echo.
+echo NOTE: This tools menu was updated. Please close and re-open ultimaforge.bat.
+echo.
+echo Next: Run option [2] to configure branding, then [4] to build.
 echo.
 echo Press any key to return to menu...
 pause >nul
