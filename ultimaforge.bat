@@ -144,8 +144,10 @@ if not defined VCINSTALLDIR (
     )
 )
 
-if exist "keys\private.key" (
-    if exist "keys\tauri-updater\tauri.key" set "BRANDING_OK=1"
+REM Check for branding + keys in both legacy (keys\) and new (server-data\keys\) locations
+if exist "%~dp0branding\brand.json" (
+    if exist "%~dp0keys\private.key" set "BRANDING_OK=1"
+    if exist "%~dp0server-data\keys\private.key" set "BRANDING_OK=1"
 )
 
 if exist "app\src-tauri\icons\icon.ico" set "ICONS_OK=1"
