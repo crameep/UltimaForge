@@ -1003,6 +1003,20 @@ if errorlevel 1 (
     git init
     git config user.email "server-owner@ultimaforge.local"
     git config user.name "UltimaForge Server Owner"
+    REM Write gitignore before adding files to exclude builds, deps, and user data
+    (
+        echo /target/
+        echo /app/target/
+        echo /app/src-tauri/target/
+        echo /app/tools/*/target/
+        echo /app/node_modules/
+        echo /app/dist/
+        echo /keys/
+        echo /server-data/*
+        echo /updates/
+        echo /branding/brand.json
+        echo .publish-all-cache.json
+    ) > .gitignore
     git add -A
     git commit -m "Initial commit from downloaded zip"
     if errorlevel 1 (
