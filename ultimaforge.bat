@@ -239,7 +239,8 @@ if errorlevel 1 (
     set /p elevate="Relaunch as administrator? (Y/n): "
     if /i not "!elevate!"=="n" (
         echo Relaunching as administrator...
-        powershell -Command "Start-Process -FilePath '%~f0' -ArgumentList '1' -Verb RunAs"
+        echo This window will close. Continue in the new admin window.
+        powershell -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
         exit /b 0
     )
     echo.
