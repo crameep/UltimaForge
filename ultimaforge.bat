@@ -131,12 +131,15 @@ set "ICONS_OK=0"
 set "BUILD_OK=0"
 set "VPS_OK=0"
 
-where node >nul 2>nul
+where git >nul 2>nul
 if not errorlevel 1 (
-    where cargo >nul 2>nul
+    where node >nul 2>nul
     if not errorlevel 1 (
-        where link.exe >nul 2>nul
-        if not errorlevel 1 set "PREREQS_OK=1"
+        where cargo >nul 2>nul
+        if not errorlevel 1 (
+            where link.exe >nul 2>nul
+            if not errorlevel 1 set "PREREQS_OK=1"
+        )
     )
 )
 
@@ -218,6 +221,7 @@ echo    Install Prerequisites
 echo ========================================
 echo.
 echo This will install:
+echo   - Git (for launcher updates)
 echo   - Rust (via rustup)
 echo   - Node.js LTS
 echo   - Visual Studio Build Tools

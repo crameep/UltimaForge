@@ -40,6 +40,7 @@ OPTIONS:
 
 DESCRIPTION:
     This script installs all dependencies required to build UltimaForge:
+    - Git (for updates and version control)
     - Rust (via rustup)
     - Node.js LTS
     - Visual Studio Build Tools 2022
@@ -155,6 +156,67 @@ function Install-Scoop {
     }
     catch {
         Write-Status "Failed to install Scoop: $_" -Type "Error"
+    }
+
+    return $false
+}
+
+function Install-Git {
+    Write-Status "Checking Git installation..." -Type "Step"
+
+    if (Test-Command "git") {
+        $version = (git --version) -replace 'git version\s*', ''
+        Write-Status "Git $version already installed" -Type "Success"
+        return $true
+    }
+
+    Write-Status "Installing Git..." -Type "Info"
+
+    if ($UseScoop) {
+        if (-not (Test-Command "scoop")) {
+            if (-not (Install-Scoop)) { return $false }
+        }
+        try {
+            scoop install git
+            $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
+            if (Test-Command "git") {
+                Write-Status "Git installed successfully via Scoop" -Type "Success"
+                return $true
+            }
+        }
+        catch {
+            Write-Status "Failed to install Git via Scoop: $_" -Type "Error"
+            return $false
+        }
+    }
+    else {
+        if (-not (Test-Command "winget")) {
+            Write-Status "winget not found. Please install Git manually from https://git-scm.com" -Type "Error"
+            return $false
+        }
+
+        try {
+            Write-Status "Installing via winget..." -Type "Info"
+            winget install Git.Git --accept-source-agreements --accept-package-agreements
+
+            # Refresh PATH
+            $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";" + $env:PATH
+
+            if (Test-Command "git") {
+                $version = (git --version) -replace 'git version\s*', ''
+                Write-Status "Git $version installed successfully" -Type "Success"
+                return $true
+            }
+            else {
+                Write-Status "Git installed but not found in PATH. Please restart your terminal." -Type "Warning"
+                return $true
+            }
+        }
+        catch {
+            Write-Status "Failed to install Git: $_" -Type "Error"
+            Write-Status "Install manually from: https://git-scm.com" -Type "Info"
+            return $false
+        }
     }
 
     return $false
@@ -552,7 +614,7 @@ function Show-Summary {
 
     $allSuccess = $true
 
-    foreach ($component in @("Rust", "Node.js", "VS Build Tools", "Tauri CLI")) {
+    foreach ($component in @("Git", "Rust", "Node.js", "VS Build Tools", "Tauri CLI")) {
         $status = $Results[$component]
         if ($status) {
             Write-Host "  [+] $component" -ForegroundColor $Colors.Green
@@ -628,6 +690,7 @@ function Main {
 
     # Track results
     $results = @{
+        "Git" = $false
         "Rust" = $false
         "Node.js" = $false
         "VS Build Tools" = $false
@@ -635,7 +698,8 @@ function Main {
         "rsync" = $false
     }
 
-    # Install dependencies in order
+    # Install dependencies in order (Git first — needed for updates)
+    $results["Git"] = Install-Git
     $results["Rust"] = Install-Rust
     $results["Node.js"] = Install-NodeJS
     $results["VS Build Tools"] = Install-VSBuildTools
