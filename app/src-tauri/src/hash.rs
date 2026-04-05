@@ -74,7 +74,9 @@ pub fn hash_file(path: &Path) -> Result<String, HashError> {
     let mut buffer = [0u8; BUFFER_SIZE];
 
     loop {
-        let bytes_read = reader.read(&mut buffer).map_err(|e| HashError::io(path, e))?;
+        let bytes_read = reader
+            .read(&mut buffer)
+            .map_err(|e| HashError::io(path, e))?;
         if bytes_read == 0 {
             break;
         }
@@ -233,7 +235,10 @@ mod tests {
         let hash = hash_file(file.path()).expect("Should hash file");
 
         // Verified against: echo -n "Hello, World!" | sha256sum
-        assert_eq!(hash, "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f");
+        assert_eq!(
+            hash,
+            "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f"
+        );
     }
 
     #[test]
@@ -244,7 +249,10 @@ mod tests {
     #[test]
     fn test_hash_bytes_known_content() {
         let hash = hash_bytes(b"Hello, World!");
-        assert_eq!(hash, "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f");
+        assert_eq!(
+            hash,
+            "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f"
+        );
     }
 
     #[test]
@@ -351,7 +359,7 @@ mod tests {
     fn test_get_blob_url() {
         let url = get_blob_url(
             "https://updates.example.com",
-            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         );
         assert_eq!(
             url,
@@ -361,10 +369,7 @@ mod tests {
 
     #[test]
     fn test_get_blob_url_strips_trailing_slash() {
-        let url = get_blob_url(
-            "https://updates.example.com/",
-            "abc123"
-        );
+        let url = get_blob_url("https://updates.example.com/", "abc123");
         assert_eq!(url, "https://updates.example.com/files/abc123");
     }
 
@@ -416,7 +421,10 @@ mod tests {
         let hash1 = hash_bytes(b"content 1");
         let hash2 = hash_bytes(b"content 2");
 
-        assert_ne!(hash1, hash2, "Different content should produce different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different content should produce different hashes"
+        );
     }
 
     #[test]

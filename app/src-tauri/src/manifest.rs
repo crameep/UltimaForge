@@ -183,18 +183,21 @@ pub fn validate_path_containment(base: &Path, target: &Path) -> Result<PathBuf, 
     let joined = base.join(target);
 
     // Canonicalize the base directory to get its absolute, normalized form
-    let canonical_base = base.canonicalize().map_err(|e| ManifestError::CanonicalizationFailed {
-        path: base.display().to_string(),
-        reason: e.to_string(),
-    })?;
+    let canonical_base =
+        base.canonicalize()
+            .map_err(|e| ManifestError::CanonicalizationFailed {
+                path: base.display().to_string(),
+                reason: e.to_string(),
+            })?;
 
     // Canonicalize the joined path to resolve symlinks and normalize ..
-    let canonical_target = joined.canonicalize().map_err(|e| {
-        ManifestError::CanonicalizationFailed {
-            path: joined.display().to_string(),
-            reason: e.to_string(),
-        }
-    })?;
+    let canonical_target =
+        joined
+            .canonicalize()
+            .map_err(|e| ManifestError::CanonicalizationFailed {
+                path: joined.display().to_string(),
+                reason: e.to_string(),
+            })?;
 
     // Verify the canonical target is still within the canonical base
     if !canonical_target.starts_with(&canonical_base) {
@@ -607,7 +610,9 @@ mod tests {
     fn test_is_safe_relative_path_accepts_subdirectory_paths() {
         assert!(is_safe_relative_path(Path::new("data/map0.mul")));
         assert!(is_safe_relative_path(Path::new("data/maps/world.map")));
-        assert!(is_safe_relative_path(Path::new("assets/textures/grass.png")));
+        assert!(is_safe_relative_path(Path::new(
+            "assets/textures/grass.png"
+        )));
     }
 
     #[test]
@@ -621,14 +626,18 @@ mod tests {
         assert!(!is_safe_relative_path(Path::new("..")));
         assert!(!is_safe_relative_path(Path::new("../secret")));
         assert!(!is_safe_relative_path(Path::new("../../../etc/passwd")));
-        assert!(!is_safe_relative_path(Path::new("data/../../../etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new(
+            "data/../../../etc/passwd"
+        )));
     }
 
     #[test]
     fn test_is_safe_relative_path_rejects_hidden_parent_traversal() {
         // Traversal embedded in the middle of a path
         assert!(!is_safe_relative_path(Path::new("foo/../bar")));
-        assert!(!is_safe_relative_path(Path::new("data/subdir/../../../etc/passwd")));
+        assert!(!is_safe_relative_path(Path::new(
+            "data/subdir/../../../etc/passwd"
+        )));
     }
 
     #[test]
@@ -643,14 +652,18 @@ mod tests {
         // Note: On non-Windows platforms, these may not be detected as absolute
         // but the Component::Prefix check will catch the drive letter
         assert!(!is_safe_relative_path(Path::new("C:\\Windows\\System32")));
-        assert!(!is_safe_relative_path(Path::new("D:\\Program Files\\app.exe")));
+        assert!(!is_safe_relative_path(Path::new(
+            "D:\\Program Files\\app.exe"
+        )));
     }
 
     #[test]
     fn test_is_safe_relative_path_rejects_unc_paths() {
         // UNC paths (Windows network shares)
         assert!(!is_safe_relative_path(Path::new("\\\\server\\share")));
-        assert!(!is_safe_relative_path(Path::new("\\\\server\\share\\file.txt")));
+        assert!(!is_safe_relative_path(Path::new(
+            "\\\\server\\share\\file.txt"
+        )));
     }
 
     #[test]
@@ -675,7 +688,9 @@ mod tests {
     fn test_is_safe_relative_path_accepts_windows_subdirectory_format() {
         // Relative paths with backslashes (common in Windows manifests)
         assert!(is_safe_relative_path(Path::new("data\\maps\\map0.mul")));
-        assert!(is_safe_relative_path(Path::new("assets\\textures\\grass.png")));
+        assert!(is_safe_relative_path(Path::new(
+            "assets\\textures\\grass.png"
+        )));
     }
 
     // ==================== Original manifest tests continue below ====================
@@ -864,7 +879,10 @@ mod tests {
         }"#;
 
         let result = Manifest::parse_str(json);
-        assert!(matches!(result, Err(ManifestError::TotalSizeMismatch { .. })));
+        assert!(matches!(
+            result,
+            Err(ManifestError::TotalSizeMismatch { .. })
+        ));
     }
 
     #[test]
@@ -1411,7 +1429,9 @@ mod tests {
             // C:\x - Windows C: drive path
             assert!(!is_safe_relative_path(Path::new("C:\\x")));
             assert!(!is_safe_relative_path(Path::new("C:\\Windows")));
-            assert!(!is_safe_relative_path(Path::new("C:\\Program Files\\app.exe")));
+            assert!(!is_safe_relative_path(Path::new(
+                "C:\\Program Files\\app.exe"
+            )));
         }
 
         #[test]
@@ -1442,7 +1462,9 @@ mod tests {
         fn test_rejects_unc_server_share() {
             // \\server\share - UNC network paths
             assert!(!is_safe_relative_path(Path::new("\\\\server\\share")));
-            assert!(!is_safe_relative_path(Path::new("\\\\server\\share\\file.txt")));
+            assert!(!is_safe_relative_path(Path::new(
+                "\\\\server\\share\\file.txt"
+            )));
             assert!(!is_safe_relative_path(Path::new("\\\\192.168.1.1\\c$")));
         }
 
@@ -1499,15 +1521,21 @@ mod tests {
         #[test]
         fn test_rejects_backslash_traversal_deep() {
             // Deep backslash traversal
-            assert!(!is_safe_relative_path(Path::new("..\\..\\..\\..\\Windows\\System32")));
-            assert!(!is_safe_relative_path(Path::new("data\\..\\..\\..\\secret")));
+            assert!(!is_safe_relative_path(Path::new(
+                "..\\..\\..\\..\\Windows\\System32"
+            )));
+            assert!(!is_safe_relative_path(Path::new(
+                "data\\..\\..\\..\\secret"
+            )));
         }
 
         #[test]
         fn test_rejects_backslash_traversal_from_subdir() {
             // Traversal starting from apparent subdirectory
             assert!(!is_safe_relative_path(Path::new("subdir\\..\\..\\secret")));
-            assert!(!is_safe_relative_path(Path::new("a\\b\\..\\..\\..\\outside")));
+            assert!(!is_safe_relative_path(Path::new(
+                "a\\b\\..\\..\\..\\outside"
+            )));
         }
 
         // === Mixed Separator Traversal Tests ===
@@ -1523,8 +1551,12 @@ mod tests {
         fn test_rejects_complex_mixed_traversal() {
             // Complex mixed separator traversal attempts
             assert!(!is_safe_relative_path(Path::new("a/b\\..\\../c")));
-            assert!(!is_safe_relative_path(Path::new("data\\maps/..\\..\\secret")));
-            assert!(!is_safe_relative_path(Path::new("foo/bar\\..\\..\\..\\etc\\passwd")));
+            assert!(!is_safe_relative_path(Path::new(
+                "data\\maps/..\\..\\secret"
+            )));
+            assert!(!is_safe_relative_path(Path::new(
+                "foo/bar\\..\\..\\..\\etc\\passwd"
+            )));
         }
 
         #[test]
@@ -1539,7 +1571,9 @@ mod tests {
         fn test_rejects_extended_length_paths() {
             // \\?\ extended-length path prefix (Windows)
             assert!(!is_safe_relative_path(Path::new("\\\\?\\C:\\Windows")));
-            assert!(!is_safe_relative_path(Path::new("\\\\?\\UNC\\server\\share")));
+            assert!(!is_safe_relative_path(Path::new(
+                "\\\\?\\UNC\\server\\share"
+            )));
         }
 
         #[test]
@@ -1600,7 +1634,9 @@ mod tests {
         fn test_accepts_complex_valid_paths() {
             // Valid complex paths that should be allowed
             assert!(is_safe_relative_path(Path::new("data/maps/world-map.mul")));
-            assert!(is_safe_relative_path(Path::new("assets/textures/grass_01.png")));
+            assert!(is_safe_relative_path(Path::new(
+                "assets/textures/grass_01.png"
+            )));
             assert!(is_safe_relative_path(Path::new("client/v2.5.0/client.exe")));
             assert!(is_safe_relative_path(Path::new("./relative/path/file.txt")));
         }
@@ -1608,8 +1644,12 @@ mod tests {
         #[test]
         fn test_accepts_deep_nesting() {
             // Deeply nested but valid paths
-            assert!(is_safe_relative_path(Path::new("a/b/c/d/e/f/g/h/i/j/file.txt")));
-            assert!(is_safe_relative_path(Path::new("level1\\level2\\level3\\level4\\file.dat")));
+            assert!(is_safe_relative_path(Path::new(
+                "a/b/c/d/e/f/g/h/i/j/file.txt"
+            )));
+            assert!(is_safe_relative_path(Path::new(
+                "level1\\level2\\level3\\level4\\file.dat"
+            )));
         }
 
         #[test]

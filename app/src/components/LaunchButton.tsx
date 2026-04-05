@@ -47,17 +47,20 @@ interface LaunchButtonProps {
  */
 function getButtonLabel(
   isLaunching: boolean,
-  isGameRunning: boolean,
+  runningClients: number,
   updateAvailable: boolean
 ): string {
   if (isLaunching) {
     return "Launching...";
   }
-  if (isGameRunning) {
+  if (runningClients >= 3) {
     return "Playing...";
   }
   if (updateAvailable) {
     return "Update & Play";
+  }
+  if (runningClients > 0) {
+    return "Play Another";
   }
   return "Play";
 }
@@ -134,11 +137,11 @@ export function LaunchButton({
     disabled ||
     launchState.isLaunching ||
     launchState.isValidating ||
-    launchState.isGameRunning;
+    launchState.runningClients >= 3;
 
   const buttonLabel = getButtonLabel(
     launchState.isLaunching || launchState.isValidating,
-    launchState.isGameRunning,
+    launchState.runningClients,
     updateAvailable
   );
 

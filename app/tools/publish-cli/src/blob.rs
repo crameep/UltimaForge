@@ -116,10 +116,12 @@ fn compute_hash_and_read(file_path: &Path) -> Result<(String, Vec<u8>), BlobErro
     let mut buffer = [0u8; 8192];
 
     loop {
-        let bytes_read = file.read(&mut buffer).map_err(|e| BlobError::ReadFileFailed {
-            path: file_path.display().to_string(),
-            source: e,
-        })?;
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| BlobError::ReadFileFailed {
+                path: file_path.display().to_string(),
+                source: e,
+            })?;
 
         if bytes_read == 0 {
             break;
@@ -199,14 +201,12 @@ pub fn create_blobs(source_dir: &str, output_dir: &str) -> Result<BlobResult, Bl
         }
 
         // Compute relative path from source directory
-        let relative_path = path
-            .strip_prefix(source_path)
-            .map_err(|_| {
-                BlobError::SourceDirAccessFailed(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "Failed to compute relative path",
-                ))
-            })?;
+        let relative_path = path.strip_prefix(source_path).map_err(|_| {
+            BlobError::SourceDirAccessFailed(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Failed to compute relative path",
+            ))
+        })?;
 
         // Normalize path separators to forward slashes
         let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
@@ -301,11 +301,8 @@ mod tests {
         fs::write(source_dir.join("file1.txt"), b"hello world").unwrap();
         fs::write(source_dir.join("file2.txt"), b"goodbye world").unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
         assert_eq!(result.blob_count, 2);
         assert_eq!(result.blobs.len(), 2);
@@ -314,7 +311,11 @@ mod tests {
         // Verify blobs were created with correct names (SHA-256 hashes)
         for blob in &result.blobs {
             let blob_path = output_dir.join(&blob.sha256);
-            assert!(blob_path.exists(), "Blob file should exist: {}", blob.sha256);
+            assert!(
+                blob_path.exists(),
+                "Blob file should exist: {}",
+                blob.sha256
+            );
         }
     }
 
@@ -330,16 +331,17 @@ mod tests {
         fs::write(source_dir.join("root.txt"), b"root content").unwrap();
         fs::write(data_dir.join("nested.txt"), b"nested content").unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
         assert_eq!(result.blob_count, 2);
 
         // Verify paths are normalized
-        let paths: Vec<_> = result.blobs.iter().map(|b| b.original_path.as_str()).collect();
+        let paths: Vec<_> = result
+            .blobs
+            .iter()
+            .map(|b| b.original_path.as_str())
+            .collect();
         assert!(paths.contains(&"root.txt"));
         assert!(paths.contains(&"data/nested.txt"));
     }
@@ -357,11 +359,8 @@ mod tests {
         fs::write(source_dir.join("file2.txt"), same_content).unwrap();
         fs::write(source_dir.join("file3.txt"), b"different content").unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
         // 3 files total, but only 2 unique blobs
         assert_eq!(result.blobs.len(), 3);
@@ -386,11 +385,8 @@ mod tests {
         // Create file with known content
         fs::write(source_dir.join("test.txt"), b"hello world").unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
         // SHA-256 of "hello world"
         let expected_hash = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
@@ -410,11 +406,8 @@ mod tests {
         let content = b"test content for verification";
         fs::write(source_dir.join("test.txt"), content).unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
         // Read blob and verify content matches
         let blob_path = output_dir.join(&result.blobs[0].sha256);
@@ -440,10 +433,7 @@ mod tests {
 
         assert!(!output_dir.exists());
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        );
+        let result = create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap());
 
         assert!(result.is_ok());
         assert!(output_dir.exists());
@@ -456,11 +446,8 @@ mod tests {
         let output_dir = temp_dir.path().join("files");
         fs::create_dir(&source_dir).unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
         assert_eq!(result.blob_count, 0);
         assert_eq!(result.blobs.len(), 0);
@@ -480,11 +467,8 @@ mod tests {
         fs::write(source_dir.join("file1.txt"), content1).unwrap();
         fs::write(source_dir.join("file2.txt"), content2).unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
         assert_eq!(result.total_size, 20);
     }
@@ -508,11 +492,8 @@ mod tests {
         let content = b"exact size content"; // 18 bytes
         fs::write(source_dir.join("sized.txt"), content).unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
         assert_eq!(result.blobs[0].size, 18);
     }
@@ -529,13 +510,14 @@ mod tests {
         fs::write(source_dir.join("aaa.txt"), b"a").unwrap();
         fs::write(source_dir.join("mmm.txt"), b"m").unwrap();
 
-        let result = create_blobs(
-            source_dir.to_str().unwrap(),
-            output_dir.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_blobs(source_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
-        let paths: Vec<_> = result.blobs.iter().map(|b| b.original_path.as_str()).collect();
+        let paths: Vec<_> = result
+            .blobs
+            .iter()
+            .map(|b| b.original_path.as_str())
+            .collect();
         assert_eq!(paths, vec!["aaa.txt", "mmm.txt", "zzz.txt"]);
     }
 }

@@ -169,10 +169,12 @@ pub fn compute_file_hash(file_path: &Path) -> Result<String, ManifestError> {
     let mut buffer = [0u8; 8192];
 
     loop {
-        let bytes_read = file.read(&mut buffer).map_err(|e| ManifestError::ReadFileFailed {
-            path: file_path.display().to_string(),
-            source: e,
-        })?;
+        let bytes_read = file
+            .read(&mut buffer)
+            .map_err(|e| ManifestError::ReadFileFailed {
+                path: file_path.display().to_string(),
+                source: e,
+            })?;
 
         if bytes_read == 0 {
             break;
@@ -253,19 +255,15 @@ pub fn generate_manifest(
         }
 
         // Compute relative path from source directory
-        let relative_path = path
-            .strip_prefix(source_path)
-            .map_err(|_| {
-                ManifestError::SourceDirAccessFailed(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "Failed to compute relative path",
-                ))
-            })?;
+        let relative_path = path.strip_prefix(source_path).map_err(|_| {
+            ManifestError::SourceDirAccessFailed(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Failed to compute relative path",
+            ))
+        })?;
 
         // Normalize path separators to forward slashes
-        let relative_path_str = relative_path
-            .to_string_lossy()
-            .replace('\\', "/");
+        let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
 
         // Check if this is the executable
         if relative_path_str == executable {
@@ -647,11 +645,7 @@ mod tests {
 
     #[test]
     fn test_file_entry_creation() {
-        let entry = FileEntry::new(
-            "test.txt",
-            "abc123",
-            1000,
-        );
+        let entry = FileEntry::new("test.txt", "abc123", 1000);
 
         assert_eq!(entry.path, "test.txt");
         assert_eq!(entry.sha256, "abc123");
@@ -661,8 +655,7 @@ mod tests {
 
     #[test]
     fn test_file_entry_optional() {
-        let entry = FileEntry::new("optional.txt", "abc123", 500)
-            .with_required(false);
+        let entry = FileEntry::new("optional.txt", "abc123", 500).with_required(false);
 
         assert!(!entry.required);
     }
@@ -683,13 +676,11 @@ mod tests {
             timestamp: "2026-02-15T00:00:00Z".to_string(),
             client_executable: "client.exe".to_string(),
             client_args: vec!["-windowed".to_string()],
-            files: vec![
-                FileEntry::new(
-                    "client.exe",
-                    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                    1000,
-                ),
-            ],
+            files: vec![FileEntry::new(
+                "client.exe",
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                1000,
+            )],
             total_size: 1000,
             patch_notes_url: Some("notes.md".to_string()),
         };

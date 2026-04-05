@@ -10,7 +10,7 @@
 //! - ALWAYS verify signature BEFORE parsing manifest contents
 //! - Public key is embedded at build time, never downloaded
 
-use ed25519_dalek::{Signature, VerifyingKey, SignatureError};
+use ed25519_dalek::{Signature, SignatureError, VerifyingKey};
 
 /// Errors that can occur during signature verification.
 #[derive(Debug, thiserror::Error)]
@@ -148,12 +148,13 @@ pub fn parse_hex_signature(hex_signature: &str) -> Result<Vec<u8>, SignatureVeri
 ///
 /// Returns the decoded public key bytes, or an error if the hex is invalid.
 pub fn parse_hex_public_key(hex_key: &str) -> Result<Vec<u8>, SignatureVerificationError> {
-    let bytes = hex::decode(hex_key).map_err(|_| {
-        SignatureVerificationError::InvalidPublicKeyLength(hex_key.len() / 2)
-    })?;
+    let bytes = hex::decode(hex_key)
+        .map_err(|_| SignatureVerificationError::InvalidPublicKeyLength(hex_key.len() / 2))?;
 
     if bytes.len() != 32 {
-        return Err(SignatureVerificationError::InvalidPublicKeyLength(bytes.len()));
+        return Err(SignatureVerificationError::InvalidPublicKeyLength(
+            bytes.len(),
+        ));
     }
 
     Ok(bytes)
@@ -162,7 +163,7 @@ pub fn parse_hex_public_key(hex_key: &str) -> Result<Vec<u8>, SignatureVerificat
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ed25519_dalek::{SigningKey, Signer};
+    use ed25519_dalek::{Signer, SigningKey};
     use rand::rngs::OsRng;
 
     /// Generate a test keypair for use in tests.
@@ -181,11 +182,7 @@ mod tests {
         let signature = signing_key.sign(message);
 
         // Verify should succeed
-        let result = verify_signature(
-            message,
-            &signature.to_bytes(),
-            verifying_key.as_bytes(),
-        );
+        let result = verify_signature(message, &signature.to_bytes(), verifying_key.as_bytes());
 
         assert!(result.is_ok(), "Valid signature should verify successfully");
     }
@@ -200,11 +197,7 @@ mod tests {
         let signature = signing_key.sign(wrong_message);
 
         // Verify should fail
-        let result = verify_signature(
-            message,
-            &signature.to_bytes(),
-            verifying_key.as_bytes(),
-        );
+        let result = verify_signature(message, &signature.to_bytes(), verifying_key.as_bytes());
 
         assert!(
             matches!(result, Err(SignatureVerificationError::VerificationFailed)),
@@ -303,7 +296,10 @@ mod tests {
             verifying_key.as_bytes(),
         );
 
-        assert!(result.is_ok(), "verify_manifest should work like verify_signature");
+        assert!(
+            result.is_ok(),
+            "verify_manifest should work like verify_signature"
+        );
     }
 
     #[test]
@@ -355,7 +351,10 @@ mod tests {
             verifying_key.as_bytes(),
         );
 
-        assert!(result.is_ok(), "Empty message should be signable and verifiable");
+        assert!(
+            result.is_ok(),
+            "Empty message should be signable and verifiable"
+        );
     }
 
     #[test]
@@ -387,11 +386,7 @@ mod tests {
         // Flip a bit in the signature - should fail strict verification
         modified_sig[0] ^= 0x01;
 
-        let result = verify_signature(
-            message,
-            &modified_sig,
-            verifying_key.as_bytes(),
-        );
+        let result = verify_signature(message, &modified_sig, verifying_key.as_bytes());
 
         assert!(
             result.is_err(),

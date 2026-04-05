@@ -18,8 +18,7 @@ mod tests {
     use crate::hash::{hash_bytes, hash_file, validate_hash_format, verify_file_hash, EMPTY_HASH};
     use crate::manifest::{FileEntry, Manifest, ManifestBuilder, ManifestError};
     use crate::signature::{
-        parse_hex_public_key, parse_hex_signature, verify_manifest,
-        SignatureVerificationError,
+        parse_hex_public_key, parse_hex_signature, verify_manifest, SignatureVerificationError,
     };
     use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
     use rand::rngs::OsRng;
@@ -89,7 +88,10 @@ mod tests {
         let signature = sign_manifest(manifest_bytes, &signing_key);
 
         let result = verify_manifest(manifest_bytes, &signature, verifying_key.as_bytes());
-        assert!(result.is_ok(), "SEC-001 FAILED: Valid signature should be accepted");
+        assert!(
+            result.is_ok(),
+            "SEC-001 FAILED: Valid signature should be accepted"
+        );
     }
 
     /// SEC-002: Missing signature should be rejected
@@ -278,7 +280,10 @@ mod tests {
         let (_temp_dir, file_path) = create_temp_file(content);
 
         let result = verify_file_hash(&file_path, &expected_hash);
-        assert!(result.is_ok(), "SEC-005 FAILED: Valid hash should be accepted");
+        assert!(
+            result.is_ok(),
+            "SEC-005 FAILED: Valid hash should be accepted"
+        );
         assert!(
             result.unwrap(),
             "SEC-005 FAILED: Valid hash should return true"
@@ -335,10 +340,7 @@ mod tests {
         let (_temp_dir, file_path) = create_temp_file(&tampered);
 
         let result = verify_file_hash(&file_path, &expected_hash).unwrap();
-        assert!(
-            !result,
-            "SEC-006c FAILED: Appended data should be detected"
-        );
+        assert!(!result, "SEC-006c FAILED: Appended data should be detected");
     }
 
     /// SEC-006d: Truncated file should be detected
@@ -389,7 +391,10 @@ mod tests {
         let (_temp_dir, file_path) = create_temp_file(content);
 
         let result = verify_file_hash(&file_path, EMPTY_HASH).unwrap();
-        assert!(result, "SEC-006f FAILED: Empty file should match EMPTY_HASH");
+        assert!(
+            result,
+            "SEC-006f FAILED: Empty file should match EMPTY_HASH"
+        );
 
         // Wrong hash for empty file should fail
         let wrong_hash = "0000000000000000000000000000000000000000000000000000000000000000";

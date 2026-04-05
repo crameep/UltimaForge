@@ -12,7 +12,7 @@ import { LauncherUpdateModal } from "./components/LauncherUpdateModal";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
 import { useLaunch } from "./hooks/useLaunch";
-import { getSettings, scanForMigrations, useInPlace, removeOldInstallation } from "./lib/api";
+import { getSettings, scanForMigrations, useInPlace, removeOldInstallation, isRunningAsAdmin, relaunchAsAdmin } from "./lib/api";
 import { MigrationWizard } from "./components/MigrationWizard";
 import { checkForLauncherUpdate, type LauncherUpdateCheck } from "./lib/launcherUpdater";
 import "./App.css";
@@ -41,6 +41,7 @@ function App() {
   const [clientVersion, setClientVersion] = useState<string | null>(null);
   const [pendingLauncherUpdate, setPendingLauncherUpdate] = useState<LauncherUpdateCheck | null>(null);
   const [oldInstallPath, setOldInstallPath] = useState<string | null>(null);
+  const [needsElevation, setNeedsElevation] = useState(false);
 
   // Update state management
   const [updateState, updateActions] = useUpdate();
@@ -74,6 +75,22 @@ function App() {
             settings.settings?.check_updates_on_startup ?? true;
           if (settings.current_version) setClientVersion(settings.current_version);
           if (settings.migrated_from) setOldInstallPath(settings.migrated_from);
+
+          // Check if installed to a protected path without elevation
+          const installLower = (settings.install_path ?? "").toLowerCase();
+          if (
+            installLower.includes("\\program files\\") ||
+            installLower.includes("\\program files (x86)\\") ||
+            installLower.includes("/program files/") ||
+            installLower.includes("/program files (x86)/")
+          ) {
+            try {
+              const admin = await isRunningAsAdmin();
+              if (!admin) setNeedsElevation(true);
+            } catch {
+              // Can't determine — don't nag
+            }
+          }
         } catch (settingsError) {
           // Settings fetch failed - default to checking updates (safe default)
           // Log warning but don't block app startup
@@ -452,6 +469,40 @@ function App() {
       runningClients={launchState.runningClients}
     >
       <div className="main-content">
+        {/* Elevation reminder for Program Files installs */}
+        {needsElevation && (
+          <div className="old-install-banner">
+            <div className="old-install-banner-text">
+              <strong>Administrator access recommended</strong>
+              <p>
+                Your game is installed in Program Files, which requires admin
+                privileges to update. Relaunch as administrator to avoid update
+                errors.
+              </p>
+            </div>
+            <div className="old-install-banner-actions">
+              <button
+                className="old-install-btn old-install-btn-remove"
+                onClick={async () => {
+                  try {
+                    await relaunchAsAdmin();
+                  } catch (e) {
+                    console.error("Failed to relaunch as admin:", e);
+                  }
+                }}
+              >
+                Relaunch as Admin
+              </button>
+              <button
+                className="old-install-btn old-install-btn-dismiss"
+                onClick={() => setNeedsElevation(false)}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Old installation cleanup reminder */}
         {oldInstallPath && (
           <div className="old-install-banner">

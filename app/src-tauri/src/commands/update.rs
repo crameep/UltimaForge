@@ -82,10 +82,7 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
         format!("Failed to create updater: {}", e)
     })?;
 
-    match updater
-        .check_for_updates(current_version.as_deref())
-        .await
-    {
+    match updater.check_for_updates(current_version.as_deref()).await {
         Ok(result) => {
             info!(
                 "Update check complete: {} files to update ({} bytes)",
@@ -113,7 +110,8 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateCheck
                 let mut lconfig = state.launcher_config().unwrap_or_else(LauncherConfig::new);
                 lconfig.client_executable = Some(result.client_executable.clone());
                 state.set_launcher_config(lconfig.clone());
-                let config_path = state.brand_config()
+                let config_path = state
+                    .brand_config()
                     .map(|b| default_config_path(&b.product.server_name))
                     .unwrap_or_else(|| default_config_path("UltimaForge"));
                 if let Err(e) = lconfig.save(&config_path) {
@@ -275,8 +273,8 @@ pub async fn start_update(
             error!("Update failed: {}", e);
 
             // Check if rollback occurred
-            let rolled_back = e.to_string().contains("rolled back")
-                || e.to_string().contains("Rolled back");
+            let rolled_back =
+                e.to_string().contains("rolled back") || e.to_string().contains("Rolled back");
 
             state.set_updating(false);
 

@@ -48,19 +48,23 @@ pub fn write_cuo_settings(
 
     let plugins = assistant_plugins(install_path, assistant)?;
 
-    let obj = json
-        .as_object_mut()
-        .ok_or(CuoSettingsError::InvalidPath)?;
+    let obj = json.as_object_mut().ok_or(CuoSettingsError::InvalidPath)?;
     obj.insert("ip".into(), Value::String(server.ip.clone()));
     obj.insert("port".into(), Value::Number(server.port.into()));
-    obj.insert("ultimaonlinedirectory".into(), Value::String(".\\Files".into()));
+    obj.insert(
+        "ultimaonlinedirectory".into(),
+        Value::String(".\\Files".into()),
+    );
     obj.insert(
         "clientversion".into(),
         Value::String(cuo_config.client_version.clone()),
     );
     obj.insert("plugins".into(), Value::Array(plugins));
 
-    info!("Writing CUO settings: ip={}, port={}", server.ip, server.port);
+    info!(
+        "Writing CUO settings: ip={}, port={}",
+        server.ip, server.port
+    );
 
     let text = serde_json::to_string_pretty(&json)?;
     std::fs::write(&settings_path, text)?;
@@ -128,8 +132,13 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config = test_cuo_config();
 
-        write_cuo_settings(dir.path(), &config, &ServerChoice::Live, &AssistantKind::RazorEnhanced)
-            .expect("Should create settings.json");
+        write_cuo_settings(
+            dir.path(),
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::RazorEnhanced,
+        )
+        .expect("Should create settings.json");
 
         let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
         let json: Value = serde_json::from_str(&text).unwrap();
@@ -163,18 +172,20 @@ mod tests {
         .unwrap();
 
         let config = test_cuo_config();
-        write_cuo_settings(dir.path(), &config, &ServerChoice::Live, &AssistantKind::Razor)
-            .expect("Should patch");
+        write_cuo_settings(
+            dir.path(),
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::Razor,
+        )
+        .expect("Should patch");
 
         let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
         let json: Value = serde_json::from_str(&text).unwrap();
 
         assert_eq!(json["ip"], "live.example.com");
         assert_eq!(json["port"], 2593);
-        assert!(json["plugins"][0]
-            .as_str()
-            .unwrap()
-            .contains("Razor.exe"));
+        assert!(json["plugins"][0].as_str().unwrap().contains("Razor.exe"));
 
         assert_eq!(json["fps"], 250);
         assert_eq!(json["username"], "crameep");
@@ -186,8 +197,13 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config = test_cuo_config();
 
-        write_cuo_settings(dir.path(), &config, &ServerChoice::Test, &AssistantKind::None)
-            .expect("Should write");
+        write_cuo_settings(
+            dir.path(),
+            &config,
+            &ServerChoice::Test,
+            &AssistantKind::None,
+        )
+        .expect("Should write");
 
         let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
         let json: Value = serde_json::from_str(&text).unwrap();
@@ -201,8 +217,13 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config = test_cuo_config();
 
-        write_cuo_settings(dir.path(), &config, &ServerChoice::Live, &AssistantKind::None)
-            .expect("Should write");
+        write_cuo_settings(
+            dir.path(),
+            &config,
+            &ServerChoice::Live,
+            &AssistantKind::None,
+        )
+        .expect("Should write");
 
         let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
         let json: Value = serde_json::from_str(&text).unwrap();

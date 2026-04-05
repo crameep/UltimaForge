@@ -353,9 +353,13 @@ impl ClientLauncher {
 
             // Check for specific error types
             if e.kind() == std::io::ErrorKind::NotFound {
-                LaunchError::ExecutableNotFound { path: exe_path.clone() }
+                LaunchError::ExecutableNotFound {
+                    path: exe_path.clone(),
+                }
             } else if e.kind() == std::io::ErrorKind::PermissionDenied {
-                LaunchError::NotExecutable { path: exe_path.clone() }
+                LaunchError::NotExecutable {
+                    path: exe_path.clone(),
+                }
             } else {
                 LaunchError::ProcessSpawnFailed { source: e }
             }
@@ -514,15 +518,24 @@ mod tests {
             .with_env("UO_PORT", "2593");
 
         assert_eq!(config.env_vars.len(), 2);
-        assert_eq!(config.env_vars[0], ("UO_SERVER".to_string(), "127.0.0.1".to_string()));
-        assert_eq!(config.env_vars[1], ("UO_PORT".to_string(), "2593".to_string()));
+        assert_eq!(
+            config.env_vars[0],
+            ("UO_SERVER".to_string(), "127.0.0.1".to_string())
+        );
+        assert_eq!(
+            config.env_vars[1],
+            ("UO_PORT".to_string(), "2593".to_string())
+        );
     }
 
     #[test]
     fn test_launch_config_validate_empty_executable() {
         let config = LaunchConfig::new("");
         let result = config.validate();
-        assert!(matches!(result, Err(LaunchError::ExecutableNotFound { .. })));
+        assert!(matches!(
+            result,
+            Err(LaunchError::ExecutableNotFound { .. })
+        ));
     }
 
     #[test]
@@ -597,7 +610,10 @@ mod tests {
     #[test]
     fn test_client_launcher_executable_path() {
         let launcher = ClientLauncher::new("/game/uo", "client.exe");
-        assert_eq!(launcher.executable_path(), PathBuf::from("/game/uo/client.exe"));
+        assert_eq!(
+            launcher.executable_path(),
+            PathBuf::from("/game/uo/client.exe")
+        );
 
         let launcher = ClientLauncher::new("/game/uo", "subfolder/client.exe");
         assert_eq!(
@@ -618,7 +634,10 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let launcher = ClientLauncher::new(temp_dir.path(), "missing.exe");
         let result = launcher.validate();
-        assert!(matches!(result, Err(LaunchError::ExecutableNotFound { .. })));
+        assert!(matches!(
+            result,
+            Err(LaunchError::ExecutableNotFound { .. })
+        ));
     }
 
     #[test]
@@ -773,11 +792,7 @@ mod tests {
     #[test]
     fn test_launch_client_function() {
         // This test just validates the function signature and basic validation
-        let result = launch_client(
-            Path::new("/nonexistent"),
-            "client.exe",
-            &[],
-        );
+        let result = launch_client(Path::new("/nonexistent"), "client.exe", &[]);
 
         assert!(result.is_err());
     }

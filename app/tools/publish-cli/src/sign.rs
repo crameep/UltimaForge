@@ -108,14 +108,12 @@ pub fn sign_manifest(
     }
 
     // Read manifest content
-    let manifest_content = fs::read(manifest_file)
-        .map_err(SignError::ReadManifestFailed)?;
+    let manifest_content = fs::read(manifest_file).map_err(SignError::ReadManifestFailed)?;
     let manifest_size = manifest_content.len() as u64;
     info!("Read manifest: {} ({} bytes)", manifest_path, manifest_size);
 
     // Read private key
-    let signing_key = keygen::read_private_key(key_path)
-        .map_err(SignError::ReadKeyFailed)?;
+    let signing_key = keygen::read_private_key(key_path).map_err(SignError::ReadKeyFailed)?;
     info!("Loaded private key from: {}", key_path);
 
     // Sign the manifest content
@@ -132,8 +130,7 @@ pub fn sign_manifest(
     }
 
     // Write signature file (hex-encoded)
-    fs::write(output_file, &signature_hex)
-        .map_err(SignError::WriteSignatureFailed)?;
+    fs::write(output_file, &signature_hex).map_err(SignError::WriteSignatureFailed)?;
     info!("Wrote signature to: {}", output_path);
 
     Ok(SignResult {
@@ -153,24 +150,26 @@ pub fn sign_manifest(
 ///
 /// Returns the 64-byte signature on success.
 pub fn read_signature(path: &str) -> Result<[u8; 64], SignError> {
-    let hex_content = fs::read_to_string(path)
-        .map_err(SignError::ReadManifestFailed)?;
+    let hex_content = fs::read_to_string(path).map_err(SignError::ReadManifestFailed)?;
 
-    let bytes = hex::decode(hex_content.trim())
-        .map_err(|_| SignError::ReadManifestFailed(std::io::Error::new(
+    let bytes = hex::decode(hex_content.trim()).map_err(|_| {
+        SignError::ReadManifestFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "Invalid hex encoding in signature file"
-        )))?;
+            "Invalid hex encoding in signature file",
+        ))
+    })?;
 
     if bytes.len() != 64 {
         return Err(SignError::ReadManifestFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            format!("Invalid signature length: expected 64 bytes, got {}", bytes.len())
+            format!(
+                "Invalid signature length: expected 64 bytes, got {}",
+                bytes.len()
+            ),
         )));
     }
 
-    let sig_bytes: [u8; 64] = bytes.try_into()
-        .expect("already validated length");
+    let sig_bytes: [u8; 64] = bytes.try_into().expect("already validated length");
 
     Ok(sig_bytes)
 }
@@ -234,7 +233,8 @@ mod tests {
             manifest_path.to_str().unwrap(),
             &keygen_result.private_key_path,
             sig_path.to_str().unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         // Read signature and verify with public key
         let sig_bytes = read_signature(sig_path.to_str().unwrap()).unwrap();
@@ -266,7 +266,8 @@ mod tests {
             manifest_path.to_str().unwrap(),
             &keygen_result.private_key_path,
             sig_path.to_str().unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         // Read signature
         let sig_bytes = read_signature(sig_path.to_str().unwrap()).unwrap();

@@ -477,10 +477,9 @@ impl Updater {
 
         // Step 5: VERIFY SIGNATURE BEFORE PARSING
         // This is critical - never parse untrusted data
-        signature::verify_manifest(&manifest_bytes, &signature_bytes, &public_key_bytes)
-            .map_err(|e| {
-                UpdateError::StagingError(format!("Signature verification failed: {}", e))
-            })?;
+        signature::verify_manifest(&manifest_bytes, &signature_bytes, &public_key_bytes).map_err(
+            |e| UpdateError::StagingError(format!("Signature verification failed: {}", e)),
+        )?;
 
         let signature_verified_at = Instant::now();
 
@@ -572,7 +571,10 @@ impl Updater {
     }
 
     /// Computes SHA-256 hashes of local files that exist in the manifest.
-    fn compute_local_hashes(&self, manifest: &Manifest) -> Result<HashMap<String, String>, UpdateError> {
+    fn compute_local_hashes(
+        &self,
+        manifest: &Manifest,
+    ) -> Result<HashMap<String, String>, UpdateError> {
         let mut hashes = HashMap::new();
 
         for file in manifest.iter_files() {
@@ -624,7 +626,10 @@ impl Updater {
             // we re-validate here to protect against any bypass or modification.
             let file_path = std::path::Path::new(&file.path);
             if !is_safe_relative_path(file_path) {
-                error!("Path containment violation detected in download_to_staging: {}", file.path);
+                error!(
+                    "Path containment violation detected in download_to_staging: {}",
+                    file.path
+                );
                 self.cleanup_staging()?;
                 return Err(UpdateError::StagingError(format!(
                     "Path containment violation: {} - possible path traversal attack",
@@ -647,7 +652,12 @@ impl Updater {
             // Download with hash verification
             match self
                 .downloader
-                .download_file(&blob_url, &staged_path, Some(&file.sha256), &progress_callback)
+                .download_file(
+                    &blob_url,
+                    &staged_path,
+                    Some(&file.sha256),
+                    &progress_callback,
+                )
                 .await
             {
                 Ok(_) => {
@@ -714,7 +724,10 @@ impl Updater {
             }
 
             let verified = verify_file_hash(&staged_path, &file.sha256).map_err(|e| {
-                UpdateError::StagingError(format!("Hash verification error for {}: {}", file.path, e))
+                UpdateError::StagingError(format!(
+                    "Hash verification error for {}: {}",
+                    file.path, e
+                ))
             })?;
 
             if !verified {
@@ -740,11 +753,9 @@ impl Updater {
 
         // Ensure backup directory exists and is clean
         if self.backup_path.exists() {
-            fs::remove_dir_all(&self.backup_path).map_err(|e| {
-                UpdateError::BackupFailed {
-                    path: self.backup_path.display().to_string(),
-                    source: e,
-                }
+            fs::remove_dir_all(&self.backup_path).map_err(|e| UpdateError::BackupFailed {
+                path: self.backup_path.display().to_string(),
+                source: e,
             })?;
         }
 
@@ -761,7 +772,10 @@ impl Updater {
             // we re-validate here to protect against any bypass or modification.
             let file_path = std::path::Path::new(&file.path);
             if !is_safe_relative_path(file_path) {
-                error!("Path containment violation detected in backup_current_files: {}", file.path);
+                error!(
+                    "Path containment violation detected in backup_current_files: {}",
+                    file.path
+                );
                 return Err(UpdateError::StagingError(format!(
                     "Path containment violation: {} - possible path traversal attack",
                     file.path
@@ -817,7 +831,10 @@ impl Updater {
             // we re-validate here to protect against any bypass or modification.
             let file_path = std::path::Path::new(&file.path);
             if !is_safe_relative_path(file_path) {
-                error!("Path containment violation detected in apply_staged_files: {}", file.path);
+                error!(
+                    "Path containment violation detected in apply_staged_files: {}",
+                    file.path
+                );
                 return Err(UpdateError::StagingError(format!(
                     "Path containment violation: {} - possible path traversal attack",
                     file.path
@@ -859,11 +876,13 @@ impl Updater {
                 source: e,
             })?;
 
-            fs::remove_file(&staged_path).map_err(|e| {
-                // Non-fatal - file was copied successfully
-                warn!("Failed to remove staged file {}: {}", file.path, e);
-                e
-            }).ok();
+            fs::remove_file(&staged_path)
+                .map_err(|e| {
+                    // Non-fatal - file was copied successfully
+                    warn!("Failed to remove staged file {}: {}", file.path, e);
+                    e
+                })
+                .ok();
 
             self.applied_files.push(file.path.clone());
             debug!("Applied {}", file.path);
@@ -911,7 +930,10 @@ impl Updater {
         }
 
         self.applied_files.clear();
-        info!("Rollback complete - {} files restored", self.backed_up_files.len());
+        info!(
+            "Rollback complete - {} files restored",
+            self.backed_up_files.len()
+        );
 
         Ok(())
     }
@@ -1037,9 +1059,15 @@ impl Updater {
             // we re-validate here to protect against any bypass or modification.
             let file_path = std::path::Path::new(&file.path);
             if !is_safe_relative_path(file_path) {
-                error!("Path containment violation detected in perform_update: {}", file.path);
-                log.log(TransactionLogEntry::new("DOWNLOAD", Some(&file.path), "BLOCKED")
-                    .with_details("Path containment violation - possible path traversal attack"));
+                error!(
+                    "Path containment violation detected in perform_update: {}",
+                    file.path
+                );
+                log.log(
+                    TransactionLogEntry::new("DOWNLOAD", Some(&file.path), "BLOCKED").with_details(
+                        "Path containment violation - possible path traversal attack",
+                    ),
+                );
                 self.cleanup_staging()?;
                 log.log_session_end(false);
                 return Err(UpdateError::StagingError(format!(
@@ -1087,20 +1115,26 @@ impl Updater {
                 }
             };
 
-            match self.downloader.download_file(
-                &blob_url,
-                &staged_path,
-                Some(&file.sha256),
-                download_progress,
-            ).await {
+            match self
+                .downloader
+                .download_file(
+                    &blob_url,
+                    &staged_path,
+                    Some(&file.sha256),
+                    download_progress,
+                )
+                .await
+            {
                 Ok(_) => {
                     downloaded_bytes += file.size;
                     progress.processed_files += 1;
                     log.log(TransactionLogEntry::new("DOWNLOAD", Some(&file.path), "OK"));
                 }
                 Err(e) => {
-                    log.log(TransactionLogEntry::new("DOWNLOAD", Some(&file.path), "FAILED")
-                        .with_details(e.to_string()));
+                    log.log(
+                        TransactionLogEntry::new("DOWNLOAD", Some(&file.path), "FAILED")
+                            .with_details(e.to_string()),
+                    );
                     self.cleanup_staging()?;
                     log.log_session_end(false);
                     return Err(UpdateError::StagingError(format!(
@@ -1163,7 +1197,9 @@ impl Updater {
                 log.log(TransactionLogEntry::new("APPLY_START", None, "COMPLETE"));
             }
             Err(e) => {
-                log.log(TransactionLogEntry::new("APPLY", None, "FAILED").with_details(e.to_string()));
+                log.log(
+                    TransactionLogEntry::new("APPLY", None, "FAILED").with_details(e.to_string()),
+                );
 
                 // Attempt rollback
                 progress.state = UpdateState::RollingBack;
@@ -1181,11 +1217,16 @@ impl Updater {
                         });
                     }
                     Err(rollback_err) => {
-                        log.log(TransactionLogEntry::new("ROLLBACK", None, "FAILED")
-                            .with_details(rollback_err.to_string()));
+                        log.log(
+                            TransactionLogEntry::new("ROLLBACK", None, "FAILED")
+                                .with_details(rollback_err.to_string()),
+                        );
                         log.log_session_end(false);
                         return Err(UpdateError::RollbackFailed {
-                            reason: format!("Apply failed: {}; Rollback failed: {}", e, rollback_err),
+                            reason: format!(
+                                "Apply failed: {}; Rollback failed: {}",
+                                e, rollback_err
+                            ),
                         });
                     }
                 }
@@ -1197,7 +1238,9 @@ impl Updater {
         if let Err(e) = self.cleanup() {
             // Non-fatal - update was successful
             warn!("Cleanup failed (non-fatal): {}", e);
-            log.log(TransactionLogEntry::new("CLEANUP", None, "PARTIAL").with_details(e.to_string()));
+            log.log(
+                TransactionLogEntry::new("CLEANUP", None, "PARTIAL").with_details(e.to_string()),
+            );
         } else {
             log.log(TransactionLogEntry::new("CLEANUP_START", None, "COMPLETE"));
         }
@@ -1210,7 +1253,10 @@ impl Updater {
         }
 
         log.log_session_end(true);
-        info!("Update to version {} completed successfully", target_version);
+        info!(
+            "Update to version {} completed successfully",
+            target_version
+        );
 
         Ok(target_version)
     }
@@ -1226,7 +1272,8 @@ mod tests {
     use tempfile::TempDir;
 
     /// Valid 64-character hex public key for testing.
-    const TEST_PUBLIC_KEY: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    const TEST_PUBLIC_KEY: &str =
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
     fn test_brand_config() -> BrandConfig {
         BrandConfigBuilder::new()
@@ -1293,7 +1340,10 @@ mod tests {
         let mut progress = UpdateProgress::new();
         progress.set_failed("Something went wrong");
         assert_eq!(progress.state, UpdateState::Failed);
-        assert_eq!(progress.error_message, Some("Something went wrong".to_string()));
+        assert_eq!(
+            progress.error_message,
+            Some("Something went wrong".to_string())
+        );
     }
 
     #[test]
@@ -1495,7 +1545,11 @@ mod tests {
 
         // Create staging with file that has wrong content
         fs::create_dir_all(updater.staging_path()).unwrap();
-        fs::write(updater.staging_path().join("wronghash.exe"), "wrong content").unwrap();
+        fs::write(
+            updater.staging_path().join("wronghash.exe"),
+            "wrong content",
+        )
+        .unwrap();
 
         let file_entry = FileEntry::new(
             "wronghash.exe",
@@ -1544,7 +1598,11 @@ mod tests {
         assert!(formatted.contains("OK"));
         // When no file path, there should be only one '[' (for the timestamp)
         // Format is: [timestamp] operation result: file_info details_info
-        assert_eq!(formatted.matches('[').count(), 1, "Should have exactly one '[' for timestamp only");
+        assert_eq!(
+            formatted.matches('[').count(),
+            1,
+            "Should have exactly one '[' for timestamp only"
+        );
     }
 
     #[test]
@@ -1674,10 +1732,7 @@ mod tests {
         // Test Clone trait
         let cloned = verified.clone();
         assert_eq!(cloned.manifest.version, "2.0.0");
-        assert_eq!(
-            cloned.signature_verified_at,
-            verified.signature_verified_at
-        );
+        assert_eq!(cloned.signature_verified_at, verified.signature_verified_at);
     }
 
     #[test]
@@ -1756,7 +1811,10 @@ mod tests {
 
         // The manifest can be extracted and used for update operations
         // This simulates what perform_update does after calling fetch_verified_manifest
-        let files_list: Vec<&str> = verified.manifest.files.iter()
+        let files_list: Vec<&str> = verified
+            .manifest
+            .files
+            .iter()
             .map(|f| f.path.as_str())
             .collect();
         assert!(files_list.contains(&"client.exe"));
@@ -1803,8 +1861,16 @@ mod tests {
 
         // Age should be approximately 120 seconds
         let age = verified.age();
-        assert!(age >= Duration::from_secs(119), "Age should be at least 119s, got {:?}", age);
-        assert!(age < Duration::from_secs(125), "Age should be less than 125s, got {:?}", age);
+        assert!(
+            age >= Duration::from_secs(119),
+            "Age should be at least 119s, got {:?}",
+            age
+        );
+        assert!(
+            age < Duration::from_secs(125),
+            "Age should be less than 125s, got {:?}",
+            age
+        );
     }
 
     /// Tests that the TOCTOU vulnerability is eliminated by design.
@@ -1891,7 +1957,10 @@ mod tests {
         );
 
         // Check that is_stale() correctly identifies fresh vs stale manifests
-        assert!(!verified.is_stale(Duration::from_secs(60)), "Fresh manifest should not be stale");
+        assert!(
+            !verified.is_stale(Duration::from_secs(60)),
+            "Fresh manifest should not be stale"
+        );
 
         // Simulate time passing - a manifest verified long ago should be stale
         let old_time = Instant::now() - Duration::from_secs(3600); // 1 hour ago
@@ -1922,14 +1991,23 @@ mod tests {
         // === Part 5: Ensure all file operations use verified manifest data ===
         //
         // Files to update are derived from the verified manifest, not re-fetched
-        let files: Vec<&str> = verified.manifest.files.iter()
+        let files: Vec<&str> = verified
+            .manifest
+            .files
+            .iter()
             .map(|f| f.path.as_str())
             .collect();
         assert!(files.contains(&"client.exe"), "Must contain client.exe");
-        assert!(files.contains(&"data/update.dat"), "Must contain data/update.dat");
+        assert!(
+            files.contains(&"data/update.dat"),
+            "Must contain data/update.dat"
+        );
 
         // The hash values used for download verification come from verified manifest
-        let client_hash = verified.manifest.files.iter()
+        let client_hash = verified
+            .manifest
+            .files
+            .iter()
             .find(|f| f.path == "client.exe")
             .map(|f| f.sha256.as_str());
         assert_eq!(
@@ -1951,7 +2029,9 @@ mod tests {
         // These are the types of paths we expect in valid manifests
         assert!(is_safe_relative_path(Path::new("client.exe")));
         assert!(is_safe_relative_path(Path::new("data/map0.mul")));
-        assert!(is_safe_relative_path(Path::new("assets/textures/grass.png")));
+        assert!(is_safe_relative_path(Path::new(
+            "assets/textures/grass.png"
+        )));
         assert!(is_safe_relative_path(Path::new("./config.ini")));
     }
 
@@ -1960,8 +2040,12 @@ mod tests {
         // Verify that path traversal attempts are rejected
         assert!(!is_safe_relative_path(Path::new("../secret.txt")));
         assert!(!is_safe_relative_path(Path::new("../../../etc/passwd")));
-        assert!(!is_safe_relative_path(Path::new("data/../../../etc/passwd")));
-        assert!(!is_safe_relative_path(Path::new("foo/../bar/../../../secret")));
+        assert!(!is_safe_relative_path(Path::new(
+            "data/../../../etc/passwd"
+        )));
+        assert!(!is_safe_relative_path(Path::new(
+            "foo/../bar/../../../secret"
+        )));
     }
 
     #[test]
@@ -1992,7 +2076,9 @@ mod tests {
     fn test_path_containment_accepts_windows_relative_subdirs() {
         // Verify that Windows-style relative subdirectories are accepted
         assert!(is_safe_relative_path(Path::new("data\\maps\\map0.mul")));
-        assert!(is_safe_relative_path(Path::new("assets\\textures\\grass.png")));
+        assert!(is_safe_relative_path(Path::new(
+            "assets\\textures\\grass.png"
+        )));
     }
 
     #[test]
@@ -2233,7 +2319,7 @@ mod tests {
             update_available: false, // KEY: false because no files
             current_version: Some("1.0.0".to_string()),
             server_version: "1.0.1".to_string(), // Minor version bump
-            files_to_update: 0,                   // But all files match
+            files_to_update: 0,                  // But all files match
             download_size: 0,
             patch_notes_url: None,
             client_executable: "client.exe".to_string(),
@@ -2282,7 +2368,7 @@ mod tests {
         }
 
         // When files_to_update is empty, update_available is false
-        assert!(!compute_update_available(true));  // empty = true, so NOT empty = false
+        assert!(!compute_update_available(true)); // empty = true, so NOT empty = false
 
         // When files_to_update is not empty, update_available is true
         assert!(compute_update_available(false)); // empty = false, so NOT empty = true
@@ -2347,9 +2433,15 @@ mod tests {
         };
 
         // Assert the expected behavior
-        assert!(!result.update_available, "UpdateCheckResult.update_available must be false");
+        assert!(
+            !result.update_available,
+            "UpdateCheckResult.update_available must be false"
+        );
         assert_eq!(result.files_to_update, 0, "No files should need updating");
-        assert_eq!(result.download_size, 0, "Download size must be 0 with no files");
+        assert_eq!(
+            result.download_size, 0,
+            "Download size must be 0 with no files"
+        );
         assert_ne!(
             result.current_version.as_deref(),
             Some(result.server_version.as_str()),

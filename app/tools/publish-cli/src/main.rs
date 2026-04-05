@@ -151,10 +151,7 @@ fn main() {
             version,
             executable,
         } => {
-            info!(
-                "Creating manifest from: {} -> {}",
-                source, output
-            );
+            info!("Creating manifest from: {} -> {}", source, output);
             match manifest::generate_manifest(&source, &output, &version, &executable) {
                 Ok(result) => {
                     println!("✓ Generated manifest successfully!");
@@ -218,11 +215,21 @@ fn main() {
                     println!();
                     println!("Update folder: {}", result.dir_path);
                     println!("  Version:     {}", result.version);
-                    println!("  Signature:   {}", if result.signature_valid { "Valid" } else { "Invalid" });
+                    println!(
+                        "  Signature:   {}",
+                        if result.signature_valid {
+                            "Valid"
+                        } else {
+                            "Invalid"
+                        }
+                    );
                     println!("  Files:       {}", result.file_count);
                     println!("  Verified:    {}", result.files_verified);
                     println!("  Missing:     {}", result.missing_blobs);
-                    println!("  Total size:  {}", validate::format_size(result.total_size));
+                    println!(
+                        "  Total size:  {}",
+                        validate::format_size(result.total_size)
+                    );
 
                     if !result.missing_blob_paths.is_empty() {
                         println!();
@@ -249,10 +256,7 @@ fn main() {
             version,
             executable,
         } => {
-            info!(
-                "Publishing from: {} -> {} (v{})",
-                source, output, version
-            );
+            info!("Publishing from: {} -> {} (v{})", source, output, version);
 
             // Compute output paths
             let manifest_path = format!("{}/manifest.json", output);
@@ -273,19 +277,21 @@ fn main() {
 
             // Step 1: Generate manifest
             println!("Step 1/3: Generating manifest...");
-            let manifest_result = match manifest::generate_manifest(&source, &manifest_path, &version, &executable) {
-                Ok(result) => {
-                    println!("  ✓ Generated manifest with {} files ({})",
-                        result.file_count,
-                        manifest::format_size(result.total_size)
-                    );
-                    result
-                }
-                Err(e) => {
-                    eprintln!("  ✗ Failed to generate manifest: {}", e);
-                    std::process::exit(1);
-                }
-            };
+            let manifest_result =
+                match manifest::generate_manifest(&source, &manifest_path, &version, &executable) {
+                    Ok(result) => {
+                        println!(
+                            "  ✓ Generated manifest with {} files ({})",
+                            result.file_count,
+                            manifest::format_size(result.total_size)
+                        );
+                        result
+                    }
+                    Err(e) => {
+                        eprintln!("  ✗ Failed to generate manifest: {}", e);
+                        std::process::exit(1);
+                    }
+                };
 
             // Step 2: Sign manifest
             println!("Step 2/3: Signing manifest...");
@@ -303,7 +309,8 @@ fn main() {
             println!("Step 3/3: Creating content-addressed blobs...");
             let blob_result = match blob::create_blobs(&source, &blobs_path) {
                 Ok(result) => {
-                    println!("  ✓ Created {} unique blobs ({})",
+                    println!(
+                        "  ✓ Created {} unique blobs ({})",
                         result.blob_count,
                         blob::format_size(result.total_size)
                     );
@@ -323,9 +330,16 @@ fn main() {
             println!("✓ Published successfully!");
             println!();
             println!("Output directory: {}", output);
-            println!("  manifest.json  - {} files, {}", manifest_result.file_count, manifest::format_size(manifest_result.total_size));
+            println!(
+                "  manifest.json  - {} files, {}",
+                manifest_result.file_count,
+                manifest::format_size(manifest_result.total_size)
+            );
             println!("  manifest.sig   - Ed25519 signature");
-            println!("  files/         - {} content-addressed blobs", blob_result.blob_count);
+            println!(
+                "  files/         - {} content-addressed blobs",
+                blob_result.blob_count
+            );
             println!();
             println!("Version: {}", version);
             println!("Executable: {}", executable);

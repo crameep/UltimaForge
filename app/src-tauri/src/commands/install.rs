@@ -77,7 +77,10 @@ pub async fn check_install_status(
     // try to detect an existing installation at that location
     if needs_install {
         if let Some(ref path) = install_path {
-            info!("Attempting to detect existing installation at: {}", path.display());
+            info!(
+                "Attempting to detect existing installation at: {}",
+                path.display()
+            );
             let detection_result = detect_existing_installation(path);
 
             if detection_result.is_valid_installation() {
@@ -98,7 +101,8 @@ pub async fn check_install_status(
                 }
 
                 // Persist the detection to LauncherConfig
-                let mut launcher_config = state.launcher_config().unwrap_or_else(LauncherConfig::new);
+                let mut launcher_config =
+                    state.launcher_config().unwrap_or_else(LauncherConfig::new);
                 launcher_config.set_from_detection(path.clone());
                 if let Some(ref ver) = current_version {
                     launcher_config.set_version(ver);
@@ -114,7 +118,10 @@ pub async fn check_install_status(
 
                 match launcher_config.save(&config_path) {
                     Ok(()) => {
-                        info!("Saved detected installation configuration to {}", config_path.display());
+                        info!(
+                            "Saved detected installation configuration to {}",
+                            config_path.display()
+                        );
                     }
                     Err(e) => {
                         warn!("Failed to save detected installation configuration: {}", e);
@@ -155,11 +162,10 @@ pub async fn validate_install_path(
         "Brand configuration not loaded. Please restart the application.".to_string()
     })?;
 
-    let installer = Installer::new(brand_config)
-        .map_err(|e| {
-            error!("Failed to create installer: {}", e);
-            format!("Failed to initialize installer: {}", e)
-        })?;
+    let installer = Installer::new(brand_config).map_err(|e| {
+        error!("Failed to create installer: {}", e);
+        format!("Failed to initialize installer: {}", e)
+    })?;
 
     let path_buf = PathBuf::from(&path);
 
@@ -167,8 +173,10 @@ pub async fn validate_install_path(
     // The actual size check happens during installation
     let result = installer.validate_install_path(&path_buf, 0);
 
-    info!("Path validation result for '{}': valid={}, reason={:?}",
-          path, result.is_valid, result.reason);
+    info!(
+        "Path validation result for '{}': valid={}, reason={:?}",
+        path, result.is_valid, result.reason
+    );
 
     Ok(result)
 }
@@ -200,12 +208,11 @@ pub async fn start_install(
     state.set_current_operation("Preparing installation...");
 
     // Create installer
-    let mut installer = Installer::new(brand_config.clone())
-        .map_err(|e| {
-            state.set_installing(false);
-            state.set_error(format!("Failed to create installer: {}", e));
-            format!("Failed to create installer: {}", e)
-        })?;
+    let mut installer = Installer::new(brand_config.clone()).map_err(|e| {
+        state.set_installing(false);
+        state.set_error(format!("Failed to create installer: {}", e));
+        format!("Failed to create installer: {}", e)
+    })?;
 
     // Create a clone of app_handle for the callback
     let app_handle_clone = app_handle.clone();
@@ -250,7 +257,10 @@ pub async fn start_install(
 
             match launcher_config.save(&config_path) {
                 Ok(()) => {
-                    info!("Saved installation configuration to {}", config_path.display());
+                    info!(
+                        "Saved installation configuration to {}",
+                        config_path.display()
+                    );
                 }
                 Err(e) => {
                     warn!("Failed to save installation configuration: {}", e);
@@ -260,7 +270,8 @@ pub async fn start_install(
             // Write game_path.txt sidecar so the NSIS uninstaller can find game files
             if let Some(ref install_path) = launcher_config.install_path {
                 let sidecar = game_path_sidecar(&brand_config.product.server_name);
-                if let Err(e) = std::fs::write(&sidecar, install_path.to_string_lossy().as_bytes()) {
+                if let Err(e) = std::fs::write(&sidecar, install_path.to_string_lossy().as_bytes())
+                {
                     warn!("Failed to write game_path.txt sidecar: {}", e);
                 }
             }

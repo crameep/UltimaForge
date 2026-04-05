@@ -99,13 +99,15 @@ async fn main() {
                 .level(Level::INFO)
                 .latency_unit(tower_http::LatencyUnit::Millis),
         )
-        .on_failure(|error: ServerErrorsFailureClass, latency: Duration, _span: &Span| {
-            tracing::error!(
-                error = %error,
-                latency_ms = latency.as_millis(),
-                "request failed"
-            );
-        });
+        .on_failure(
+            |error: ServerErrorsFailureClass, latency: Duration, _span: &Span| {
+                tracing::error!(
+                    error = %error,
+                    latency_ms = latency.as_millis(),
+                    "request failed"
+                );
+            },
+        );
 
     let app = Router::new()
         // API endpoints
@@ -114,7 +116,10 @@ async fn main() {
         .route("/validate", get(validate_handler))
         // Static file serving for update artifacts
         .nest_service("/files", ServeDir::new(serve_dir.join("files")))
-        .nest_service("/launcher/files", ServeDir::new(serve_dir.join("launcher/files")))
+        .nest_service(
+            "/launcher/files",
+            ServeDir::new(serve_dir.join("launcher/files")),
+        )
         .route(
             "/launcher/:target/:arch/:current_version",
             get(launcher_update_handler),

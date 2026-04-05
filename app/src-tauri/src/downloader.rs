@@ -303,13 +303,18 @@ impl Downloader {
                 // If we have an expected hash, check if the existing file is already correct
                 if let Ok(existing_hash) = hash_file(dest) {
                     if existing_hash.to_lowercase() == expected.to_lowercase() {
-                        info!("File already exists with correct hash, skipping download: {}", dest.display());
+                        info!(
+                            "File already exists with correct hash, skipping download: {}",
+                            dest.display()
+                        );
                         return Ok(existing_hash);
                     } else {
                         // Existing file has wrong hash - delete it and download fresh
                         warn!(
                             "Existing file has wrong hash (expected {}, got {}), deleting: {}",
-                            expected, existing_hash, dest.display()
+                            expected,
+                            existing_hash,
+                            dest.display()
                         );
                         let _ = fs::remove_file(dest).await;
                     }
@@ -320,10 +325,7 @@ impl Downloader {
                 }
             } else {
                 // No expected hash, allow resume
-                existing_size = fs::metadata(dest)
-                    .await
-                    .map(|m| m.len())
-                    .unwrap_or(0);
+                existing_size = fs::metadata(dest).await.map(|m| m.len()).unwrap_or(0);
             }
         }
 
@@ -365,10 +367,12 @@ impl Downloader {
 
         // Ensure parent directory exists
         if let Some(parent) = dest.parent() {
-            fs::create_dir_all(parent).await.map_err(|e| DownloadError::WriteError {
-                path: parent.display().to_string(),
-                source: e,
-            })?;
+            fs::create_dir_all(parent)
+                .await
+                .map_err(|e| DownloadError::WriteError {
+                    path: parent.display().to_string(),
+                    source: e,
+                })?;
         }
 
         // Open file for writing (append if resuming)
@@ -383,16 +387,19 @@ impl Downloader {
                 })?
         } else {
             // Truncate existing file for fresh download
-            File::create(dest).await.map_err(|e| DownloadError::WriteError {
-                path: dest.display().to_string(),
-                source: e,
-            })?
+            File::create(dest)
+                .await
+                .map_err(|e| DownloadError::WriteError {
+                    path: dest.display().to_string(),
+                    source: e,
+                })?
         };
 
         // Stream the response body to disk
         let mut stream = response.bytes_stream();
         let mut downloaded = starting_offset;
-        let mut progress = DownloadProgress::new(downloaded, total_size, &dest.display().to_string());
+        let mut progress =
+            DownloadProgress::new(downloaded, total_size, &dest.display().to_string());
         progress.is_resuming = is_resuming;
 
         let start_time = std::time::Instant::now();
@@ -404,10 +411,12 @@ impl Downloader {
                 message: format!("Failed to read chunk: {}", e),
             })?;
 
-            file.write_all(&chunk).await.map_err(|e| DownloadError::WriteError {
-                path: dest.display().to_string(),
-                source: e,
-            })?;
+            file.write_all(&chunk)
+                .await
+                .map_err(|e| DownloadError::WriteError {
+                    path: dest.display().to_string(),
+                    source: e,
+                })?;
 
             downloaded += chunk.len() as u64;
             progress.downloaded = downloaded;
@@ -508,13 +517,11 @@ impl Downloader {
                     message: message.to_string(),
                 })
             }
-            _ => {
-                Err(DownloadError::HttpError {
-                    url: url.to_string(),
-                    status: status.as_u16(),
-                    message: format!("Unexpected status: {}", status),
-                })
-            }
+            _ => Err(DownloadError::HttpError {
+                url: url.to_string(),
+                status: status.as_u16(),
+                message: format!("Unexpected status: {}", status),
+            }),
         }
     }
 
@@ -551,12 +558,14 @@ impl Downloader {
             });
         }
 
-        response.bytes().await.map(|b| b.to_vec()).map_err(|e| {
-            DownloadError::NetworkError {
+        response
+            .bytes()
+            .await
+            .map(|b| b.to_vec())
+            .map_err(|e| DownloadError::NetworkError {
                 url: url.to_string(),
                 message: format!("Failed to read response body: {}", e),
-            }
-        })
+            })
     }
 
     /// Fetches text content (for manifest JSON, patch notes, etc.).
@@ -617,8 +626,14 @@ mod tests {
     #[test]
     fn test_config_defaults() {
         let config = DownloaderConfig::default();
-        assert_eq!(config.connect_timeout, Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS));
-        assert_eq!(config.read_timeout, Duration::from_secs(DEFAULT_READ_TIMEOUT_SECS));
+        assert_eq!(
+            config.connect_timeout,
+            Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS)
+        );
+        assert_eq!(
+            config.read_timeout,
+            Duration::from_secs(DEFAULT_READ_TIMEOUT_SECS)
+        );
         assert_eq!(config.max_retries, DEFAULT_MAX_RETRIES);
         assert!(config.user_agent.contains("UltimaForge"));
     }
@@ -681,9 +696,7 @@ mod tests {
     #[tokio::test]
     async fn test_download_invalid_url() {
         let downloader = Downloader::new().unwrap();
-        let result = downloader
-            .download_bytes("not-a-valid-url")
-            .await;
+        let result = downloader.download_bytes("not-a-valid-url").await;
         assert!(result.is_err());
     }
 
@@ -697,12 +710,7 @@ mod tests {
         // This will fail because the URL doesn't exist, but the parent directories
         // should be created before the network request
         let _ = downloader
-            .download_file(
-                "http://localhost:1/nonexistent",
-                &dest,
-                None,
-                |_| {},
-            )
+            .download_file("http://localhost:1/nonexistent", &dest, None, |_| {})
             .await;
 
         // Parent directory might or might not exist depending on when the error occurred
@@ -754,29 +762,32 @@ mod tests {
     #[test]
     fn test_downloader_default() {
         let downloader = Downloader::default();
-        assert!(downloader.client().get("http://example.com").build().is_ok());
+        assert!(downloader
+            .client()
+            .get("http://example.com")
+            .build()
+            .is_ok());
     }
 
     #[tokio::test]
     async fn test_download_bytes_connection_refused() {
         // Test against a port that's almost certainly not listening
-        let downloader = Downloader::with_config(
-            DownloaderConfig::with_timeouts(1, 1)
-        ).unwrap();
+        let downloader = Downloader::with_config(DownloaderConfig::with_timeouts(1, 1)).unwrap();
 
         let result = downloader.download_bytes("http://127.0.0.1:1").await;
         assert!(result.is_err());
 
         if let Err(e) = result {
-            assert!(matches!(e, DownloadError::NetworkError { .. } | DownloadError::Timeout { .. }));
+            assert!(matches!(
+                e,
+                DownloadError::NetworkError { .. } | DownloadError::Timeout { .. }
+            ));
         }
     }
 
     #[tokio::test]
     async fn test_download_text_connection_refused() {
-        let downloader = Downloader::with_config(
-            DownloaderConfig::with_timeouts(1, 1)
-        ).unwrap();
+        let downloader = Downloader::with_config(DownloaderConfig::with_timeouts(1, 1)).unwrap();
 
         let result = downloader.download_text("http://127.0.0.1:1").await;
         assert!(result.is_err());
@@ -791,7 +802,10 @@ mod tests {
         assert_eq!(config.max_retries, 5);
         assert_eq!(config.user_agent, "Test/1.0");
         // Defaults should be preserved
-        assert_eq!(config.connect_timeout, Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS));
+        assert_eq!(
+            config.connect_timeout,
+            Duration::from_secs(DEFAULT_CONNECT_TIMEOUT_SECS)
+        );
     }
 
     #[test]

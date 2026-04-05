@@ -103,7 +103,10 @@ impl UltimaForgeError {
         match self {
             Self::Config(e) => format!("Configuration problem: {}", e),
             Self::Manifest(e) => format!("Invalid update manifest: {}", e),
-            Self::Signature(_e) => "Update verification failed. The update server may be unavailable or compromised.".to_string(),
+            Self::Signature(_e) => {
+                "Update verification failed. The update server may be unavailable or compromised."
+                    .to_string()
+            }
             Self::Hash(e) => format!("File integrity check failed: {}", e),
             Self::Download(e) => e.user_message(),
             Self::Update(e) => e.user_message(),
@@ -121,10 +124,7 @@ impl UltimaForgeError {
 pub enum DownloadError {
     /// Network error (connection refused, DNS failure, etc.).
     #[error("Network error for '{url}': {message}")]
-    NetworkError {
-        url: String,
-        message: String,
-    },
+    NetworkError { url: String, message: String },
 
     /// HTTP error response (4xx or 5xx).
     #[error("HTTP error {status} for '{url}': {message}")]
@@ -136,9 +136,7 @@ pub enum DownloadError {
 
     /// Request timed out.
     #[error("Request timed out for '{url}'")]
-    Timeout {
-        url: String,
-    },
+    Timeout { url: String },
 
     /// Failed to write downloaded data to disk.
     #[error("Failed to write to '{path}': {source}")]
@@ -158,16 +156,11 @@ pub enum DownloadError {
 
     /// Download was interrupted.
     #[error("Download interrupted for '{url}'")]
-    Interrupted {
-        url: String,
-    },
+    Interrupted { url: String },
 
     /// Insufficient disk space.
     #[error("Insufficient disk space: need {required} bytes, have {available} bytes")]
-    InsufficientSpace {
-        required: u64,
-        available: u64,
-    },
+    InsufficientSpace { required: u64, available: u64 },
 
     /// Invalid URL format.
     #[error("Invalid URL: {0}")]
@@ -175,19 +168,14 @@ pub enum DownloadError {
 
     /// SSL/TLS error.
     #[error("SSL/TLS error for '{url}': {message}")]
-    SslError {
-        url: String,
-        message: String,
-    },
+    SslError { url: String, message: String },
 }
 
 impl DownloadError {
     /// Returns true if this error is recoverable and the download can be retried.
     pub fn is_recoverable(&self) -> bool {
         match self {
-            Self::NetworkError { .. }
-                | Self::Timeout { .. }
-                | Self::Interrupted { .. } => true,
+            Self::NetworkError { .. } | Self::Timeout { .. } | Self::Interrupted { .. } => true,
             Self::HttpError { status, .. } => *status >= 500,
             _ => false,
         }
@@ -196,23 +184,41 @@ impl DownloadError {
     /// Returns a user-friendly message suitable for display in the UI.
     pub fn user_message(&self) -> String {
         match self {
-            Self::NetworkError { .. } => "Connection failed. Please check your internet connection.".to_string(),
-            Self::HttpError { status, .. } if *status == 404 => "Update file not found on server. Please contact server support.".to_string(),
-            Self::HttpError { status, .. } if *status >= 500 => "Server error. Please try again later.".to_string(),
+            Self::NetworkError { .. } => {
+                "Connection failed. Please check your internet connection.".to_string()
+            }
+            Self::HttpError { status, .. } if *status == 404 => {
+                "Update file not found on server. Please contact server support.".to_string()
+            }
+            Self::HttpError { status, .. } if *status >= 500 => {
+                "Server error. Please try again later.".to_string()
+            }
             Self::HttpError { status, .. } => format!("Server returned error {}.", status),
             Self::Timeout { .. } => "Download timed out. Please try again.".to_string(),
-            Self::WriteError { path, .. } => format!("Failed to save file to '{}'. Check disk space and permissions.", path),
-            Self::HashMismatch { .. } => "Downloaded file is corrupted. Retrying download.".to_string(),
+            Self::WriteError { path, .. } => format!(
+                "Failed to save file to '{}'. Check disk space and permissions.",
+                path
+            ),
+            Self::HashMismatch { .. } => {
+                "Downloaded file is corrupted. Retrying download.".to_string()
+            }
             Self::Interrupted { .. } => "Download was interrupted. Please try again.".to_string(),
-            Self::InsufficientSpace { required, available } => {
+            Self::InsufficientSpace {
+                required,
+                available,
+            } => {
                 format!(
                     "Not enough disk space. Need {} MB, but only {} MB available.",
                     required / (1024 * 1024),
                     available / (1024 * 1024)
                 )
             }
-            Self::InvalidUrl(_) => "Invalid download URL. Please contact server support.".to_string(),
-            Self::SslError { .. } => "Secure connection failed. Please check your network settings.".to_string(),
+            Self::InvalidUrl(_) => {
+                "Invalid download URL. Please contact server support.".to_string()
+            }
+            Self::SslError { .. } => {
+                "Secure connection failed. Please check your network settings.".to_string()
+            }
         }
     }
 }
@@ -246,21 +252,15 @@ pub enum UpdateError {
 
     /// Rollback was required and completed.
     #[error("Update failed, rolled back to previous version: {reason}")]
-    RolledBack {
-        reason: String,
-    },
+    RolledBack { reason: String },
 
     /// Rollback failed, installation may be corrupted.
     #[error("Update failed and rollback failed: {reason}. Installation may be corrupted.")]
-    RollbackFailed {
-        reason: String,
-    },
+    RollbackFailed { reason: String },
 
     /// File is locked by another process.
     #[error("File '{path}' is locked by another process")]
-    FileLocked {
-        path: String,
-    },
+    FileLocked { path: String },
 
     /// Update was cancelled by user.
     #[error("Update cancelled by user")]
@@ -276,10 +276,7 @@ pub enum UpdateError {
 
     /// Version downgrade attempted.
     #[error("Cannot downgrade from version {current} to {target}")]
-    DowngradeAttempted {
-        current: String,
-        target: String,
-    },
+    DowngradeAttempted { current: String, target: String },
 }
 
 impl UpdateError {
@@ -297,13 +294,27 @@ impl UpdateError {
     /// Returns a user-friendly message suitable for display in the UI.
     pub fn user_message(&self) -> String {
         match self {
-            Self::ManifestFetchFailed(_) => "Failed to check for updates. Please try again.".to_string(),
-            Self::MissingSignature => "Update verification failed. Server may be misconfigured.".to_string(),
-            Self::BackupFailed { path, .. } => format!("Failed to backup '{}'. Check disk space.", path),
-            Self::ApplyFailed { path, .. } => format!("Failed to update '{}'. Check permissions.", path),
-            Self::RolledBack { reason } => format!("Update failed, restored previous version: {}", reason),
-            Self::RollbackFailed { reason } => format!("Critical error: {}. Please reinstall.", reason),
-            Self::FileLocked { path } => format!("'{}' is in use. Close other programs and try again.", path),
+            Self::ManifestFetchFailed(_) => {
+                "Failed to check for updates. Please try again.".to_string()
+            }
+            Self::MissingSignature => {
+                "Update verification failed. Server may be misconfigured.".to_string()
+            }
+            Self::BackupFailed { path, .. } => {
+                format!("Failed to backup '{}'. Check disk space.", path)
+            }
+            Self::ApplyFailed { path, .. } => {
+                format!("Failed to update '{}'. Check permissions.", path)
+            }
+            Self::RolledBack { reason } => {
+                format!("Update failed, restored previous version: {}", reason)
+            }
+            Self::RollbackFailed { reason } => {
+                format!("Critical error: {}. Please reinstall.", reason)
+            }
+            Self::FileLocked { path } => {
+                format!("'{}' is in use. Close other programs and try again.", path)
+            }
             Self::Cancelled => "Update cancelled.".to_string(),
             Self::AlreadyUpToDate => "You already have the latest version.".to_string(),
             Self::StagingError(msg) => format!("Update preparation failed: {}", msg),
@@ -319,16 +330,11 @@ impl UpdateError {
 pub enum InstallError {
     /// Invalid installation path.
     #[error("Invalid installation path: {reason}")]
-    InvalidPath {
-        path: PathBuf,
-        reason: String,
-    },
+    InvalidPath { path: PathBuf, reason: String },
 
     /// Installation directory already exists and is not empty.
     #[error("Directory '{path}' is not empty")]
-    DirectoryNotEmpty {
-        path: PathBuf,
-    },
+    DirectoryNotEmpty { path: PathBuf },
 
     /// Failed to create installation directory.
     #[error("Failed to create directory '{path}': {source}")]
@@ -344,21 +350,15 @@ pub enum InstallError {
 
     /// Insufficient permissions to write to directory.
     #[error("Insufficient permissions to write to '{path}'")]
-    PermissionDenied {
-        path: PathBuf,
-    },
+    PermissionDenied { path: PathBuf },
 
     /// Installation path is on a read-only filesystem.
     #[error("Installation path '{path}' is on a read-only filesystem")]
-    ReadOnlyFilesystem {
-        path: PathBuf,
-    },
+    ReadOnlyFilesystem { path: PathBuf },
 
     /// Previous installation exists but is corrupted.
     #[error("Existing installation at '{path}' is corrupted")]
-    CorruptedInstallation {
-        path: PathBuf,
-    },
+    CorruptedInstallation { path: PathBuf },
 
     /// Failed to save installation configuration.
     #[error("Failed to save configuration: {0}")]
@@ -373,20 +373,32 @@ impl InstallError {
                 format!("Cannot install to '{}': {}", path.display(), reason)
             }
             Self::DirectoryNotEmpty { path } => {
-                format!("'{}' is not empty. Choose an empty folder or a new location.", path.display())
+                format!(
+                    "'{}' is not empty. Choose an empty folder or a new location.",
+                    path.display()
+                )
             }
             Self::CreateDirectoryFailed { path, .. } => {
-                format!("Cannot create folder '{}'. Check permissions.", path.display())
+                format!(
+                    "Cannot create folder '{}'. Check permissions.",
+                    path.display()
+                )
             }
             Self::Cancelled => "Installation cancelled.".to_string(),
             Self::PermissionDenied { path } => {
                 format!("Administrator rights required to install to '{}'. Please close the launcher, right-click it, select 'Run as administrator', and try again. Alternatively, choose a different installation folder in your user directory (e.g., Documents or AppData).", path.display())
             }
             Self::ReadOnlyFilesystem { path } => {
-                format!("Cannot write to '{}'. The drive may be write-protected.", path.display())
+                format!(
+                    "Cannot write to '{}'. The drive may be write-protected.",
+                    path.display()
+                )
             }
             Self::CorruptedInstallation { path } => {
-                format!("Existing installation at '{}' is damaged. Delete it and reinstall.", path.display())
+                format!(
+                    "Existing installation at '{}' is damaged. Delete it and reinstall.",
+                    path.display()
+                )
             }
             Self::ConfigSaveFailed(msg) => {
                 format!("Failed to save settings: {}", msg)
@@ -400,9 +412,7 @@ impl InstallError {
 pub enum LaunchError {
     /// Client executable not found.
     #[error("Client executable not found at '{path}'")]
-    ExecutableNotFound {
-        path: PathBuf,
-    },
+    ExecutableNotFound { path: PathBuf },
 
     /// Failed to start the client process.
     #[error("Failed to start client: {source}")]
@@ -413,9 +423,7 @@ pub enum LaunchError {
 
     /// Client executable exists but is not executable.
     #[error("Client at '{path}' is not executable")]
-    NotExecutable {
-        path: PathBuf,
-    },
+    NotExecutable { path: PathBuf },
 
     /// Installation is not complete.
     #[error("Installation is not complete. Please run the installer first.")]
@@ -427,9 +435,7 @@ pub enum LaunchError {
 
     /// Client crashed immediately after launch.
     #[error("Client exited immediately with code {code}")]
-    ClientCrashed {
-        code: i32,
-    },
+    ClientCrashed { code: i32 },
 
     /// Antivirus or security software blocked the launch.
     #[error("Client launch was blocked. Check your antivirus settings.")]
@@ -441,7 +447,10 @@ impl LaunchError {
     pub fn user_message(&self) -> String {
         match self {
             Self::ExecutableNotFound { path } => {
-                format!("Game executable not found at '{}'. Try reinstalling.", path.display())
+                format!(
+                    "Game executable not found at '{}'. Try reinstalling.",
+                    path.display()
+                )
             }
             Self::ProcessSpawnFailed { .. } => {
                 "Failed to start the game. Check your antivirus settings.".to_string()
@@ -459,7 +468,8 @@ impl LaunchError {
                 format!("Game crashed with error code {}. Try reinstalling.", code)
             }
             Self::Blocked => {
-                "Game launch was blocked. Add the game folder to your antivirus exclusions.".to_string()
+                "Game launch was blocked. Add the game folder to your antivirus exclusions."
+                    .to_string()
             }
         }
     }
@@ -619,7 +629,7 @@ mod tests {
     fn test_insufficient_space_formatting() {
         let error = DownloadError::InsufficientSpace {
             required: 1024 * 1024 * 100, // 100 MB
-            available: 1024 * 1024 * 50,  // 50 MB
+            available: 1024 * 1024 * 50, // 50 MB
         };
 
         let msg = error.user_message();

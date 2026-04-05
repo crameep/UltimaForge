@@ -193,19 +193,20 @@ pub fn validate_update_folder(
 
     // Validate public key exists
     if !key_path.exists() {
-        return Err(ValidateError::PublicKeyNotFound(public_key_path.to_string()));
+        return Err(ValidateError::PublicKeyNotFound(
+            public_key_path.to_string(),
+        ));
     }
 
     // Read public key
-    let public_key_bytes = keygen::read_public_key(public_key_path)
-        .map_err(ValidateError::ReadPublicKeyFailed)?;
+    let public_key_bytes =
+        keygen::read_public_key(public_key_path).map_err(ValidateError::ReadPublicKeyFailed)?;
     let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
         .map_err(|e| ValidateError::InvalidPublicKey(e.to_string()))?;
     info!("Loaded public key from: {}", public_key_path);
 
     // Read manifest content
-    let manifest_content = fs::read(&manifest_path)
-        .map_err(ValidateError::ReadManifestFailed)?;
+    let manifest_content = fs::read(&manifest_path).map_err(ValidateError::ReadManifestFailed)?;
     debug!("Read manifest: {} bytes", manifest_content.len());
 
     // Read signature
@@ -221,8 +222,8 @@ pub fn validate_update_folder(
     info!("✓ Signature verified successfully");
 
     // Parse manifest
-    let manifest: Manifest = serde_json::from_slice(&manifest_content)
-        .map_err(ValidateError::InvalidManifestJson)?;
+    let manifest: Manifest =
+        serde_json::from_slice(&manifest_content).map_err(ValidateError::InvalidManifestJson)?;
     debug!("Parsed manifest: version {}", manifest.version);
 
     // Check all file blobs exist
@@ -237,11 +238,17 @@ pub fn validate_update_folder(
 
         if blob_exists {
             files_verified += 1;
-            debug!("✓ Blob exists: {} -> {}", file_entry.path, file_entry.sha256);
+            debug!(
+                "✓ Blob exists: {} -> {}",
+                file_entry.path, file_entry.sha256
+            );
         } else {
             missing_blobs += 1;
             missing_blob_paths.push(file_entry.path.clone());
-            warn!("✗ Missing blob: {} -> {}", file_entry.path, file_entry.sha256);
+            warn!(
+                "✗ Missing blob: {} -> {}",
+                file_entry.path, file_entry.sha256
+            );
         }
 
         files.push(ValidatedFile {
@@ -300,9 +307,7 @@ mod tests {
     use tempfile::tempdir;
 
     /// Helper to set up a complete valid update folder.
-    fn setup_valid_update_folder(
-        temp_dir: &tempfile::TempDir,
-    ) -> (String, String) {
+    fn setup_valid_update_folder(temp_dir: &tempfile::TempDir) -> (String, String) {
         let keys_dir = temp_dir.path().join("keys");
         let source_dir = temp_dir.path().join("source");
         let update_dir = temp_dir.path().join("updates");
@@ -404,10 +409,7 @@ mod tests {
         fs::create_dir_all(update_dir.join("files")).unwrap();
         fs::write(update_dir.join("manifest.sig"), "0".repeat(128)).unwrap();
 
-        let result = validate_update_folder(
-            update_dir.to_str().unwrap(),
-            "./public.key",
-        );
+        let result = validate_update_folder(update_dir.to_str().unwrap(), "./public.key");
         assert!(matches!(result, Err(ValidateError::ManifestNotFound(_))));
     }
 
@@ -421,10 +423,7 @@ mod tests {
         fs::write(update_dir.join("manifest.json"), "{}").unwrap();
         fs::create_dir_all(update_dir.join("files")).unwrap();
 
-        let result = validate_update_folder(
-            update_dir.to_str().unwrap(),
-            "./public.key",
-        );
+        let result = validate_update_folder(update_dir.to_str().unwrap(), "./public.key");
         assert!(matches!(result, Err(ValidateError::SignatureNotFound(_))));
     }
 
@@ -438,10 +437,7 @@ mod tests {
         fs::write(update_dir.join("manifest.json"), "{}").unwrap();
         fs::write(update_dir.join("manifest.sig"), "0".repeat(128)).unwrap();
 
-        let result = validate_update_folder(
-            update_dir.to_str().unwrap(),
-            "./public.key",
-        );
+        let result = validate_update_folder(update_dir.to_str().unwrap(), "./public.key");
         assert!(matches!(result, Err(ValidateError::FilesDirNotFound(_))));
     }
 
@@ -454,10 +450,8 @@ mod tests {
         fs::write(update_dir.join("manifest.json"), "{}").unwrap();
         fs::write(update_dir.join("manifest.sig"), "0".repeat(128)).unwrap();
 
-        let result = validate_update_folder(
-            update_dir.to_str().unwrap(),
-            "/nonexistent/public.key",
-        );
+        let result =
+            validate_update_folder(update_dir.to_str().unwrap(), "/nonexistent/public.key");
         assert!(matches!(result, Err(ValidateError::PublicKeyNotFound(_))));
     }
 
@@ -473,7 +467,10 @@ mod tests {
         fs::write(&manifest_path, content).unwrap();
 
         let result = validate_update_folder(&update_dir, &public_key_path);
-        assert!(matches!(result, Err(ValidateError::SignatureVerificationFailed)));
+        assert!(matches!(
+            result,
+            Err(ValidateError::SignatureVerificationFailed)
+        ));
     }
 
     #[test]
@@ -487,7 +484,10 @@ mod tests {
 
         // Try to validate with wrong key
         let result = validate_update_folder(&update_dir, &other_keygen.public_key_path);
-        assert!(matches!(result, Err(ValidateError::SignatureVerificationFailed)));
+        assert!(matches!(
+            result,
+            Err(ValidateError::SignatureVerificationFailed)
+        ));
     }
 
     #[test]

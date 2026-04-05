@@ -104,13 +104,11 @@ pub fn generate_keypair(output_dir: &str, force: bool) -> Result<KeygenResult, K
     let public_key_hex = hex::encode(verifying_key.to_bytes());
 
     // Write private key
-    fs::write(&private_key_path, &private_key_hex)
-        .map_err(KeygenError::WritePrivateKeyFailed)?;
+    fs::write(&private_key_path, &private_key_hex).map_err(KeygenError::WritePrivateKeyFailed)?;
     info!("Wrote private key to: {}", private_key_path.display());
 
     // Write public key
-    fs::write(&public_key_path, &public_key_hex)
-        .map_err(KeygenError::WritePublicKeyFailed)?;
+    fs::write(&public_key_path, &public_key_hex).map_err(KeygenError::WritePublicKeyFailed)?;
     info!("Wrote public key to: {}", public_key_path.display());
 
     // Security reminder
@@ -133,24 +131,26 @@ pub fn generate_keypair(output_dir: &str, force: bool) -> Result<KeygenResult, K
 ///
 /// Returns the SigningKey on success.
 pub fn read_private_key(path: &str) -> Result<SigningKey, KeygenError> {
-    let hex_content = fs::read_to_string(path)
-        .map_err(KeygenError::ReadPrivateKeyFailed)?;
+    let hex_content = fs::read_to_string(path).map_err(KeygenError::ReadPrivateKeyFailed)?;
 
-    let bytes = hex::decode(hex_content.trim())
-        .map_err(|_| KeygenError::ReadPrivateKeyFailed(std::io::Error::new(
+    let bytes = hex::decode(hex_content.trim()).map_err(|_| {
+        KeygenError::ReadPrivateKeyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "Invalid hex encoding in private key file"
-        )))?;
+            "Invalid hex encoding in private key file",
+        ))
+    })?;
 
     if bytes.len() != 32 {
         return Err(KeygenError::ReadPrivateKeyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            format!("Invalid private key length: expected 32 bytes, got {}", bytes.len())
+            format!(
+                "Invalid private key length: expected 32 bytes, got {}",
+                bytes.len()
+            ),
         )));
     }
 
-    let key_bytes: [u8; 32] = bytes.try_into()
-        .expect("already validated length");
+    let key_bytes: [u8; 32] = bytes.try_into().expect("already validated length");
 
     Ok(SigningKey::from_bytes(&key_bytes))
 }
@@ -165,24 +165,26 @@ pub fn read_private_key(path: &str) -> Result<SigningKey, KeygenError> {
 ///
 /// Returns the public key bytes on success.
 pub fn read_public_key(path: &str) -> Result<[u8; 32], KeygenError> {
-    let hex_content = fs::read_to_string(path)
-        .map_err(KeygenError::ReadPublicKeyFailed)?;
+    let hex_content = fs::read_to_string(path).map_err(KeygenError::ReadPublicKeyFailed)?;
 
-    let bytes = hex::decode(hex_content.trim())
-        .map_err(|_| KeygenError::ReadPublicKeyFailed(std::io::Error::new(
+    let bytes = hex::decode(hex_content.trim()).map_err(|_| {
+        KeygenError::ReadPublicKeyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            "Invalid hex encoding in public key file"
-        )))?;
+            "Invalid hex encoding in public key file",
+        ))
+    })?;
 
     if bytes.len() != 32 {
         return Err(KeygenError::ReadPublicKeyFailed(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
-            format!("Invalid public key length: expected 32 bytes, got {}", bytes.len())
+            format!(
+                "Invalid public key length: expected 32 bytes, got {}",
+                bytes.len()
+            ),
         )));
     }
 
-    let key_bytes: [u8; 32] = bytes.try_into()
-        .expect("already validated length");
+    let key_bytes: [u8; 32] = bytes.try_into().expect("already validated length");
 
     Ok(key_bytes)
 }
@@ -224,10 +226,7 @@ mod tests {
         let public_key_bytes = read_public_key(&keygen_result.public_key_path).unwrap();
 
         // Verify the keys match
-        assert_eq!(
-            signing_key.verifying_key().to_bytes(),
-            public_key_bytes
-        );
+        assert_eq!(signing_key.verifying_key().to_bytes(), public_key_bytes);
 
         // Test signing and verification
         let message = b"test message";

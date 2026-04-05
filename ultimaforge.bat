@@ -4,8 +4,8 @@ setlocal enabledelayedexpansion
 REM UltimaForge Server Owner Tools
 REM This batch file handles all server owner tasks
 
-REM Initialize MSVC environment (link.exe, cl.exe) if available
-call :INIT_MSVC
+REM Initialize MSVC environment (link.exe, cl.exe) if not already set
+if not defined VCINSTALLDIR call :INIT_MSVC
 
 REM Force x64 Rust toolchain via env var (works immediately, no restart needed).
 REM On ARM64 machines the aarch64 host toolchain can't use the x64 VS linker.
@@ -14,7 +14,10 @@ REM On x64 machines this is already the default toolchain so it's a no-op.
 where rustup >nul 2>nul
 if not errorlevel 1 (
     set "RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-msvc"
-    rustup toolchain install stable-x86_64-pc-windows-msvc >nul 2>nul
+    REM Only install the toolchain on ARM64 where it's not the default
+    if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+        rustup toolchain install stable-x86_64-pc-windows-msvc >nul 2>nul
+    )
 )
 
 REM Check for command-line argument (non-interactive mode)
@@ -121,14 +124,16 @@ set "ICONS_OK=0"
 set "BUILD_OK=0"
 set "VPS_OK=0"
 
-REM Re-init MSVC environment in case VS Build Tools was just installed
-where link.exe >nul 2>nul
-if errorlevel 1 call :INIT_MSVC
+REM Re-init MSVC environment only if not already done (vcvarsall is slow)
+if not defined VCINSTALLDIR (
+    where link.exe >nul 2>nul
+    if errorlevel 1 call :INIT_MSVC
+)
 
 REM Also refresh PATH for newly installed tools (node, cargo, git)
+REM Use a single powershell call to avoid double cold-start penalty
 set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
-for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('PATH','User')"`) do set "PATH=%%p;%PATH%"
-for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('PATH','Machine')"`) do set "PATH=%%p;%PATH%"
+for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('PATH','User') + ';' + [Environment]::GetEnvironmentVariable('PATH','Machine')"`) do set "PATH=%%p;%PATH%"
 
 set "PREREQS_OK=1"
 where git >nul 2>nul

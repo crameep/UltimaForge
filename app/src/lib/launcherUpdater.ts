@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { isRunningAsAdmin, relaunchAsAdmin } from "./api";
 
 export type LauncherUpdateCheck = {
   updateAvailable: boolean;
@@ -43,7 +44,17 @@ export async function checkForLauncherUpdate(
 
     const install = async () => {
       await update.downloadAndInstall();
-      await relaunch();
+      // Preserve elevation through the relaunch — Tauri's plain relaunch()
+      // spawns a non-elevated process, losing admin rights. If we're currently
+      // elevated, use runas so the new instance starts elevated too (no extra
+      // UAC prompt since the parent is already elevated).
+      let elevated = false;
+      try { elevated = await isRunningAsAdmin(); } catch { /* assume not */ }
+      if (elevated) {
+        await relaunchAsAdmin();
+      } else {
+        await relaunch();
+      }
     };
 
     return {

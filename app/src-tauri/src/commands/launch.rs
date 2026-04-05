@@ -119,9 +119,9 @@ pub async fn launch_game(
         .or_else(|| launcher_config.client_executable.clone())
         .unwrap_or_else(|| "client.exe".to_string());
 
-    // Re-verify game running state before blocking. The in-memory flag can be
-    // stale (e.g. process monitor missed an exit, or the game crashed without
-    // a clean shutdown). Try to open the exe for write — Windows locks running
+    // Re-verify game running state. The in-memory flag can be stale (e.g.
+    // process monitor missed an exit, or the game crashed without a clean
+    // shutdown). Try to open the exe for write — Windows locks running
     // executables, so success means the game is NOT actually running.
     if state.is_game_running() {
         let exe_path = install_path.join(&executable);
@@ -136,12 +136,20 @@ pub async fn launch_game(
         };
 
         if actually_running {
-            return Err("Game is already running".to_string());
+            // Check if adding more clients would exceed the max (3)
+            let current = state.running_clients();
+            let requested = request.client_count.clamp(1, 3) as usize;
+            if current + requested > 3 {
+                return Err(format!(
+                    "Cannot launch {} more client(s) — {} already running (max 3)",
+                    requested, current
+                ));
+            }
+        } else {
+            // Stale flag — game has closed since the flag was set. Clear it.
+            info!("Clearing stale is_game_running flag before launch");
+            state.set_running_clients(0);
         }
-
-        // Stale flag — game has closed since the flag was set. Clear it.
-        info!("Clearing stale is_game_running flag before launch");
-        state.set_running_clients(0);
     }
 
     // Clamp client count to valid range
@@ -186,8 +194,6 @@ pub async fn launch_game(
             warn!("Failed to write CUO settings: {}", e);
         }
     }
-
-    state.set_running_clients(0);
 
     let mut first_pid = None;
     let mut launched = 0usize;

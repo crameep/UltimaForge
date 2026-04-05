@@ -175,11 +175,7 @@ impl AppState {
     ///
     /// This should be called during app setup to load the brand and launcher
     /// configurations.
-    pub fn initialize(
-        &self,
-        brand_config: BrandConfig,
-        launcher_config: LauncherConfig,
-    ) {
+    pub fn initialize(&self, brand_config: BrandConfig, launcher_config: LauncherConfig) {
         {
             let mut brand = self.brand_config.write().unwrap();
             *brand = Some(brand_config);
@@ -651,11 +647,14 @@ impl AppStatus {
         self.is_installing || self.is_updating
     }
 
-    /// Returns true if the game can be launched.
+    /// Returns true if the game can be launched (allows multiple clients up to 3).
     pub fn can_launch(&self) -> bool {
-        matches!(self.phase, AppPhase::Ready | AppPhase::UpdateAvailable)
-            && !self.is_busy()
+        matches!(
+            self.phase,
+            AppPhase::Ready | AppPhase::UpdateAvailable | AppPhase::GameRunning
+        ) && !self.is_busy()
             && self.install_path.is_some()
+            && self.running_clients < 3
     }
 }
 
@@ -683,7 +682,8 @@ mod tests {
     use std::sync::Arc;
 
     /// Valid 64-character hex public key for testing.
-    const TEST_PUBLIC_KEY: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    const TEST_PUBLIC_KEY: &str =
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
     fn test_brand_config() -> BrandConfig {
         BrandConfigBuilder::new()
@@ -700,7 +700,10 @@ mod tests {
         assert_eq!(AppPhase::Initializing.to_string(), "Initializing");
         assert_eq!(AppPhase::NeedsInstall.to_string(), "Installation Required");
         assert_eq!(AppPhase::Installing.to_string(), "Installing");
-        assert_eq!(AppPhase::CheckingUpdates.to_string(), "Checking for Updates");
+        assert_eq!(
+            AppPhase::CheckingUpdates.to_string(),
+            "Checking for Updates"
+        );
         assert_eq!(AppPhase::UpdateAvailable.to_string(), "Update Available");
         assert_eq!(AppPhase::Updating.to_string(), "Updating");
         assert_eq!(AppPhase::Ready.to_string(), "Ready");
@@ -922,7 +925,10 @@ mod tests {
         assert!(state.error_message().is_none());
 
         state.set_error("Something went wrong");
-        assert_eq!(state.error_message(), Some("Something went wrong".to_string()));
+        assert_eq!(
+            state.error_message(),
+            Some("Something went wrong".to_string())
+        );
         assert_eq!(state.phase(), AppPhase::Error);
         assert!(!state.is_installing());
         assert!(!state.is_updating());
@@ -952,7 +958,10 @@ mod tests {
         assert!(state.current_operation().is_none());
 
         state.set_current_operation("Downloading files...");
-        assert_eq!(state.current_operation(), Some("Downloading files...".to_string()));
+        assert_eq!(
+            state.current_operation(),
+            Some("Downloading files...".to_string())
+        );
 
         state.clear_current_operation();
         assert!(state.current_operation().is_none());
@@ -1053,7 +1062,10 @@ mod tests {
         state.begin_update_check();
 
         assert_eq!(state.phase(), AppPhase::CheckingUpdates);
-        assert_eq!(state.current_operation(), Some("Checking for updates...".to_string()));
+        assert_eq!(
+            state.current_operation(),
+            Some("Checking for updates...".to_string())
+        );
     }
 
     #[test]

@@ -2,11 +2,7 @@
 //!
 //! Provides validation endpoint to check update folder structure.
 
-use axum::{
-    extract::State,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::State, response::IntoResponse, Json};
 use serde::Serialize;
 use std::{path::Path, sync::Arc};
 
