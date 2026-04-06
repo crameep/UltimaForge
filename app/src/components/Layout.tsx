@@ -79,13 +79,26 @@ export function Layout({
         logoUrl={brandInfo?.logo_url || undefined}
         subtitle={brandInfo?.sidebar_subtitle || undefined}
         backgroundUrl={brandInfo?.sidebar_background || undefined}
-        links={brandInfo?.sidebar_links?.length ? brandInfo.sidebar_links.map(link => ({
-          label: link.label,
-          icon: link.icon,
-          href: link.url,
-          url: link.url,
-          onClick: link.label === "Home" ? onHomeClick : link.label === "Settings" ? onSettingsClick : link.label === "Launch Options" ? onLaunchOptionsClick : undefined,
-        })) : links}
+        links={brandInfo?.sidebar_links?.length ? (() => {
+          const mapped = brandInfo.sidebar_links!.map(link => ({
+            label: link.label,
+            icon: link.icon,
+            href: link.url,
+            url: link.url,
+            onClick: link.label === "Home" ? onHomeClick : link.label === "Settings" ? onSettingsClick : link.label === "Launch Options" ? onLaunchOptionsClick : undefined,
+          }));
+          // Inject Launch Options before Settings if not already present
+          if (!mapped.some(l => l.label === "Launch Options")) {
+            const settingsIdx = mapped.findIndex(l => l.label === "Settings");
+            const entry = { label: "Launch Options", icon: "🎮", onClick: onLaunchOptionsClick };
+            if (settingsIdx >= 0) {
+              mapped.splice(settingsIdx, 0, entry);
+            } else {
+              mapped.push(entry);
+            }
+          }
+          return mapped;
+        })() : links}
       />
       <main className={`layout-main${brandInfo?.background_image ? " has-background" : ""}`} style={mainStyle}>
         <div className="layout-content">{children}</div>
