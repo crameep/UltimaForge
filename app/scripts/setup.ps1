@@ -513,8 +513,8 @@ function Install-Rsync {
         return $true
     }
 
-    Write-Status "rsync not found. Installing for efficient VPS deploys..." -Type "Info"
-    Write-Status "(Without rsync, deploy falls back to scp which re-uploads all files each time)" -Type "Warning"
+    Write-Status "rsync not found. Attempting to install (optional)..." -Type "Info"
+    Write-Status "(rsync speeds up VPS deploys - only needed if you use option 7)" -Type "Info"
 
     # Install via Scoop (no admin required). Install Scoop first if needed.
     if (-not (Test-Command "scoop")) {
@@ -561,11 +561,10 @@ function Install-Rsync {
     }
     catch { }
 
-    Write-Status "Could not install rsync automatically." -Type "Warning"
-    Write-Status "Deploy will use scp (works but uploads all files each time)." -Type "Warning"
-    Write-Status "Options to fix:" -Type "Info"
-    Write-Status "  1. In WSL: sudo apt install rsync" -Type "Info"
-    Write-Status "  2. In PowerShell: scoop bucket add extras; scoop install cwrsync" -Type "Info"
+    Write-Status "rsync not available - this is fine, you can install it later if needed." -Type "Info"
+    Write-Status "If you plan to deploy to a VPS, rsync makes deploys faster:" -Type "Info"
+    Write-Status "  WSL:        sudo apt install rsync" -Type "Info"
+    Write-Status "  PowerShell: scoop bucket add extras; scoop install cwrsync" -Type "Info"
     return $false  # Not installed - summary will show as optional/warning
 }
 

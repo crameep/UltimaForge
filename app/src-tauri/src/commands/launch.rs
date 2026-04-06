@@ -198,6 +198,18 @@ pub async fn launch_game(
     let mut first_pid = None;
     let mut launched = 0usize;
 
+    // RazorEnhanced loads ~25 settings files + creates backups at startup.
+    // It uses File.WriteAllText with no inter-process locking, so two
+    // instances starting simultaneously will race on the same files.
+    // Stagger launches with enough delay for each instance to finish its
+    // startup file I/O before the next one begins.
+    let is_re = matches!(request.assistant_choice, AssistantKind::RazorEnhanced);
+    let launch_delay = if is_re {
+        Duration::from_secs(2)
+    } else {
+        Duration::from_millis(300)
+    };
+
     for i in 0..client_count {
         let launcher = ClientLauncher::with_config(&install_path, config.clone());
         match launcher.spawn_child() {
@@ -224,7 +236,7 @@ pub async fn launch_game(
         }
 
         if i + 1 < client_count {
-            sleep(Duration::from_millis(300)).await;
+            sleep(launch_delay).await;
         }
     }
 

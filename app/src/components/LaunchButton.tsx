@@ -192,6 +192,8 @@ export function LaunchButton({
         </div>
       )}
 
+
+
       {/* Show "Mark as Closed" option when game is running */}
       {launchState.isGameRunning && (
         <button
