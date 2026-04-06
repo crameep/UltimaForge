@@ -1,0 +1,221 @@
+/**
+ * LaunchOptions Component Styles
+ */
+
+.launch-options {
+  padding: var(--spacing-lg);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.launch-options-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.launch-options-back {
+  padding: var(--btn-padding-y-sm) var(--btn-padding-x-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  margin-bottom: var(--spacing-md);
+  transition: all var(--transition-fast);
+}
+
+.launch-options-back:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
+}
+
+.launch-options-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.launch-options-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Slot cards */
+.launch-options-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.slot-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+}
+
+.slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.slot-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.slot-clear {
+  padding: 2px 10px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.slot-clear:hover {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+/* Fields */
+.slot-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+
+.slot-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.slot-field-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.slot-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.slot-input {
+  padding: 6px 10px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.slot-input::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.5;
+}
+
+.slot-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Toggle switch (matches Settings style) */
+.slot-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.slot-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slot-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-border);
+  border-radius: 10px;
+  transition: background var(--transition-fast);
+}
+
+.slot-toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+}
+
+.slot-toggle input:checked + .slot-toggle-slider {
+  background: var(--color-primary);
+}
+
+.slot-toggle input:checked + .slot-toggle-slider::before {
+  transform: translateX(16px);
+}
+
+/* Footer */
+.launch-options-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+}
+
+.launch-options-save {
+  padding: var(--btn-padding-y-sm) var(--btn-padding-x-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.launch-options-save:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.launch-options-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.launch-options-message {
+  font-size: var(--font-size-sm);
+}
+
+.launch-options-message.success {
+  color: var(--color-success, #22c55e);
+}
+
+.launch-options-message.error {
+  color: var(--color-error);
+}

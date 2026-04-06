@@ -220,6 +220,8 @@ pub fn run() {
             commands::launch::launch_game,
             commands::launch::validate_client,
             commands::launch::game_closed,
+            commands::launch::get_launch_options,
+            commands::launch::save_launch_options,
             // Settings commands
             commands::settings::get_settings,
             commands::settings::save_settings,

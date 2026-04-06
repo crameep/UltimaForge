@@ -5,7 +5,7 @@
 //! - Launching the game
 //! - Handling launch options
 
-use crate::config::{default_config_path, AssistantKind, ServerChoice};
+use crate::config::{default_config_path, AssistantKind, LaunchSlotConfig, ServerChoice};
 use crate::cuo_settings::write_cuo_settings;
 use crate::launcher::{ClientLauncher, LaunchConfig};
 use crate::state::AppState;
@@ -210,8 +210,36 @@ pub async fn launch_game(
         Duration::from_millis(300)
     };
 
+    // Load per-slot launch options for account/character/auto-login
+    let slots = launcher_config.launch_slots.clone();
+
     for i in 0..client_count {
-        let launcher = ClientLauncher::with_config(&install_path, config.clone());
+        let mut instance_config = config.clone();
+
+        // Apply per-slot launch options (account, character, auto-login)
+        if let Some(slot) = slots.get(i) {
+            if !slot.username.is_empty() {
+                instance_config.args.push("-username".to_string());
+                instance_config.args.push(slot.username.clone());
+            }
+            if !slot.password.is_empty() {
+                instance_config.args.push("-password".to_string());
+                instance_config.args.push(slot.password.clone());
+            }
+            if !slot.character_name.is_empty() {
+                instance_config.args.push("-lastcharactername".to_string());
+                instance_config.args.push(slot.character_name.clone());
+            }
+            if slot.auto_login {
+                instance_config.args.push("-autologin".to_string());
+            }
+            // Always save account so CUO remembers credentials
+            if !slot.username.is_empty() {
+                instance_config.args.push("-saveaccount".to_string());
+            }
+        }
+
+        let launcher = ClientLauncher::with_config(&install_path, instance_config);
         match launcher.spawn_child() {
             Ok(mut child) => {
                 let pid = child.id();
@@ -310,6 +338,34 @@ pub async fn validate_client(state: State<'_, AppState>) -> Result<ValidateClien
             })
         }
     }
+}
+
+/// Returns the per-slot launch options.
+#[tauri::command]
+pub async fn get_launch_options(
+    state: State<'_, AppState>,
+) -> Result<Vec<LaunchSlotConfig>, String> {
+    let config = state.launcher_config().unwrap_or_default();
+    // Always return exactly 3 slots, padding with defaults
+    let mut slots = config.launch_slots;
+    slots.resize_with(3, LaunchSlotConfig::default);
+    Ok(slots)
+}
+
+/// Saves per-slot launch options.
+#[tauri::command]
+pub async fn save_launch_options(
+    slots: Vec<LaunchSlotConfig>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let brand_config = state.brand_config().ok_or("Brand config not available")?;
+    let mut config = state.launcher_config().unwrap_or_default();
+    config.launch_slots = slots;
+    state.set_launcher_config(config.clone());
+    let path = default_config_path(&brand_config.product.server_name);
+    config.save(&path).map_err(|e| format!("Failed to save: {}", e))?;
+    info!("Launch options saved");
+    Ok(())
 }
 
 /// Marks the game as no longer running.

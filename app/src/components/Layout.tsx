@@ -30,6 +30,8 @@ interface LayoutProps {
   onSettingsClick?: () => void;
   /** Callback when home is clicked */
   onHomeClick?: () => void;
+  /** Callback when launch options is clicked */
+  onLaunchOptionsClick?: () => void;
 }
 
 /**
@@ -45,6 +47,7 @@ export function Layout({
   sidebarLinks,
   onSettingsClick,
   onHomeClick,
+  onLaunchOptionsClick,
   runningClients,
 }: LayoutProps) {
   const { brandInfo } = useBrand();
@@ -52,6 +55,7 @@ export function Layout({
   // Build default links with navigation callbacks
   const defaultLinks: SidebarLink[] = [
     { label: "Home", icon: "🏠", onClick: onHomeClick },
+    { label: "Launch Options", icon: "🎮", onClick: onLaunchOptionsClick },
     { label: "Settings", icon: "⚙️", onClick: onSettingsClick },
     { label: "Help", icon: "❓" },
   ];
@@ -80,7 +84,7 @@ export function Layout({
           icon: link.icon,
           href: link.url,
           url: link.url,
-          onClick: link.label === "Home" ? onHomeClick : link.label === "Settings" ? onSettingsClick : undefined,
+          onClick: link.label === "Home" ? onHomeClick : link.label === "Settings" ? onSettingsClick : link.label === "Launch Options" ? onLaunchOptionsClick : undefined,
         })) : links}
       />
       <main className={`layout-main${brandInfo?.background_image ? " has-background" : ""}`} style={mainStyle}>

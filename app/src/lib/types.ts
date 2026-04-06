@@ -295,6 +295,17 @@ export interface UpdateResponse {
 // ============================================================================
 
 /**
+ * Per-slot launch options (account, character, auto-login).
+ */
+export interface LaunchSlotConfig {
+  username: string;
+  password: string;
+  characterName: string;
+  autoLogin: boolean;
+  serverChoice: ServerChoice | null;
+}
+
+/**
  * Request for launching the game.
  */
 export interface LaunchGameRequest {

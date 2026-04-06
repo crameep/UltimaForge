@@ -8,6 +8,7 @@ import { CuoControls } from "./components/CuoControls";
 import { LaunchButton } from "./components/LaunchButton";
 import { PatchNotes } from "./components/PatchNotes";
 import { Settings } from "./components/Settings";
+import { LaunchOptions } from "./components/LaunchOptions";
 import { LauncherUpdateModal } from "./components/LauncherUpdateModal";
 import { checkNeedsInstall } from "./hooks/useInstall";
 import { useBrand } from "./hooks/useBrand";
@@ -31,7 +32,7 @@ type AppPhase =
   | "Error";
 
 /** Current view within the application. */
-type AppView = "home" | "settings";
+type AppView = "home" | "settings" | "launch-options";
 
 function App() {
   const [phase, setPhase] = useState<AppPhase>("Initializing");
@@ -55,6 +56,7 @@ function App() {
 
   // Navigation handlers
   const navigateToSettings = () => setCurrentView("settings");
+  const navigateToLaunchOptions = () => setCurrentView("launch-options");
   const navigateToHome = () => setCurrentView("home");
 
   // Fetch real app version on mount
@@ -440,6 +442,24 @@ function App() {
     );
   }
 
+  // Show launch options view
+  if (currentView === "launch-options") {
+    return (
+      <Layout
+        phase={phase}
+        statusMessage={statusMessage}
+        version={appVersion}
+        clientVersion={clientVersion}
+        onHomeClick={navigateToHome}
+        onSettingsClick={navigateToSettings}
+        onLaunchOptionsClick={navigateToLaunchOptions}
+        runningClients={launchState.runningClients}
+      >
+        <LaunchOptions onBack={navigateToHome} />
+      </Layout>
+    );
+  }
+
   // Show settings view
   if (currentView === "settings") {
     return (
@@ -450,6 +470,7 @@ function App() {
         clientVersion={clientVersion}
         onHomeClick={navigateToHome}
         onSettingsClick={navigateToSettings}
+        onLaunchOptionsClick={navigateToLaunchOptions}
         runningClients={launchState.runningClients}
       >
         <Settings onBack={navigateToHome} onLauncherUpdateAvailable={setPendingLauncherUpdate} />
@@ -466,6 +487,7 @@ function App() {
       version={appVersion}
       onHomeClick={navigateToHome}
       onSettingsClick={navigateToSettings}
+      onLaunchOptionsClick={navigateToLaunchOptions}
       runningClients={launchState.runningClients}
     >
       <div className="main-content">

@@ -221,6 +221,20 @@ export async function gameClosed(): Promise<void> {
   return invoke<void>("game_closed");
 }
 
+/**
+ * Gets per-slot launch options.
+ */
+export async function getLaunchOptions(): Promise<import("./types").LaunchSlotConfig[]> {
+  return invoke<import("./types").LaunchSlotConfig[]>("get_launch_options");
+}
+
+/**
+ * Saves per-slot launch options.
+ */
+export async function saveLaunchOptions(slots: import("./types").LaunchSlotConfig[]): Promise<void> {
+  return invoke<void>("save_launch_options", { slots });
+}
+
 // ============================================================================
 // Settings Commands
 // ============================================================================

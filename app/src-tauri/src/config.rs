@@ -247,6 +247,26 @@ pub struct ServerConfig {
     pub port: u16,
 }
 
+/// Per-client-slot launch options (account, character, auto-login, etc.).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct LaunchSlotConfig {
+    /// Account username (optional).
+    #[serde(default)]
+    pub username: String,
+    /// Account password (stored obscured, not plaintext).
+    #[serde(default)]
+    pub password: String,
+    /// Character name for auto-select (optional).
+    #[serde(rename = "characterName", default)]
+    pub character_name: String,
+    /// Whether to auto-login (skip login screen).
+    #[serde(rename = "autoLogin", default)]
+    pub auto_login: bool,
+    /// Server override for this slot (empty = use global setting).
+    #[serde(rename = "serverChoice", default)]
+    pub server_choice: Option<ServerChoice>,
+}
+
 /// ClassicUO-specific configuration embedded in brand.json.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CuoConfig {
@@ -502,6 +522,10 @@ pub struct LauncherConfig {
     #[serde(rename = "clientCount", default = "default_client_count")]
     pub client_count: u8,
 
+    /// Per-slot launch options (account, character, auto-login, etc.).
+    #[serde(rename = "launchSlots", default)]
+    pub launch_slots: Vec<LaunchSlotConfig>,
+
     /// Version of this configuration format.
     #[serde(rename = "configVersion", default = "default_config_version")]
     pub config_version: u32,
@@ -547,6 +571,7 @@ impl Default for LauncherConfig {
             selected_server: ServerChoice::Live,
             selected_assistant: AssistantKind::RazorEnhanced,
             client_count: 1,
+            launch_slots: Vec::new(),
             requires_elevation: false,
             migrated_from: None,
         }
