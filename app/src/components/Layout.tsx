@@ -90,7 +90,7 @@ export function Layout({
           // Inject Launch Options before Settings if not already present
           if (!mapped.some(l => l.label === "Launch Options")) {
             const settingsIdx = mapped.findIndex(l => l.label === "Settings");
-            const entry = { label: "Launch Options", icon: "🎮", onClick: onLaunchOptionsClick };
+            const entry = { label: "Launch Options", icon: "🎮", href: undefined, url: undefined, onClick: onLaunchOptionsClick };
             if (settingsIdx >= 0) {
               mapped.splice(settingsIdx, 0, entry);
             } else {
