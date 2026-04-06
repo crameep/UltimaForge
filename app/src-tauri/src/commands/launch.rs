@@ -232,10 +232,12 @@ pub async fn launch_game(
             }
             if slot.auto_login {
                 instance_config.args.push("-autologin".to_string());
+                instance_config.args.push("true".to_string());
             }
             // Always save account so CUO remembers credentials
             if !slot.username.is_empty() {
                 instance_config.args.push("-saveaccount".to_string());
+                instance_config.args.push("true".to_string());
             }
         }
 
