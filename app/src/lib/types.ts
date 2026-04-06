@@ -402,6 +402,12 @@ export interface GetSettingsResponse {
   install_complete: boolean;
   /** Path to old installation that was migrated from (if any) */
   migrated_from: string | null;
+  /** Saved assistant choice */
+  selected_assistant: AssistantKind;
+  /** Saved server choice */
+  selected_server: ServerChoice;
+  /** Saved client count */
+  client_count: number;
 }
 
 /**

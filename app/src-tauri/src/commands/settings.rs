@@ -7,7 +7,8 @@
 //! - Saving brand configuration for setup wizard
 
 use crate::config::{
-    default_config_path, game_path_sidecar, BrandConfig, LauncherConfig, ThemeColors,
+    default_config_path, game_path_sidecar, AssistantKind, BrandConfig, LauncherConfig,
+    ServerChoice, ThemeColors,
 };
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
@@ -51,6 +52,12 @@ pub struct GetSettingsResponse {
     pub install_complete: bool,
     /// Path to old installation that was migrated from (if any).
     pub migrated_from: Option<String>,
+    /// Saved assistant choice.
+    pub selected_assistant: AssistantKind,
+    /// Saved server choice.
+    pub selected_server: ServerChoice,
+    /// Saved client count.
+    pub client_count: u8,
 }
 
 /// Request for saving settings.
@@ -242,6 +249,9 @@ pub async fn get_settings(state: State<'_, AppState>) -> Result<GetSettingsRespo
         migrated_from: launcher_config
             .migrated_from
             .map(|p| p.display().to_string()),
+        selected_assistant: launcher_config.selected_assistant,
+        selected_server: launcher_config.selected_server,
+        client_count: launcher_config.client_count,
     })
 }
 
@@ -816,6 +826,9 @@ mod tests {
             current_version: Some("1.0.0".to_string()),
             install_complete: true,
             migrated_from: None,
+            selected_assistant: AssistantKind::RazorEnhanced,
+            selected_server: ServerChoice::Live,
+            client_count: 1,
         };
 
         let json = serde_json::to_string(&response).expect("Should serialize");

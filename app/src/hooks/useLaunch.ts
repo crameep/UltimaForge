@@ -9,6 +9,7 @@ import { useState, useCallback, useEffect } from "react";
 
 import {
   getCuoConfig,
+  getSettings,
   launchGame,
   validateClient,
   gameClosed,
@@ -97,15 +98,31 @@ export function useLaunch(): [UseLaunchState, UseLaunchActions] {
   const [runningClients, setRunningClients] = useState<number>(0);
 
   useEffect(() => {
+    // Load CUO config for available options
     getCuoConfig()
       .then((cfg) => {
-        if (cfg) {
-          setCuoConfig(cfg);
-          setSelectedServer("live");
-          setSelectedAssistant(cfg.default_assistant);
-        }
+        if (cfg) setCuoConfig(cfg);
       })
       .catch(() => {});
+
+    // Load saved preferences (assistant, server, client count)
+    getSettings()
+      .then((s) => {
+        if (s.selected_assistant) setSelectedAssistant(s.selected_assistant);
+        if (s.selected_server) setSelectedServer(s.selected_server);
+        if (s.client_count) setClientCount(s.client_count);
+      })
+      .catch(() => {
+        // Fallback to CUO defaults if settings unavailable
+        getCuoConfig()
+          .then((cfg) => {
+            if (cfg) {
+              setSelectedAssistant(cfg.default_assistant);
+              setSelectedServer(cfg.default_server);
+            }
+          })
+          .catch(() => {});
+      });
   }, []);
 
   useEffect(() => {
