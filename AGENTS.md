@@ -37,3 +37,9 @@
 ## Configuration & Security Notes
 - Branding edits are expected only in `branding/` and are synced to `app/public/branding/` via scripts.
 - Update security relies on signed manifests; keep test keys in `app/test-keys/` for local testing only.
+
+## Recovering the UltimaForge Deployment
+- Start with the [Vultr recovery notes](saved-assets-from-server/2026-11-20/README.md) before changing the launcher version, rebuilding update manifests, or migrating the old host.
+- The server held a packaged Windows launcher (0.1.34) and client data, not a source checkout. The source on `main` was 0.1.29 at recovery time. Do not bump the version just to match the binary; first locate the exact source or build provenance.
+- The owner has a private copy of the payload, original manifests and signature, and the complete checksum list. Ask for access to that copy if needed. Verify all checksums before restoring. Do not commit raw payloads, client/game files, private data, credentials, or signing keys to this public repository.
+- Before a cutover, stage the updater on an HTTPS hostname and verify both the launcher signature and game manifest. A checksum-verified copy does not by itself prove a restore or update works. Do not boot, retire, or delete infrastructure from these notes alone.
